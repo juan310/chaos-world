@@ -11,9 +11,9 @@ public static class W {
 $h = (Get-Process -Id $ProcessId).MainWindowHandle
 if ($h -eq 0) { throw "No window for $ProcessId" }
 $vk = @{ W=0x57; A=0x41; S=0x53; D=0x44; E=0x45; Q=0x51; I=0x49; J=0x4A; K=0x4B; M=0x4D; SPACE=0x20; TAB=0x09; ESC=0x1B; ENTER=0x0D; SHIFT=0x10; UP=0x26; DOWN=0x28; LEFT=0x25; RIGHT=0x27; '1'=0x31 }
-function Lp([int]$v, [bool]$up) { $sc = [W]::MapVirtualKey($v, 0); $l = 1 -bor ($sc -shl 16); if ($up) { $l = $l -bor (3 -shl 30) }; return [IntPtr]$l }
-function Down($k) { $v = $vk[$k]; [W]::PostMessage($h, 0x100, [IntPtr]$v, (Lp $v $false)) | Out-Null }
-function Up($k) { $v = $vk[$k]; [W]::PostMessage($h, 0x101, [IntPtr]$v, (Lp $v $true)) | Out-Null }
+function KeyLParam([int]$v, [bool]$up) { $sc = [W]::MapVirtualKey($v, 0); $l = 1 -bor ($sc -shl 16); if ($up) { $l = $l -bor (3 -shl 30) }; return [IntPtr]$l }
+function Down($k) { $v = $vk[$k]; [W]::PostMessage($h, 0x100, [IntPtr]$v, (KeyLParam $v $false)) | Out-Null }
+function Up($k) { $v = $vk[$k]; [W]::PostMessage($h, 0x101, [IntPtr]$v, (KeyLParam $v $true)) | Out-Null }
 foreach ($line in ($Script -split ';')) {
   $p = $line.Trim() -split '\s+'
   switch ($p[0]) {
