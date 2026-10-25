@@ -22,6 +22,8 @@ namespace FH.Game
         public Vector3 BladeBase { get; private set; }
         public Vector3 BladeTip { get; private set; }
         public int SwingsLanded { get; private set; }
+        /// <summary>Recent registered hits as (swing id, monster key), for verifying once-per-swing.</summary>
+        public readonly List<(int swing, string monster)> HitLog = new List<(int, string)>();
         public string SelectedSpell = "ember_bolt";
         public float SpellReadyAt { get; private set; }
         public bool Dodging => Time.time < dodgeUntil;
@@ -277,6 +279,8 @@ namespace FH.Game
                 bool crit = Random.value * 100 < Stats[Stat.CritChance];
                 monster.ReceiveHit(box, point, (part, broken) => DamageMath.PlayerHit(weapon, atk, Stats, monster.Def, part, broken, crit));
                 SwingsLanded++;
+                HitLog.Add((Attack.SwingId, monster.InstanceKey));
+                if (HitLog.Count > 200) HitLog.RemoveAt(0);
                 session.CameraRig.Shake(.12f);
             }
         }

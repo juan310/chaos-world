@@ -252,30 +252,39 @@ namespace FH.Game
             Brain.ForceStagger();
         }
 
-        /// <summary>Hides the skinned piece and drops a baked, physical copy of it.</summary>
+        /// <summary>Hides the part's mesh (skinned or rigidly bone-attached) and drops a physical copy of it.</summary>
         void HidePartMesh(MonsterPartDef part, bool detach)
         {
             if (part == null || string.IsNullOrEmpty(part.breakMesh)) return;
-            var smr = Visual.GetComponentsInChildren<SkinnedMeshRenderer>(true).FirstOrDefault(r => r.name == part.breakMesh || r.name.EndsWith(part.breakMesh));
-            if (!smr || !smr.enabled) return;
+            var renderer = Visual.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == part.breakMesh || r.name.EndsWith(part.breakMesh));
+            if (!renderer || !renderer.enabled) return;
             if (detach)
             {
-                var baked = new Mesh { name = part.breakMesh + " (broken)" };
-                smr.BakeMesh(baked, true);
+                Mesh mesh;
+                Vector3 scale = Vector3.one;
+                if (renderer is SkinnedMeshRenderer smr) { mesh = new Mesh { name = part.breakMesh + " (broken)" }; smr.BakeMesh(mesh, true); }
+                else { mesh = renderer.GetComponent<MeshFilter>().sharedMesh; scale = renderer.transform.lossyScale; }
                 var piece = new GameObject(part.name + " - broken piece");
-                piece.transform.SetPositionAndRotation(smr.transform.position, smr.transform.rotation);
-                piece.transform.localScale = Vector3.one;
-                piece.AddComponent<MeshFilter>().sharedMesh = baked;
-                piece.AddComponent<MeshRenderer>().sharedMaterials = smr.sharedMaterials;
+                piece.transform.SetPositionAndRotation(renderer.transform.position, renderer.transform.rotation);
+                piece.transform.localScale = scale;
+                piece.AddComponent<MeshFilter>().sharedMesh = mesh;
+                piece.AddComponent<MeshRenderer>().sharedMaterials = renderer.sharedMaterials;
                 var col = piece.AddComponent<BoxCollider>();
-                col.center = baked.bounds.center; col.size = Vector3.Max(baked.bounds.size, Vector3.one * .05f);
+                col.center = mesh.bounds.center; col.size = Vector3.Max(mesh.bounds.size, Vector3.one * .02f);
                 var rb = piece.AddComponent<Rigidbody>();
                 rb.mass = 2;
                 rb.AddForce((Vector3.up * 2.5f + Random.insideUnitSphere) * 2f, ForceMode.Impulse);
                 rb.AddTorque(Random.insideUnitSphere * 3, ForceMode.Impulse);
                 Destroy(piece, 30);
             }
-            smr.enabled = false;
+            renderer.enabled = false;
+        }
+
+        public Renderer PartRenderer(string partId)
+        {
+            var part = Def.parts.FirstOrDefault(p => p.id == partId);
+            if (part == null || string.IsNullOrEmpty(part.breakMesh)) return null;
+            return Visual.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == part.breakMesh || r.name.EndsWith(part.breakMesh));
         }
 
         bool killHandled;

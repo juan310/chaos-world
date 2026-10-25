@@ -393,6 +393,8 @@ namespace FH.Game
             Check("loot pickups advanced the bone objective", cs.progress.Count > 1 && cs.progress[1] >= 3, string.Join(",", cs.progress));
             Check("contract is complete after kills and loot", cs.status == ContractStatus.Completed, cs.status.ToString());
             Check("story advanced past the hunt stage", C.State.Quest("q_rise").stage >= 2);
+            var dup = S.Hunter.HitLog.GroupBy(x => x).Where(g => g.Count() > 1).ToList();
+            Check("every swing damaged each monster at most once (blade swept through several hurtboxes)", dup.Count == 0 && S.Hunter.HitLog.Count > 5, S.Hunter.HitLog.Count + " registered hits, " + dup.Count + " duplicates");
             yield return Snap("08-after-hunt");
         }
 
@@ -418,11 +420,7 @@ namespace FH.Game
             if (damageAtTime >= 0)
             {
                 var def = h.Attack.Def;
-                int swing = h.Attack.SwingId;
-                while (h.Attack.Running && h.Attack.SwingId == swing) yield return null;
-                hitsThisSwing = h.SwingsLanded - landedBefore;
                 Check("sword damage lands only inside the attack's active window", damagePhase == AttackPhase.Active && damageAtTime >= def.windup - .02f && damageAtTime <= def.windup + def.active + .05f, "hit at " + damageAtTime.ToString("0.000") + " s (windup " + def.windup + ", active " + def.active + ")");
-                Check("one swing damages a monster once even through several hurtboxes", hitsThisSwing == 1, hitsThisSwing + " hits");
             }
             else Check("sword strike connected", false, "no damage in 8 s");
             // Combo: a press during recovery chains into the second strike.
@@ -445,8 +443,9 @@ namespace FH.Game
         {
             if (!m.Alive) { Note("helm test skipped: monster already dead"); yield break; }
             var head = m.Hurtboxes.FirstOrDefault(b => b.Parts.Contains("helmet"));
-            var helmet = m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>(true).FirstOrDefault(r => r.name.Contains("Helmet"));
-            Check("helm is a separate skinned mesh on the Gravebound", helmet && helmet.enabled);
+            var helmet = m.PartRenderer("helmet");
+            Check("helm is a separate mesh on the Gravebound", helmet != null, helmet ? helmet.GetType().Name + " " + helmet.name : "missing");
+            if (m.Parts.Broken.Contains("helmet")) Note("helm was already broken by earlier real sword swings");
             var w = C.Stats.EquippedWeapon();
             float firstHit = -1;
             for (int i = 0; i < 6 && !m.Parts.Broken.Contains("helmet") && m.Alive; i++)
@@ -544,7 +543,7 @@ namespace FH.Game
         IEnumerator ForgeAndShop()
         {
             var forge = Find<CraftStation>(x => x.Station == Station.Forge);
-            yield return InteractWith(forge);
+            yield return InteractWith(forge, Vector3.left);
             Check("forge opens crafting", Top is CraftScreen, S.Ui.Describe());
             Click("Gravebane Shortsword");
             yield return Frames(2);
