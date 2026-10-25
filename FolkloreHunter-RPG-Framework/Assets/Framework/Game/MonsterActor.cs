@@ -126,7 +126,7 @@ namespace FH.Game
                         break;
                     }
                 case MonsterMode.Stagger: Anim.Play("Hit_A", false, .8f, true); break;
-                case MonsterMode.Return: Anim.Play("Walking_A", true, Gait(Def.chaseSpeed)); break;
+                case MonsterMode.Return: returnBest = float.MaxValue; returnStall = 0; detourFor = 0; Anim.Play("Walking_A", true, Gait(Def.chaseSpeed)); break;
                 case MonsterMode.Dead: Die(); break;
             }
         }
@@ -198,13 +198,33 @@ namespace FH.Game
                 case MonsterMode.Return:
                     {
                         var d = Home - transform.position; d.y = 0;
-                        if (d.magnitude > .3f) { move = d.normalized; speed = Def.chaseSpeed; Face(d, dt); }
+                        float left = d.magnitude;
+                        if (left < returnBest - .25f) { returnBest = left; returnStall = 0; } else returnStall += dt;
+                        if (returnStall > 4f && dist > 12f) { WarpHome(); break; }   // blocked with nobody watching: reset home
+                        if (left > .3f)
+                        {
+                            var dir = d / left;
+                            if (returnStall > 1f && detourFor <= 0) { detour = Vector3.Cross(Vector3.up, dir) * (Random.value < .5f ? 1 : -1); detourFor = 1.2f; }
+                            if (detourFor > 0) { detourFor -= dt; dir = (dir * .3f + detour).normalized; }   // step around whatever blocks the way
+                            move = dir; speed = Def.chaseSpeed; Face(dir, dt);
+                        }
                         break;
                     }
             }
             vertical = cc.isGrounded ? -2 : Mathf.Max(-20, vertical - dt * 24);
             cc.Move((move * speed * slow + Vector3.up * vertical) * dt);
             if (hurtFlash > 0) hurtFlash -= dt;
+        }
+
+        float returnBest, returnStall, detourFor;
+        Vector3 detour;
+
+        void WarpHome()
+        {
+            cc.enabled = false;
+            transform.position = Home;
+            cc.enabled = true;
+            returnStall = 0;
         }
 
         /// <summary>Walk playback rate that matches ground speed to the clip's stride (no foot sliding).</summary>

@@ -12,6 +12,7 @@ namespace FH.Game
         public Vector3 SettlementSpot, HomeSpot;
         public float SettlementYaw, HomeYaw;
         AnimationDriver anim;
+        public AnimationDriver Anim => anim;
         float idleSwap;
 
         public NpcDef Def(GameSession s) => s.Core.Db.Npcs[NpcId];

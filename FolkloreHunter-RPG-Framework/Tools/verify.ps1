@@ -6,7 +6,7 @@ $saves = "$p\Captures\RPG-test-saves"
 Remove-Item $cap, $saves -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $cap, $saves | Out-Null
 $common = "-screen-width 1600 -screen-height 900 -screen-fullscreen 0 --save-dir `"$saves`""
-$a = Start-Process $exe -ArgumentList "--verify-rpg $common -logFile `"$p\Logs\verify-phase1.log`"" -PassThru -Wait
+$a = Start-Process $exe -ArgumentList "--verify-rpg $common --eyes-track `"$cap\verify_track.jsonl`" -logFile `"$p\Logs\verify-phase1.log`"" -PassThru -Wait
 "PHASE1_EXIT=$($a.ExitCode)"
 $b = Start-Process $exe -ArgumentList "--verify-rpg --verify-continue $common -logFile `"$p\Logs\verify-phase2.log`"" -PassThru -Wait
 "PHASE2_EXIT=$($b.ExitCode)"

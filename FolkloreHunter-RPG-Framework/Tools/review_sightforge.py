@@ -28,7 +28,49 @@ for i in range(16):
 page, data = E.cmd_animation(SimpleNamespace(project=p, run='rpg-frozen-negative-control', subject='INTENTIONAL frozen control', state='walk', dir='S', files=files))
 summary['negativeControl'] = {'summary': data['summary'], 'findings': data['findings']}
 summary['negativeControlDetected'] = data['summary'].get('likely', 0) + data['summary'].get('confirmed', 0) > 0
-summary['scope'] = 'Sprite-oriented 2D review of 3D pose renders. Does not certify 3D foot planting, collision or combat.'
+
+# Temporal review of real play: the game writes the inspector's track format (MotionTrack.cs) during the gameplay
+# recording and the real-input session. Facing against travel, walk-cycle stride, jitter, pops, pose flicker and
+# "moving while the picture does not change" are checked on every recorded frame of the actual 3D game.
+def track_review(path, run):
+    page, data = E.cmd_track(SimpleNamespace(project=p, run=run, track=str(path)))
+    rows = [json.loads(l) for l in open(path, encoding='utf-8') if l.strip()]
+    met = data.get('meta', {}).get('metrics', {})
+    out = {'summary': data['summary'], 'findings': data['findings'], 'page': page, 'frames': len(rows),
+           'track': met.get('track'), 'hunter': met.get('actors', {}).get('hunter'),
+           'expectations': [{k: e[k] for k in ('id', 'rule', 'subject', 'holds', 'framesChecked')} for e in met.get('expectations', [])]}
+    print('SIGHTFORGE_TRACK', run, json.dumps(data['summary']), flush=True)
+    return out, rows
+
+tracks = {'tourTrack': r / 'Captures/Tour/tour_track.jsonl', 'realInputTrack': r / 'Captures/realinput_track.jsonl',
+          'verifierTrack': r / 'Captures/RPG/verify_track.jsonl'}   # the verifier teleports a lot: jumps there are scripted
+for key, path in tracks.items():
+    if path.is_file():
+        summary[key], rows = track_review(path, 'rpg-' + key)
+        if key == 'tourTrack':
+            # Negative control: the same real track with the hunter's walk frozen on one frame and drawn facing
+            # reversed for every walking frame. The inspector must report both.
+            flip = {'N': 'S', 'S': 'N', 'E': 'W', 'W': 'E'}
+            ctl = neg.parent / 'rpg-track-negative-control.jsonl'
+            with open(ctl, 'w', encoding='utf-8') as fh:
+                for row in rows:
+                    for a in row['actors']:
+                        sp = a.get('sprite', '')
+                        if a['id'] == 'hunter' and '_walk_' in sp:
+                            d = sp.split('_walk_')[1][0]
+                            a['sprite'] = 'hunter_walk_' + flip[d] + '_00'
+                    fh.write(json.dumps(row) + '\n')
+            page, data = E.cmd_track(SimpleNamespace(project=p, run='rpg-track-negative-control', track=str(ctl)))
+            checks = sorted({f['check'] for f in data['findings'] if f['kind'] in ('likely', 'confirmed')})
+            contra = [e['id'] for e in data.get('meta', {}).get('metrics', {}).get('expectations', []) if not e['holds'] and e['subject'] == 'hunter']
+            summary['trackNegativeControl'] = {'summary': data['summary'], 'checksFlagged': checks, 'contradictedExpectations': contra}
+            summary['trackNegativeControlDetected'] = 'facing against travel' in checks
+            print('SIGHTFORGE_TRACK_NEGATIVE', checks, contra, flush=True)
+    else:
+        summary[key] = {'error': 'no track at ' + str(path)}
+summary['scope'] = ('Sprite-oriented 2D review of 3D pose renders, plus temporal review of tracks recorded from the running 3D game '
+                    '(x = world X, y = world Z, facing = rendered model forward quantised to S/E/N/W). '
+                    'Does not certify 3D foot planting, collision or combat.')
 (r / 'Docs/sightforge-review.json').write_text(json.dumps(summary, indent=2))
 print('SIGHTFORGE_NEGATIVE_DETECTED', summary['negativeControlDetected'], flush=True)
 print('SIGHTFORGE_REVIEW_DONE', flush=True)

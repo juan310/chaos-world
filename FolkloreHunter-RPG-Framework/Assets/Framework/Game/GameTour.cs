@@ -27,6 +27,7 @@ namespace FH.Game
             dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "Captures", "Tour"));
             if (Directory.Exists(dir)) Directory.Delete(dir, true);
             Directory.CreateDirectory(dir);
+            if (!GetComponent<MotionTrack>()) gameObject.AddComponent<MotionTrack>().Path = Path.Combine(dir, "tour_track.jsonl");   // SightForge temporal review
             Time.captureFramerate = Fps;
             yield return null;
             recording = true;

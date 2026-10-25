@@ -64,6 +64,7 @@ namespace FH.Game
             if (args.Contains("--verify-rpg")) gameObject.AddComponent<GameVerifier>();
             if (args.Contains("--tour-rpg")) gameObject.AddComponent<GameTour>();
             if (args.Contains("--input-log")) gameObject.AddComponent<InputLogger>();
+            if (Arg(args, "--eyes-track") is string track) gameObject.AddComponent<MotionTrack>().Path = Path.GetFullPath(track);
         }
 
         static string Arg(string[] args, string key)

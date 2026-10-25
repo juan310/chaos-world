@@ -541,7 +541,7 @@ namespace FH.Game
             bool returned = m.Brain.Mode == MonsterMode.Return || m.Brain.Mode == MonsterMode.Idle;
             t = 0;
             while (t < 15 && m.Brain.Mode != MonsterMode.Idle) { t += Time.unscaledDeltaTime; yield return null; }
-            Check("leashed monster gives up, walks home and resets", returned && m.Brain.Mode == MonsterMode.Idle && m.Brain.Health >= m.Def.maxHealth - .01f && Vector3.Distance(m.transform.position, m.Home) < 2, m.Brain.Mode + " hp " + m.Brain.Health);
+            Check("leashed monster gives up, walks home and resets", returned && m.Brain.Mode == MonsterMode.Idle && m.Brain.Health >= m.Def.maxHealth - .01f && Vector3.Distance(m.transform.position, m.Home) < 2, m.Brain.Mode + " hp " + m.Brain.Health + " from home " + Vector3.Distance(m.transform.position, m.Home).ToString("F1") + " at " + m.transform.position.ToString("F1"));
         }
 
         IEnumerator ClaimHunt()
