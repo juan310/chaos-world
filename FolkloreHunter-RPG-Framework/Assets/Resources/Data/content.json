@@ -1,0 +1,334 @@
+{
+  "balance": {
+    "baseHealth": 120, "baseStamina": 100, "baseMagic": 60, "baseStaminaRegen": 24,
+    "staminaRegenDelay": 0.6, "exhaustedThreshold": 20,
+    "baseInventorySlots": 24, "startGold": 75, "attributePointsPerLevel": 2, "skillPointsPerLevel": 1,
+    "xpBase": 60, "xpGrowth": 1.45, "maxLevel": 30,
+    "deathGoldLossFraction": 0.1, "hoursPerRealMinute": 1.0, "dayStartHour": 7,
+    "startArea": "home", "startWeapon": "hunter_blade", "startArmor": "padded_jerkin",
+    "startItems": [ { "itemId": "potion_mooncap", "count": 3 } ],
+    "startRecipes": [ "r_mooncap_tonic" ]
+  },
+
+  "items": [
+    { "id": "hunter_blade", "name": "Hunter's Shortsword", "description": "A plain, honest blade. Quick to recover after each swing.", "kind": "Weapon", "rarity": "Common", "maxStack": 1, "sellPrice": 10, "slot": "Weapon", "icon": "/" },
+    { "id": "hunter_blade_grave", "name": "Gravebane Shortsword", "description": "Reforged with Gravebound bone dust. Bites deep into the restless dead.", "kind": "Weapon", "rarity": "Uncommon", "maxStack": 1, "sellPrice": 45, "slot": "Weapon", "icon": "/", "stats": [ { "stat": "CritChance", "value": 5 } ] },
+    { "id": "padded_jerkin", "name": "Padded Jerkin", "description": "Quilted linen. Better than nothing.", "kind": "Armor", "rarity": "Common", "maxStack": 1, "sellPrice": 5, "slot": "Body", "icon": "#" },
+    { "id": "bone_vest", "name": "Bonewoven Vest", "description": "Gravebound ribs laced over leather. Shrugs off blades.", "kind": "Armor", "rarity": "Uncommon", "maxStack": 1, "sellPrice": 40, "slot": "Body", "icon": "#", "stats": [ { "stat": "MaxHealth", "value": 15 } ] },
+    { "id": "warden_helm", "name": "Warden's Helm", "description": "The Grave Warden's own iron, hammered to fit a living head.", "kind": "Armor", "rarity": "Rare", "maxStack": 1, "sellPrice": 90, "slot": "Head", "icon": "^", "stats": [ { "stat": "PoiseDamage", "value": 4 } ] },
+    { "id": "ember_charm", "name": "Ember Charm", "description": "A warm stone on a cord. Spells come easier.", "kind": "Charm", "rarity": "Uncommon", "maxStack": 1, "buyPrice": 140, "sellPrice": 50, "slot": "Charm", "icon": "*", "stats": [ { "stat": "SpellPower", "value": 6 }, { "stat": "MaxMagic", "value": 10 } ] },
+
+    { "id": "bone_shard", "name": "Gravebound Bone Shard", "description": "Brittle, cold, and oddly heavy. Smiths value it.", "kind": "Material", "rarity": "Common", "maxStack": 99, "sellPrice": 3, "icon": "b" },
+    { "id": "grave_dust", "name": "Grave Dust", "description": "Ash that clings to the walking dead.", "kind": "Material", "rarity": "Common", "maxStack": 99, "sellPrice": 5, "icon": "d" },
+    { "id": "grave_iron", "name": "Grave Iron", "description": "Iron from a broken Gravebound helm. Dense and dark.", "kind": "Material", "rarity": "Uncommon", "maxStack": 99, "sellPrice": 18, "icon": "i" },
+    { "id": "warden_sigil", "name": "Warden's Sigil", "description": "Proof that the Grave Warden rests.", "kind": "Material", "rarity": "Rare", "maxStack": 10, "sellPrice": 60, "icon": "S" },
+    { "id": "mooncap_herb", "name": "Mooncap", "description": "A pale mushroom. The base of most tonics.", "kind": "Material", "rarity": "Common", "maxStack": 99, "sellPrice": 2, "icon": "m" },
+    { "id": "moonpetal", "name": "Moonpetal", "description": "A violet riverside flower that opens at dusk.", "kind": "Gift", "rarity": "Uncommon", "maxStack": 20, "sellPrice": 4, "icon": "f" },
+    { "id": "oak_timber", "name": "Oak Timber", "description": "Seasoned planks for building.", "kind": "Material", "rarity": "Common", "maxStack": 40, "buyPrice": 12, "sellPrice": 4, "icon": "t" },
+    { "id": "iron_nails", "name": "Iron Nails", "description": "A pouch of square nails.", "kind": "Material", "rarity": "Common", "maxStack": 99, "buyPrice": 4, "sellPrice": 1, "icon": "n" },
+    { "id": "silver_ingot", "name": "Silver Ingot", "description": "Fine silver. Too soft for blades, perfect for rings.", "kind": "Material", "rarity": "Uncommon", "maxStack": 10, "buyPrice": 55, "sellPrice": 20, "icon": "s" },
+
+    { "id": "potion_mooncap", "name": "Mooncap Tonic", "description": "Restores 65 health.", "kind": "Consumable", "rarity": "Common", "maxStack": 10, "buyPrice": 20, "sellPrice": 6, "heal": 65, "icon": "+" },
+    { "id": "draught_stamina", "name": "Hunter's Draught", "description": "Restores 100 stamina and 30 magic.", "kind": "Consumable", "rarity": "Common", "maxStack": 10, "buyPrice": 18, "sellPrice": 5, "restoreStamina": 100, "restoreMagic": 30, "icon": "~" },
+    { "id": "honey_cake", "name": "Honey Cake", "description": "Sticky and sweet. A fine gift.", "kind": "Gift", "rarity": "Common", "maxStack": 10, "buyPrice": 12, "sellPrice": 3, "icon": "c" },
+    { "id": "promise_ring", "name": "Silver Promise Ring", "description": "A simple silver band set with a pressed moonpetal.", "kind": "Key", "rarity": "Rare", "maxStack": 1, "icon": "o" }
+  ],
+
+  "weapons": [
+    { "id": "hunter_blade", "damageType": "Slash", "baseDamage": 22, "poiseDamage": 12, "grip": "handslot.r",
+      "combo": [
+        { "id": "slash1", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.26, "active": 0.14, "recovery": 0.40, "staminaCost": 16, "damageMultiplier": 1.0, "poiseMultiplier": 1.0, "reach": 1.05, "radius": 0.22, "forwardStep": 0.35, "comboWindow": 0.30 },
+        { "id": "chop2", "anim": "1H_Melee_Attack_Chop", "windup": 0.30, "active": 0.14, "recovery": 0.44, "staminaCost": 18, "damageMultiplier": 1.15, "poiseMultiplier": 1.3, "reach": 1.05, "radius": 0.24, "forwardStep": 0.45, "comboWindow": 0.30 },
+        { "id": "slash3", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.36, "active": 0.16, "recovery": 0.62, "staminaCost": 24, "damageMultiplier": 1.5, "poiseMultiplier": 1.8, "reach": 1.1, "radius": 0.26, "forwardStep": 0.6, "comboWindow": 0.0 }
+      ] },
+    { "id": "hunter_blade_grave", "damageType": "Slash", "baseDamage": 31, "poiseDamage": 16, "grip": "handslot.r",
+      "combo": [
+        { "id": "slash1", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.26, "active": 0.14, "recovery": 0.40, "staminaCost": 16, "damageMultiplier": 1.0, "poiseMultiplier": 1.0, "reach": 1.05, "radius": 0.22, "forwardStep": 0.35, "comboWindow": 0.30 },
+        { "id": "chop2", "anim": "1H_Melee_Attack_Chop", "windup": 0.30, "active": 0.14, "recovery": 0.44, "staminaCost": 18, "damageMultiplier": 1.15, "poiseMultiplier": 1.3, "reach": 1.05, "radius": 0.24, "forwardStep": 0.45, "comboWindow": 0.30 },
+        { "id": "slash3", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.36, "active": 0.16, "recovery": 0.62, "staminaCost": 24, "damageMultiplier": 1.5, "poiseMultiplier": 1.8, "reach": 1.1, "radius": 0.26, "forwardStep": 0.6, "comboWindow": 0.0 }
+      ] }
+  ],
+
+  "armors": [
+    { "id": "padded_jerkin", "defense": 4, "visual": "Knight_Body" },
+    { "id": "bone_vest", "defense": 14, "resistances": [ { "type": "Slash", "multiplier": 0.9 } ], "visual": "" },
+    { "id": "warden_helm", "defense": 10, "resistances": [ { "type": "Blunt", "multiplier": 0.9 } ], "visual": "" }
+  ],
+
+  "statuses": [
+    { "id": "burn", "name": "Burning", "buildup": 100, "duration": 4, "tickInterval": 0.5, "tickDamage": 3, "slowMultiplier": 1 },
+    { "id": "chill", "name": "Chilled", "buildup": 100, "duration": 3, "tickInterval": 1, "tickDamage": 0, "slowMultiplier": 0.6 }
+  ],
+
+  "spells": [
+    { "id": "ember_bolt", "name": "Ember Bolt", "description": "A quick bolt of fire that sets the dead alight.", "anim": "Spellcast_Shoot", "magicCost": 16, "staminaCost": 6, "cooldown": 2.0, "castTime": 0.32, "damage": 24, "poiseDamage": 8, "speed": 13, "lifetime": 1.8, "damageType": "Fire", "statusId": "burn", "statusBuildup": 45 },
+    { "id": "hallowed_lance", "name": "Hallowed Lance", "description": "A spear of pale light. Devastating to the undead.", "anim": "Spellcast_Shoot", "magicCost": 30, "staminaCost": 10, "cooldown": 4.0, "castTime": 0.45, "damage": 46, "poiseDamage": 24, "speed": 18, "lifetime": 1.4, "damageType": "Holy", "requiresSkill": "arcana_lance" }
+  ],
+
+  "monsters": [
+    { "id": "gravebound", "name": "Gravebound", "model": "Gravebound", "family": "undead", "height": 1.8,
+      "maxHealth": 95, "poise": 34, "poiseRegen": 6, "staggerTime": 1.2, "walkSpeed": 1.3, "chaseSpeed": 2.1,
+      "perceptionRadius": 11, "fieldOfView": 150, "hearingRadius": 3.5, "leashRadius": 17, "loseInterestTime": 5, "spawnGrace": 1.5,
+      "resistances": [ { "type": "Fire", "multiplier": 1.3 }, { "type": "Holy", "multiplier": 1.6 }, { "type": "Pierce", "multiplier": 0.7 } ],
+      "attacks": [
+        { "id": "chop", "anim": "1H_Melee_Attack_Chop", "telegraph": 0.62, "active": 0.18, "recovery": 0.85, "damage": 13, "range": 1.9, "radius": 0.85, "cooldown": 1.2, "damageType": "Slash" },
+        { "id": "slice", "anim": "1H_Melee_Attack_Slice_Diagonal", "telegraph": 0.5, "active": 0.2, "recovery": 0.9, "damage": 11, "range": 1.9, "radius": 0.95, "cooldown": 1.4, "damageType": "Slash" }
+      ],
+      "parts": [
+        { "id": "helmet", "name": "Helm", "bone": "head", "radius": 0.30, "damageMultiplier": 0.7, "breakHealth": 22, "breakMesh": "Skeleton_Warrior_Helmet", "breakLootTable": "lt_gravebound_helm" },
+        { "id": "skull", "name": "Skull", "bone": "head", "radius": 0.30, "damageMultiplier": 1.6, "weakPoint": true, "requiresBrokenPart": "helmet" },
+        { "id": "body", "name": "Ribcage", "bone": "chest", "radius": 0.34, "height": 0.9, "damageMultiplier": 1.0 },
+        { "id": "legs", "name": "Legs", "bone": "hips", "radius": 0.30, "height": 0.9, "damageMultiplier": 0.85 }
+      ],
+      "lootTable": "lt_gravebound", "weaponVisual": "1H_Sword", "xp": 30, "gold": 9 },
+
+    { "id": "grave_warden", "name": "Grave Warden", "model": "Gravebound", "family": "undead", "height": 2.4, "boss": true,
+      "maxHealth": 300, "poise": 80, "poiseRegen": 7, "staggerTime": 1.6, "walkSpeed": 1.2, "chaseSpeed": 1.9, "turnSpeed": 5,
+      "perceptionRadius": 14, "fieldOfView": 180, "hearingRadius": 5, "leashRadius": 16, "loseInterestTime": 8, "spawnGrace": 2.0,
+      "resistances": [ { "type": "Fire", "multiplier": 1.1 }, { "type": "Holy", "multiplier": 1.5 }, { "type": "Slash", "multiplier": 0.9 } ],
+      "statusImmunities": [ "chill" ],
+      "attacks": [
+        { "id": "cleave", "anim": "1H_Melee_Attack_Chop", "telegraph": 0.85, "active": 0.22, "recovery": 1.05, "damage": 24, "range": 2.6, "radius": 1.2, "cooldown": 1.3, "animSpeed": 0.85, "damageType": "Slash" },
+        { "id": "sweep", "anim": "1H_Melee_Attack_Slice_Diagonal", "telegraph": 0.7, "active": 0.26, "recovery": 1.1, "damage": 19, "range": 2.8, "radius": 1.4, "cooldown": 1.5, "animSpeed": 0.85, "damageType": "Slash" }
+      ],
+      "parts": [
+        { "id": "helmet", "name": "Warden's Helm", "bone": "head", "radius": 0.36, "damageMultiplier": 0.6, "breakHealth": 55, "breakMesh": "Skeleton_Warrior_Helmet", "breakLootTable": "lt_warden_helm" },
+        { "id": "skull", "name": "Exposed Skull", "bone": "head", "radius": 0.36, "damageMultiplier": 1.9, "weakPoint": true, "requiresBrokenPart": "helmet" },
+        { "id": "body", "name": "Ribcage", "bone": "chest", "radius": 0.42, "height": 1.1, "damageMultiplier": 1.0 },
+        { "id": "legs", "name": "Legs", "bone": "hips", "radius": 0.36, "height": 1.0, "damageMultiplier": 0.8 }
+      ],
+      "lootTable": "lt_warden", "weaponVisual": "1H_Sword", "xp": 180, "gold": 40 },
+
+    { "id": "werewolf", "name": "Blackmoor Werewolf", "model": "", "family": "beast", "height": 2.9, "boss": true,
+      "maxHealth": 650, "poise": 120, "attacks": [ { "id": "claw", "anim": "", "telegraph": 0.5, "active": 0.2, "recovery": 0.8, "damage": 30, "range": 2.5 } ],
+      "parts": [ { "id": "head", "name": "Head", "bone": "head", "weakPoint": true, "damageMultiplier": 1.5 }, { "id": "foreclaw", "name": "Foreclaw", "bone": "hand.r", "breakHealth": 120, "damageMultiplier": 1.0 } ],
+      "lootTable": "", "xp": 500, "gold": 150,
+      "assetStatus": "Missing: a 3D werewolf mesh, skeleton rig and combat animations. Only 2D Sprite Studio comparison frames exist. Not spawnable." }
+  ],
+
+  "lootTables": [
+    { "id": "lt_gravebound", "entries": [ { "itemId": "bone_shard", "min": 2, "max": 3, "chance": 1 }, { "itemId": "grave_dust", "min": 1, "max": 1, "chance": 0.65 } ] },
+    { "id": "lt_gravebound_helm", "entries": [ { "itemId": "grave_iron", "min": 1, "max": 1, "chance": 1 } ] },
+    { "id": "lt_warden", "entries": [ { "itemId": "bone_shard", "min": 4, "max": 6, "chance": 1 }, { "itemId": "grave_dust", "min": 2, "max": 3, "chance": 1 }, { "itemId": "warden_sigil", "min": 1, "max": 1, "chance": 1 } ] },
+    { "id": "lt_warden_helm", "entries": [ { "itemId": "grave_iron", "min": 2, "max": 2, "chance": 1 } ] }
+  ],
+
+  "ranks": [
+    { "rank": 0, "name": "Unranked", "reputationRequired": 0 },
+    { "rank": 1, "name": "Bronze Hunter", "reputationRequired": 40 },
+    { "rank": 2, "name": "Silver Hunter", "reputationRequired": 160 },
+    { "rank": 3, "name": "Gold Hunter", "reputationRequired": 420 }
+  ],
+
+  "factions": [
+    { "id": "thornbury", "name": "Thornbury Folk", "description": "The farmers, herbalists and smiths of the crossing." },
+    { "id": "court", "name": "Ashgrove Court", "description": "The nobility who rule the valley from Ashgrove." }
+  ],
+
+  "contracts": [
+    { "id": "c_gravebound_cull", "name": "Bones by the Old Bridge", "description": "Gravebound have risen beyond the bridge. Put three to rest and bring back their bones.", "giverNpcId": "mira", "areaId": "ashen_fields", "targetMonsterId": "gravebound",
+      "rankRequired": 0,
+      "objectives": [
+        { "id": "kill", "type": "Kill", "targetId": "gravebound", "count": 3, "description": "Defeat Gravebound" },
+        { "id": "bones", "type": "Collect", "targetId": "bone_shard", "count": 3, "description": "Collect bone shards" }
+      ],
+      "reward": { "gold": 60, "xp": 90, "hunterReputation": 45, "items": [ { "itemId": "potion_mooncap", "count": 2 } ], "reputation": [ { "factionId": "thornbury", "amount": 15 } ], "unlockRecipes": [ "r_gravebane", "r_bone_vest" ], "setFlags": [ "first_hunt_done" ] },
+      "repeatable": false },
+
+    { "id": "c_bone_harvest", "name": "Bone Harvest", "description": "Bram always needs Gravebound bone. Steady work for a steady hunter.", "giverNpcId": "bram", "areaId": "ashen_fields", "targetMonsterId": "gravebound",
+      "rankRequired": 1,
+      "objectives": [ { "id": "bones", "type": "Collect", "targetId": "bone_shard", "count": 6, "description": "Collect bone shards" } ],
+      "reward": { "gold": 35, "xp": 40, "hunterReputation": 20, "reputation": [ { "factionId": "thornbury", "amount": 5 } ] },
+      "repeatable": true, "cooldownDays": 1 },
+
+    { "id": "c_grave_warden", "name": "The Grave Warden", "description": "Something commands the Gravebound from the crypt beneath the ruined tower. End it, and break its helm so all can see.", "giverNpcId": "mira", "areaId": "crypt", "targetMonsterId": "grave_warden",
+      "rankRequired": 1,
+      "prerequisites": [ { "type": "ContractStatus", "id": "c_gravebound_cull", "state": "claimedOnce" } ],
+      "objectives": [
+        { "id": "break", "type": "Break", "targetId": "grave_warden.helmet", "count": 1, "description": "Break the Warden's helm" },
+        { "id": "kill", "type": "Kill", "targetId": "grave_warden", "count": 1, "description": "Defeat the Grave Warden" }
+      ],
+      "reward": { "gold": 160, "xp": 220, "hunterReputation": 120, "reputation": [ { "factionId": "thornbury", "amount": 25 }, { "factionId": "court", "amount": 10 } ], "unlockRecipes": [ "r_warden_helm" ], "setFlags": [ "warden_slain" ] },
+      "repeatable": false },
+
+    { "id": "c_werewolf", "name": "The Beast of Blackmoor", "description": "Travellers speak of a great wolf that walks like a man on the northern moors.", "giverNpcId": "lady_elowen", "areaId": "", "targetMonsterId": "werewolf",
+      "rankRequired": 3,
+      "prerequisites": [ { "type": "Flag", "id": "werewolf_sighted", "label": "The beast has not been sighted yet." } ],
+      "objectives": [ { "id": "kill", "type": "Kill", "targetId": "werewolf", "count": 1, "description": "Hunt the werewolf" } ],
+      "reward": { "gold": 500, "xp": 600, "hunterReputation": 300 },
+      "repeatable": false }
+  ],
+
+  "quests": [
+    { "id": "q_rise", "name": "Rise of the Estate", "description": "From a leaking cottage to a name the valley knows.", "autoStart": true,
+      "stages": [
+        { "id": "meet", "description": "Mira the herbalist has work. Find her at Thornbury Crossing.", "objectives": [ { "id": "talk", "type": "Talk", "targetId": "mira", "count": 1, "description": "Speak with Mira" } ] },
+        { "id": "hunt", "description": "Put the Gravebound by the Old Bridge to rest.", "objectives": [ { "id": "kill", "type": "Kill", "targetId": "gravebound", "count": 3, "description": "Defeat Gravebound" } ] },
+        { "id": "forge", "description": "Bring the bones to Bram and forge a better blade.", "objectives": [ { "id": "craft", "type": "Craft", "targetId": "hunter_blade_grave", "count": 1, "description": "Forge the Gravebane Shortsword" } ], "reward": { "xp": 40 } },
+        { "id": "home", "description": "Restore your cottage.", "objectives": [ { "id": "tier", "type": "EstateTier", "targetId": "estate", "count": 1, "description": "Upgrade to the Restored Cottage" } ], "reward": { "xp": 60, "hunterReputation": 10 } },
+        { "id": "warden", "description": "Descend into the crypt and face the Grave Warden.", "objectives": [ { "id": "kill", "type": "Kill", "targetId": "grave_warden", "count": 1, "description": "Defeat the Grave Warden" } ], "reward": { "xp": 100 } }
+      ] }
+  ],
+
+  "recipes": [
+    { "id": "r_mooncap_tonic", "name": "Mooncap Tonic", "description": "Grind two mooncaps into a healing tonic.", "station": "Alchemy", "inputs": [ { "itemId": "mooncap_herb", "count": 2 } ], "output": { "itemId": "potion_mooncap", "count": 1 }, "unlockedByDefault": true },
+    { "id": "r_hunter_draught", "name": "Hunter's Draught", "description": "Mooncap and grave dust: bitter, but it wakes tired legs.", "station": "Alchemy", "inputs": [ { "itemId": "mooncap_herb", "count": 1 }, { "itemId": "grave_dust", "count": 1 } ], "output": { "itemId": "draught_stamina", "count": 1 }, "unlockedByDefault": true },
+    { "id": "r_gravebane", "name": "Gravebane Shortsword", "description": "Reforge your shortsword with bone and grave dust.", "station": "Forge", "upgradeFrom": "hunter_blade", "inputs": [ { "itemId": "bone_shard", "count": 4 }, { "itemId": "grave_dust", "count": 1 } ], "goldCost": 30, "output": { "itemId": "hunter_blade_grave", "count": 1 } },
+    { "id": "r_bone_vest", "name": "Bonewoven Vest", "description": "Lace Gravebound ribs over leather.", "station": "Forge", "inputs": [ { "itemId": "bone_shard", "count": 6 }, { "itemId": "grave_iron", "count": 1 } ], "goldCost": 25, "output": { "itemId": "bone_vest", "count": 1 } },
+    { "id": "r_warden_helm", "name": "Warden's Helm", "description": "Hammer the Warden's grave iron into a helm.", "station": "Forge", "inputs": [ { "itemId": "grave_iron", "count": 2 }, { "itemId": "warden_sigil", "count": 1 } ], "goldCost": 60, "output": { "itemId": "warden_helm", "count": 1 }, "requirements": [ { "type": "Rank", "value": 2 } ] },
+    { "id": "r_promise_ring", "name": "Silver Promise Ring", "description": "A silver band with a pressed moonpetal. Made at your own workbench.", "station": "Workbench", "inputs": [ { "itemId": "silver_ingot", "count": 1 }, { "itemId": "moonpetal", "count": 2 } ], "goldCost": 15, "output": { "itemId": "promise_ring", "count": 1 }, "unlockedByDefault": true,
+      "requirements": [ { "type": "RelationshipStage", "id": "mira", "state": "courting", "label": "You have no one to give it to yet." } ] }
+  ],
+
+  "estateTiers": [
+    { "id": "e_cottage", "tier": 0, "name": "Modest Cottage", "description": "A one-room cottage with a leaky porch.", "goldCost": 0, "incomePerDay": 0, "storageSlots": 0, "inventoryBonus": 0, "visualGroups": [ "tier0" ], "modeled": true },
+    { "id": "e_restored", "tier": 1, "name": "Restored Cottage", "description": "A rebuilt porch, a storage shed and a workbench. The fields are let to a tenant.",
+      "goldCost": 75, "materials": [ { "itemId": "oak_timber", "count": 3 }, { "itemId": "iron_nails", "count": 4 } ],
+      "requirements": [ { "type": "Rank", "value": 1 } ],
+      "incomePerDay": 15, "maxIncomeDays": 3, "storageSlots": 16, "inventoryBonus": 4, "restHealBonus": 0.0, "stations": [ "Workbench" ], "visualGroups": [ "tier1" ], "modeled": true },
+    { "id": "e_lodge", "tier": 2, "name": "Hunter's Lodge", "description": "A timber lodge with a trophy hall and stables.",
+      "goldCost": 600, "materials": [ { "itemId": "oak_timber", "count": 20 }, { "itemId": "grave_iron", "count": 4 } ],
+      "requirements": [ { "type": "Rank", "value": 2 } ], "incomePerDay": 40, "storageSlots": 32, "inventoryBonus": 8, "stations": [ "Workbench", "Alchemy" ], "visualGroups": [ "tier2" ], "modeled": false },
+    { "id": "e_manor", "tier": 3, "name": "Ashgrove Manor", "description": "A stone manor worthy of the court.",
+      "goldCost": 2500, "requirements": [ { "type": "Rank", "value": 3 }, { "type": "Reputation", "id": "court", "value": 60 } ], "incomePerDay": 120, "storageSlots": 60, "inventoryBonus": 12, "stations": [ "Workbench", "Alchemy", "Forge" ], "visualGroups": [ "tier3" ], "modeled": false }
+  ],
+
+  "relationshipStages": [
+    { "id": "stranger", "name": "Stranger", "order": 0, "affinityRequired": 0 },
+    { "id": "acquaintance", "name": "Acquaintance", "order": 1, "affinityRequired": 4 },
+    { "id": "friend", "name": "Friend", "order": 2, "affinityRequired": 18 },
+    { "id": "courting", "name": "Courting", "order": 3, "affinityRequired": 30, "automatic": false },
+    { "id": "engaged", "name": "Engaged", "order": 4, "affinityRequired": 45, "automatic": false,
+      "requirements": [ { "type": "HasItem", "id": "promise_ring", "value": 1 }, { "type": "EstateTier", "value": 1, "label": "Mira would want a proper home: restore your cottage first." } ] },
+    { "id": "spouse", "name": "Married", "order": 5, "affinityRequired": 50, "automatic": false,
+      "requirements": [ { "type": "EstateTier", "value": 1 } ] }
+  ],
+
+  "npcs": [
+    { "id": "mira", "name": "Mira", "title": "Herbalist of Thornbury", "role": "herbalist", "factionId": "thornbury", "model": "Herbalist", "vendorId": "v_mira", "dialogueId": "d_mira", "homeArea": "thornbury", "romanceable": true,
+      "gifts": [ { "itemId": "moonpetal", "affinity": 10 }, { "itemId": "honey_cake", "affinity": 6 }, { "itemId": "mooncap_herb", "affinity": 2 }, { "itemId": "bone_shard", "affinity": -3 } ], "defaultGiftAffinity": 1 },
+    { "id": "bram", "name": "Bram", "title": "Smith of Thornbury", "role": "smith", "factionId": "thornbury", "model": "Smith", "vendorId": "v_bram", "dialogueId": "d_bram", "homeArea": "thornbury", "romanceable": false,
+      "gifts": [ { "itemId": "grave_iron", "affinity": 6 }, { "itemId": "honey_cake", "affinity": 4 } ] },
+    { "id": "lady_elowen", "name": "Lady Elowen", "title": "Steward of Ashgrove Court", "role": "noble", "factionId": "court", "model": "Noble", "dialogueId": "d_elowen", "homeArea": "thornbury", "romanceable": false,
+      "gifts": [ { "itemId": "warden_sigil", "affinity": 10 }, { "itemId": "moonpetal", "affinity": 3 } ] }
+  ],
+
+  "vendors": [
+    { "id": "v_mira", "name": "Mira's Remedies", "npcId": "mira", "sellRate": 1.0,
+      "stock": [ { "itemId": "potion_mooncap", "price": 20 }, { "itemId": "draught_stamina", "price": 18 }, { "itemId": "honey_cake", "price": 12, "stock": 3 } ],
+      "buysKinds": [ "Material", "Consumable", "Gift" ] },
+    { "id": "v_bram", "name": "Bram's Forge", "npcId": "bram", "sellRate": 1.0,
+      "stock": [ { "itemId": "oak_timber", "price": 12 }, { "itemId": "iron_nails", "price": 4 }, { "itemId": "silver_ingot", "price": 55, "stock": 1, "requirements": [ { "type": "Rank", "value": 1 } ] }, { "itemId": "ember_charm", "price": 140, "stock": 1, "requirements": [ { "type": "Rank", "value": 1 } ] } ],
+      "buysKinds": [ "Material", "Weapon", "Armor", "Charm" ] }
+  ],
+
+  "skills": [
+    { "id": "blade_edge", "name": "Keen Edge", "description": "+4 attack.", "branch": "Blade", "cost": 1, "levelRequired": 1, "stats": [ { "stat": "Attack", "value": 4 } ] },
+    { "id": "blade_weight", "name": "Heavy Hand", "description": "+8 stagger power.", "branch": "Blade", "cost": 1, "levelRequired": 2, "requires": [ "blade_edge" ], "stats": [ { "stat": "PoiseDamage", "value": 8 } ] },
+    { "id": "blade_eye", "name": "Hunter's Eye", "description": "+10% critical chance.", "branch": "Blade", "cost": 2, "levelRequired": 4, "requires": [ "blade_weight" ], "stats": [ { "stat": "CritChance", "value": 10 } ] },
+    { "id": "survival_skin", "name": "Thick Skin", "description": "+20 health.", "branch": "Survival", "cost": 1, "levelRequired": 1, "stats": [ { "stat": "MaxHealth", "value": 20 } ] },
+    { "id": "survival_wind", "name": "Second Wind", "description": "+15 stamina, faster stamina recovery.", "branch": "Survival", "cost": 1, "levelRequired": 2, "requires": [ "survival_skin" ], "stats": [ { "stat": "MaxStamina", "value": 15 }, { "stat": "StaminaRegen", "value": 6 } ] },
+    { "id": "survival_ghost", "name": "Ghost Step", "description": "Longer dodge invulnerability.", "branch": "Survival", "cost": 2, "levelRequired": 3, "requires": [ "survival_wind" ], "stats": [ { "stat": "DodgeWindow", "value": 0.08 } ] },
+    { "id": "arcana_focus", "name": "Ember Focus", "description": "+8 spell power, +15 magic.", "branch": "Arcana", "cost": 1, "levelRequired": 1, "stats": [ { "stat": "SpellPower", "value": 8 }, { "stat": "MaxMagic", "value": 15 } ] },
+    { "id": "arcana_lance", "name": "Hallowed Lance", "description": "Learn a holy spell that pierces the undead.", "branch": "Arcana", "cost": 2, "levelRequired": 3, "requires": [ "arcana_focus" ], "unlockSpell": "hallowed_lance" }
+  ],
+
+  "attributes": [
+    { "id": "vigor", "name": "Vigor", "description": "+8 health per point.", "perPoint": [ { "stat": "MaxHealth", "value": 8 } ] },
+    { "id": "endurance", "name": "Endurance", "description": "+6 stamina and +1 stamina recovery per point.", "perPoint": [ { "stat": "MaxStamina", "value": 6 }, { "stat": "StaminaRegen", "value": 1 } ] },
+    { "id": "strength", "name": "Strength", "description": "+2 attack and +1 stagger power per point.", "perPoint": [ { "stat": "Attack", "value": 2 }, { "stat": "PoiseDamage", "value": 1 } ] },
+    { "id": "arcana", "name": "Arcana", "description": "+6 magic and +2 spell power per point.", "perPoint": [ { "stat": "MaxMagic", "value": 6 }, { "stat": "SpellPower", "value": 2 } ] }
+  ],
+
+  "dialogues": [
+    { "id": "d_mira", "entries": [ "mira_spouse", "mira_first", "mira_main" ],
+      "nodes": [
+        { "id": "mira_first", "speaker": "Mira", "conditions": [ { "type": "NotFlag", "id": "met_mira" } ], "onEnter": [ { "type": "SetFlag", "id": "met_mira" } ],
+          "text": "Oh! You must be the hunter who took the old cottage. I'm Mira. I keep the herb stall here at the crossing. The dead have been walking near the Old Bridge again.",
+          "choices": [ { "text": "I'm a hunter. I can deal with them.", "next": "mira_contract" }, { "text": "Tell me about Thornbury.", "next": "mira_lore" } ] },
+        { "id": "mira_main", "speaker": "Mira", "text": "Back in one piece, {player}? What do you need?",
+          "choices": [
+            { "text": "About the Gravebound by the bridge...", "next": "mira_contract", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_gravebound_cull", "state": "Available" } ] },
+            { "text": "The bridge is clear. Here are the bones.", "next": "mira_thanks", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_gravebound_cull", "state": "Completed" } ], "effects": [ { "type": "ClaimContract", "id": "c_gravebound_cull" }, { "type": "Affinity", "id": "mira", "value": 4 } ] },
+            { "text": "Anything stronger out there?", "next": "mira_warden", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_grave_warden", "state": "Available" } ] },
+            { "text": "The Grave Warden is dead.", "next": "mira_warden_done", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_grave_warden", "state": "Completed" } ], "effects": [ { "type": "ClaimContract", "id": "c_grave_warden" }, { "type": "Affinity", "id": "mira", "value": 5 } ] },
+            { "text": "Show me your remedies.", "effects": [ { "type": "OpenShop" } ] },
+            { "text": "May I use your mortar and pestle?", "effects": [ { "type": "OpenCrafting" } ] },
+            { "text": "I brought you something.", "effects": [ { "type": "OpenGift" } ] },
+            { "text": "Would you walk with me one evening?", "next": "mira_courting", "hideWhenUnavailable": true, "conditions": [ { "type": "RelationshipStage", "id": "mira", "state": "friend" }, { "type": "NotFlag", "id": "rel_mira_courting" } ], "effects": [ { "type": "SetRelationship", "id": "mira", "state": "courting" } ] },
+            { "text": "Mira... will you marry me?", "next": "mira_engaged", "hideWhenUnavailable": true, "conditions": [ { "type": "Flag", "id": "rel_mira_courting" }, { "type": "NotFlag", "id": "rel_mira_engaged" } ], "effects": [ { "type": "SetRelationship", "id": "mira", "state": "engaged" }, { "type": "TakeItem", "id": "promise_ring", "value": 1 } ] },
+            { "text": "Let's not wait. Marry me at the cottage.", "next": "mira_wed", "hideWhenUnavailable": true, "conditions": [ { "type": "Flag", "id": "rel_mira_engaged" }, { "type": "NotFlag", "id": "rel_mira_spouse" } ], "effects": [ { "type": "SetRelationship", "id": "mira", "state": "spouse" } ] },
+            { "text": "Goodbye.", "effects": [ { "type": "CloseDialogue" } ] }
+          ] },
+        { "id": "mira_contract", "speaker": "Mira", "text": "Three of them at least, between the bridge and the ash fields. Bring back their bones so the village knows they're truly down. We pooled sixty gold.",
+          "choices": [ { "text": "I'll take the contract.", "next": "mira_accepted", "effects": [ { "type": "AcceptContract", "id": "c_gravebound_cull" } ] }, { "text": "Not yet.", "next": "mira_main" } ] },
+        { "id": "mira_accepted", "speaker": "Mira", "text": "Be careful. They raise their blades before they strike, and their eyes flare red. Step aside, then answer. Their helms crack if you aim high.",
+          "choices": [ { "text": "I'll be back.", "effects": [ { "type": "CloseDialogue" } ] } ] },
+        { "id": "mira_thanks", "speaker": "Mira", "text": "You did it! Here, the village's gold, and two of my tonics. Take those bones to Bram at the forge. He can make you a blade that bites the dead.",
+          "choices": [ { "text": "Thank you, Mira.", "next": "mira_main" } ] },
+        { "id": "mira_warden", "speaker": "Mira", "text": "The ruined tower past the graves has a crypt beneath it. Something down there keeps the dead walking. Break its helm and they'll believe you at court.",
+          "choices": [ { "text": "I'll go down there.", "next": "mira_main", "effects": [ { "type": "AcceptContract", "id": "c_grave_warden" } ] }, { "text": "Not yet.", "next": "mira_main" } ] },
+        { "id": "mira_warden_done", "speaker": "Mira", "text": "The bells in Ashgrove rang this morning. They're saying your name, {player}.",
+          "choices": [ { "text": "Let them.", "next": "mira_main" } ] },
+        { "id": "mira_lore", "speaker": "Mira", "text": "Thornbury is just a crossing: my stall, Bram's forge and the hunt board. Past the ash fields is the old crypt. Lady Elowen speaks for the court at Ashgrove; she rarely notices folk like us.",
+          "choices": [ { "text": "And the Gravebound?", "next": "mira_contract" } ] },
+        { "id": "mira_courting", "speaker": "Mira", "text": "I... I'd like that. Meet me by the garden at dusk.",
+          "choices": [ { "text": "I'll be there.", "next": "mira_main" } ] },
+        { "id": "mira_engaged", "speaker": "Mira", "text": "Yes. A thousand times yes. Is there room at the cottage for my herbs?",
+          "choices": [ { "text": "There's room for everything.", "next": "mira_main" } ] },
+        { "id": "mira_wed", "speaker": "Mira", "text": "Then it's settled. I'll bring my garden to the cottage. It's our home now.",
+          "choices": [ { "text": "Our home.", "effects": [ { "type": "CloseDialogue" } ] } ] },
+        { "id": "mira_spouse", "speaker": "Mira", "conditions": [ { "type": "Flag", "id": "rel_mira_spouse" } ], "text": "There you are, love. The garden at home is thriving. What do you need?",
+          "choices": [
+            { "text": "The bridge is clear. Here are the bones.", "next": "mira_spouse", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_gravebound_cull", "state": "Completed" } ], "effects": [ { "type": "ClaimContract", "id": "c_gravebound_cull" } ] },
+            { "text": "Show me your remedies.", "effects": [ { "type": "OpenShop" } ] },
+            { "text": "May I use your mortar and pestle?", "effects": [ { "type": "OpenCrafting" } ] },
+            { "text": "I brought you something.", "effects": [ { "type": "OpenGift" } ] },
+            { "text": "See you tonight.", "effects": [ { "type": "CloseDialogue" } ] } ] }
+      ] },
+
+    { "id": "d_bram", "entries": [ "bram_main" ],
+      "nodes": [
+        { "id": "bram_main", "speaker": "Bram", "text": "Bram. I work iron. Need something forged, or something to build with?",
+          "choices": [
+            { "text": "Use the forge.", "effects": [ { "type": "OpenCrafting" } ] },
+            { "text": "Buy materials.", "effects": [ { "type": "OpenShop" } ] },
+            { "text": "Any steady work?", "next": "bram_work", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_bone_harvest", "state": "Available" } ] },
+            { "text": "Here are the bones you wanted.", "next": "bram_main", "hideWhenUnavailable": true, "conditions": [ { "type": "ContractStatus", "id": "c_bone_harvest", "state": "Completed" } ], "effects": [ { "type": "ClaimContract", "id": "c_bone_harvest" } ] },
+            { "text": "What can you make from Gravebound bone?", "next": "bram_bones" },
+            { "text": "Goodbye.", "effects": [ { "type": "CloseDialogue" } ] } ] },
+        { "id": "bram_bones", "speaker": "Bram", "text": "Bone dust folded into steel makes an edge the dead remember. Ribs make a fair vest, if you've grave iron to bind them. Bring me the Warden's iron someday and I'll make you a helm.",
+          "choices": [ { "text": "Good to know.", "next": "bram_main" } ] },
+        { "id": "bram_work", "speaker": "Bram", "text": "Six shards a day, every day, and I'll pay fair. The board will track it for you.",
+          "choices": [ { "text": "Deal.", "next": "bram_main", "effects": [ { "type": "AcceptContract", "id": "c_bone_harvest" } ] }, { "text": "Maybe later.", "next": "bram_main" } ] }
+      ] },
+
+    { "id": "d_elowen", "entries": [ "elowen_court", "elowen_gate" ],
+      "nodes": [
+        { "id": "elowen_gate", "speaker": "Lady Elowen", "text": "The court of Ashgrove receives hunters of standing. Come back when your name means something, and when you have a roof worth the name.",
+          "choices": [
+            { "text": "I am a Silver Hunter, with an estate of my own.", "next": "elowen_court", "conditions": [ { "type": "Rank", "value": 2 }, { "type": "EstateTier", "value": 1 } ], "effects": [ { "type": "SetFlag", "id": "court_access" }, { "type": "Reputation", "id": "court", "value": 10 } ] },
+            { "text": "I'll return.", "effects": [ { "type": "CloseDialogue" } ] } ] },
+        { "id": "elowen_court", "speaker": "Lady Elowen", "conditions": [ { "type": "Flag", "id": "court_access" } ], "text": "Welcome to the court's favour, hunter. Ashgrove will send for you when it has work worthy of your blade.",
+          "choices": [ { "text": "I await the summons.", "effects": [ { "type": "CloseDialogue" } ] } ] }
+      ] }
+  ],
+
+  "areas": [
+    { "id": "home", "name": "Cottage Meadow", "kind": "Home", "safe": true, "x": -11, "z": -14, "radius": 10 },
+    { "id": "thornbury", "name": "Thornbury Crossing", "kind": "Settlement", "safe": true, "x": -26, "z": -27, "radius": 9 },
+    { "id": "old_bridge", "name": "Old Bridge", "kind": "HuntArea", "safe": false, "x": 3, "z": 2, "radius": 7 },
+    { "id": "ashen_fields", "name": "Ashen Graveyard", "kind": "HuntArea", "safe": false, "x": 14, "z": 20, "radius": 18 },
+    { "id": "crypt", "name": "Warden's Crypt", "kind": "Dungeon", "safe": false, "returnArea": "ashen_fields",
+      "entryRequirements": [ { "type": "Rank", "value": 1, "label": "The crypt door is sealed. Only a Bronze Hunter could convince the village to unbar it." } ] }
+  ],
+
+  "spawns": [
+    { "id": "sp_bridge_1", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 1, "z": 12, "patrolRadius": 3, "respawnHours": 12 },
+    { "id": "sp_bridge_2", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 7, "z": 16, "patrolRadius": 3, "respawnHours": 12 },
+    { "id": "sp_graves_1", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 13, "z": 22, "patrolRadius": 3, "respawnHours": 12 },
+    { "id": "sp_graves_2", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 21, "z": 20, "patrolRadius": 3, "respawnHours": 12 },
+    { "id": "sp_night_1", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 17, "z": 27, "patrolRadius": 4, "respawnHours": 6, "nightOnly": true },
+    { "id": "sp_warden", "areaId": "crypt", "monsterId": "grave_warden", "x": 0, "z": 9, "patrolRadius": 1.5, "respawnHours": 72 }
+  ]
+}
