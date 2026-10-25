@@ -504,6 +504,8 @@ namespace FH.Game
                 yield return null;
             }
             Stop();
+            if (m.Alive) Note("fight timed out: " + m.DisplayName + " " + m.Brain.Mode + " hp " + m.Brain.Health.ToString("F0") + " at " + m.transform.position.ToString("F1")
+                + " home " + m.Home.ToString("F1") + "; hunter at " + h.transform.position.ToString("F1") + " anim " + h.Anim.Current + " attack " + h.Attack.Phase + " lock " + (h.LockTarget ? h.LockTarget.DisplayName : "none"));
             done(!m.Alive);
             yield return Real(.6f);
         }
@@ -810,11 +812,13 @@ namespace FH.Game
         IEnumerator SleepAndIncome()
         {
             int day = C.Clock.Day;
+            // Before the morning hour, the next morning is today's (a long run can pass midnight before this point).
+            int morningDay = C.Clock.Hour < C.Db.Balance.dayStartHour - .01 ? day : day + 1;
             yield return InteractWith(Find<BedRest>());
             Check("cottage door offers rest", Top is ConfirmScreen);
             Click("Sleep");
             yield return Frames(4);
-            Check("sleeping advances to the next morning", C.Clock.Day == day + 1 && C.Clock.Hour <= C.Db.Balance.dayStartHour + .01, C.Clock.Label);
+            Check("sleeping advances to the next morning", C.Clock.Day == morningDay && C.Clock.Hour <= C.Db.Balance.dayStartHour + .01, C.Clock.Label);
             Check("sleeping saved the game", File.Exists(S.Store.PathFor(S.Slot)));
             int gold = C.Wallet.Gold;
             yield return InteractWith(Find<EstateLedger>());
