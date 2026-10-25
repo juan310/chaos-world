@@ -420,7 +420,7 @@ namespace FH.Game
             Core.State.Spawn(m.SpawnId).brokenParts.Add(part.id);
             Hud?.Notify(m.DisplayName + ": " + part.name + " broken!", NoticeKind.Progress);
             var drops = Core.Loot.Roll(part.breakLootTable, rng);
-            if (drops.Count > 0) DropLoot(m.transform.position - m.transform.forward * .7f, drops, part.name + " fragments");
+            if (drops.Count > 0) DropLoot(m.transform.position, drops, part.name + " fragments");   // the monster's feet are always reachable
             Core.Events.RaisePartBroken(m.MonsterId, part.id);
             WorldKit.Sound(m.transform.position, "hit", .6f);
             CameraRig.Shake(.35f);
@@ -433,7 +433,7 @@ namespace FH.Game
             Core.Wallet.Earn(def.gold);
             Core.Progression.AddXp(def.xp);
             var drops = Core.Loot.Roll(def.lootTable, rng);
-            if (drops.Count > 0) DropLoot(m.transform.position + m.transform.forward * .6f, drops, def.name + " remains");
+            if (drops.Count > 0) DropLoot(m.transform.position, drops, def.name + " remains");
             Hud?.Notify(def.name + " defeated. +" + def.gold + " gold, +" + def.xp + " XP", NoticeKind.Reward);
             if (Hunter.LockTarget == m) Hunter.LockTarget = null;
             Core.Events.RaiseKilled(def.id, m.SpawnId);
