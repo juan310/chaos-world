@@ -330,7 +330,8 @@ namespace FH.Game
             var m = NearestAlive("gravebound", new Vector3(1, 0, 12));
             Check("a Gravebound waits by the bridge", m != null);
             if (!m) yield break;
-            Place(m.Home + new Vector3(0, 0, -3.2f), m.transform.position);
+            // Stand in front of the monster, inside its sight cone (it may have patrolled away from its spawn).
+            Place(m.transform.position + m.transform.forward * 4f, m.transform.position);
             h.RefreshStats(true);
             float waitT = 0;
             while (waitT < 4 && !m.Brain.Engaged) { waitT += Time.unscaledDeltaTime; yield return null; }
@@ -351,7 +352,9 @@ namespace FH.Game
             Check("monster telegraphs with a visible warning ring", m.Brain.Mode == MonsterMode.Telegraph && ring && ring.gameObject.activeSelf, m.Brain.Mode.ToString());
             yield return Real(Mathf.Max(0, m.Brain.CurrentAttack.telegraph * .6f - m.Brain.ModeTime));
             yield return Snap("06-telegraph");
-            // Dodge through the strike: i-frames should evade even while overlapping.
+            // Dodge through the strike: i-frames should evade even while overlapping. Other monsters are held off
+            // so the only incoming blow is the one being dodged.
+            foreach (var other in S.Monsters.Where(x => x && x != m && x.Alive)) other.Calm(3);
             h.RefreshStats(true);
             float hp = h.Health;
             while (m.Brain.Mode == MonsterMode.Telegraph && m.Brain.CurrentAttack.telegraph - m.Brain.ModeTime > .1f) yield return null;
@@ -364,6 +367,7 @@ namespace FH.Game
             Stop();
             Check("dodging through a telegraphed strike takes no damage", h.Health >= hp, "health " + hp + "→" + h.Health + (h.LastDodgeEvade > evadeBefore ? ", evaded by invulnerability" : ", stepped out of range"));
             // Standing in the ring is punished.
+            foreach (var other in S.Monsters.Where(x => x && x != m && x.Alive)) other.Calm(6);
             h.RefreshStats(true); hp = h.Health;
             t = 0; bool hit = false;
             while (t < 6 && !hit)
@@ -503,6 +507,14 @@ namespace FH.Game
             var bag = FindObjectsByType<LootBag>().OrderBy(b => Vector3.Distance(b.transform.position, S.Hunter.transform.position)).FirstOrDefault();
             if (!bag) { Note("no loot bag to collect"); yield break; }
             yield return InteractWith(bag);
+            if (!(Top is LootScreen) && bag)
+            {
+                Note("loot focus was " + (S.Focus ? S.Focus.name : "none") + "; stepping closer");
+                Place(bag.transform.position + (S.Hunter.transform.position - bag.transform.position).normalized * .7f, bag.transform.position);
+                yield return Frames(3);
+                yield return Press(GameAction.Interact);
+                yield return Frames(2);
+            }
             bool opened = Top is LootScreen;
             if (opened) { yield return Snap("08b-loot"); Click("Take all"); }
             yield return Frames(3);
