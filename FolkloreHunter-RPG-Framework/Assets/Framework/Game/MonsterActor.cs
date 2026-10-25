@@ -171,7 +171,7 @@ namespace FH.Game
                 case MonsterMode.Patrol:
                     {
                         var d = patrolTarget - transform.position; d.y = 0;
-                        if (d.magnitude > .4f) { move = d.normalized; speed = Def.walkSpeed; Anim.Play("Walking_A", true, Gait(Def.walkSpeed)); }
+                        if (d.magnitude > .4f) { Face(d, dt); move = Flat(transform.forward); speed = Def.walkSpeed; Anim.Play("Walking_A", true, Gait(Def.walkSpeed)); }   // curves toward the spot along its facing (SightForge: patrols walked sideways)
                         else Anim.Play("Idle");
                         break;
                     }
@@ -206,7 +206,7 @@ namespace FH.Game
                             var dir = d / left;
                             if (returnStall > 1f && detourFor <= 0) { detour = Vector3.Cross(Vector3.up, dir) * (Random.value < .5f ? 1 : -1); detourFor = 1.2f; }
                             if (detourFor > 0) { detourFor -= dt; dir = (dir * .3f + detour).normalized; }   // step around whatever blocks the way
-                            move = dir; speed = Def.chaseSpeed; Face(dir, dt);
+                            Face(dir, dt); move = Flat(transform.forward); speed = Def.chaseSpeed;
                         }
                         break;
                     }
@@ -238,6 +238,8 @@ namespace FH.Game
             float r = atk.radius * 2 * Mathf.Lerp(.35f, 1, grow);
             ring.transform.localScale = new Vector3(r / transform.lossyScale.x, .01f, r / transform.lossyScale.z);
         }
+
+        static Vector3 Flat(Vector3 v) { v.y = 0; return v.normalized; }
 
         void Face(Vector3 dir, float dt)
         {

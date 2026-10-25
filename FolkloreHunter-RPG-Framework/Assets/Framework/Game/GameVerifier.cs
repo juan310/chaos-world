@@ -105,7 +105,12 @@ namespace FH.Game
             if (approach.HasValue) dir = approach.Value;
             if (dir.sqrMagnitude < .01f) dir = Vector3.back;
             Place(target.Point + dir.normalized * dist, target.Point);
+            var placed = S.Hunter.transform.position; var body = S.Hunter.Body;
+            var touching = Physics.OverlapCapsule(placed + Vector3.up * body.radius, placed + Vector3.up * (body.height - body.radius), body.radius + body.skinWidth, Layers.WorldMask, QueryTriggerInteraction.Ignore)
+                .Where(c => c.transform.root != S.Hunter.transform.root).Select(c => c.name).ToArray();
             yield return Frames(3);
+            var shift = S.Hunter.transform.position - placed; shift.y = 0;
+            if (shift.magnitude > .1f) Note("placed at " + placed.ToString("F2") + " near " + target.name + ", pushed " + shift.magnitude.ToString("F2") + " m; overlapping: " + string.Join(", ", touching));
             if (S.Focus != target) Note("focus was " + (S.Focus ? S.Focus.name : "none") + " instead of " + target.name);
             yield return Press(GameAction.Interact);
             yield return Frames(2);
@@ -241,6 +246,13 @@ namespace FH.Game
             var h = S.Hunter;
             Place(new Vector3(-7, 0, -21), new Vector3(0, 0, -12));
             yield return Frames(3);
+            // TEMP route probe: what stands on the straight run west from the cottage toward Thornbury.
+            foreach (var z in new[] { -21f, -22.5f, -24f })
+            {
+                var o = S.SafeGround(new Vector3(-9, 0, z)) + Vector3.up * .9f;
+                Note(Physics.SphereCast(o, .34f, Vector3.left, out var hit, 12, Layers.WorldMask, QueryTriggerInteraction.Ignore)
+                    ? "route probe z " + z + ": " + hit.collider.name + " at " + hit.point.ToString("F2") + " (" + hit.collider.transform.position.ToString("F1") + ")" : "route probe z " + z + ": clear for 12 m");
+            }
             Vector3 start = h.transform.position;
             Vector3 walkGoal = new Vector3(4, 0, -6);
             var footL = WorldKit.Find(h.Visual, "foot.l"); var footR = WorldKit.Find(h.Visual, "foot.r");

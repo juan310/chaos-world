@@ -176,11 +176,17 @@ namespace FH.Game
                 speed = (canRun ? RunSpeed : WalkSpeed) * Stats[Stat.MoveSpeed];
                 if (canRun) Stamina.Drain(RunCost, dt);
                 moveDir = dir;
-                float natural = canRun ? runNatural : walkNatural;
-                float animSpeed = natural > .1f ? Mathf.Clamp(speed / natural, .5f, 2.5f) : 1;
-                Anim.Play(canRun ? "Running_A" : "Walking_A", true, animSpeed);
-                stepClock -= dt;
-                if (stepClock <= 0) { stepClock = canRun ? .24f : .36f; WorldKit.Sound(transform.position, "step", .08f); }
+                // Pressing into a wall, fence or the river bank: stand instead of running in place (SightForge track).
+                blockedFor = actualSpeed < speed * .25f ? blockedFor + dt : 0;
+                if (blockedFor > .15f) Anim.Play("Idle");
+                else
+                {
+                    float natural = canRun ? runNatural : walkNatural;
+                    float animSpeed = natural > .1f ? Mathf.Clamp(speed / natural, .5f, 2.5f) : 1;
+                    Anim.Play(canRun ? "Running_A" : "Walking_A", true, animSpeed);
+                    stepClock -= dt;
+                    if (stepClock <= 0) { stepClock = canRun ? .24f : .36f; WorldKit.Sound(transform.position, "step", .08f); }
+                }
             }
             else if (!locked && !Attack.Running && !Dodging && castAt < 0) Anim.Play(Anim.Current.Contains("Hit") && Time.time < hurtUntil + .2f ? Anim.Current : "Idle");
 
@@ -199,6 +205,7 @@ namespace FH.Game
         // Hit knockback: speed decays linearly to zero over KnockTime, covering KnockSpeed * KnockTime / 2 = 0.25 m.
         const float KnockSpeed = 2.5f, KnockTime = .2f;
         Vector3 knock;
+        float actualSpeed, blockedFor;
 
         void Move(Vector3 velocity, float dt)
         {
@@ -207,7 +214,10 @@ namespace FH.Game
             Vector3 next = transform.position + delta;
             delta = session.ConstrainMove(transform.position, next) - transform.position;
             delta.y = 0;
+            var before = transform.position;
             Body.Move(delta);
+            var moved = transform.position - before; moved.y = 0;
+            actualSpeed = dt > 0 ? moved.magnitude / dt : 0;
         }
 
         // ---------- attacks ----------
