@@ -12,7 +12,8 @@ Build **0.4.0-framework** · Unity 6000.6.7f1 · Windows x64 (D3D11) · prepared
 | Verification results + captures | `...\Captures\RPG\verification.txt`, `verification-continue.txt`, `*.png`, `Poses\` |
 | Real-input audit log | `...\Docs\real-input-session.txt` |
 | Unity test results (53 tests) | `...\Docs\unity-test-results.xml` |
-| SightForge review | `...\Docs\sightforge-review.json`, `...\Docs\ClaudeEyes\Inspections\rpg-*` |
+| SightForge review | `...\Docs\sightforge-review.json`, `...\Docs\ClaudeEyes\Inspections\rpg-*` (pose clips, actor tracks, sample comparison) |
+| SightForge actor tracks from real play | `...\Captures\Tour\tour_track.jsonl`, `...\Captures\realinput_track.jsonl`, `...\Captures\RPG\verify_track.jsonl` |
 | Source of truth for code/data/docs | git `juan310/chaos-world`, branch `claude/new-session-xoe3g1`, folder `FolkloreHunter-RPG-Framework/` (mirrored by `Tools\sync.ps1`; local clone `...\FolkloreHunter-RPG-Framework-src`) |
 | Native art sources | `...\FolkloreHunter-RPG-Framework\SourceArt` (Cottage-Modular.blend, Hunter/Gravebound/Herbalist.blend from the sample; new Smith.blend, Noble.blend; KayKit and Kenney originals + zips) |
 | Sample provenance (original docs, scripts, baseline checks) | `...\Docs\Provenance\Sample`, `...\Docs\Provenance\SampleScripts` |
@@ -29,16 +30,24 @@ ported (with the FBX_SCALE_ALL characters, the scale-one cottage wrapper and the
   relationships/dialogue, combat timing (hit windows that never skip on long frames, once-per-swing, stamina,
   poise, statuses, weak points behind breakable parts, telegraph and grace, leash), spawns/clock, save round-trip,
   atomic backup recovery, corruption handling, schema refusal and v1→v3 migration, and the whole starter loop.
-- **In-player verification (real Windows build, isolated save folder):** phase 1 play-through 126/126,
-  phase 2 separate launch continuing the save 16/16. Movement, combat and menus are driven through the game's input
+- **In-player verification (real Windows build, isolated save folder):** phase 1 play-through 127/127,
+  phase 2 separate launch continuing the save 16/16, on four consecutive runs of the final build. Movement, combat and menus are driven through the game's input
   router (the same path the keyboard uses) and real uGUI click events; the one labelled shortcut is Mira's bond
   being set to stand in for several days of gifts before the courtship steps.
 - **Defects the verification itself uncovered and that were fixed in the game** (not in the tests): foot sliding,
   interact choosing a station over a person, invisible helm break on rigid meshes, inverted camera after travel,
   unreadable buttons, title showing upgraded estate, loot sacks stacking at one kill site, loot that could drop
-  inside a crypt wall, pause refusing to save
-  after leaving a fight, and a progression blocker where 4% of players could finish the first hunt without the
+  inside a crypt wall, a helm-fragment sack hanging in mid-air in the crypt, a leashed monster stuck on scenery on its
+  way home, pause refusing to save after leaving a fight, and a progression blocker where 4% of players could finish the first hunt without the
   Grave Dust the first forge recipe needs (now a guaranteed drop, with a regression test).
+- **SightForge / Claude Eyes on real 3D play:** the game writes the inspector's actor-track format every frame
+  (`MotionTrack.cs`); the inspector's temporal checks (facing against travel, stride, jitter, pops, pose flicker,
+  "moving while the picture does not change") ran on the gameplay recording, the real-input session and the verifier
+  play-through. They found five defects that the verifier and the pose review had missed: a one-frame jump on every
+  hit taken, patrolling monsters walking sideways, running in place during fades and dialogue, on-camera snaps in the
+  recording, and a physics push at the forge. All fixed; the final recording's track has 0 findings, and a doctored
+  copy (frozen walk, reversed facing) is flagged. The sample comparison shows the ported hunter's silhouette matches
+  the approved sample's renders. Details and the remaining explained findings: `visual-review.md`.
 - **Real input:** Windows key messages posted to the game window only (never to other windows on the shared
   desktop) were received by Unity's `Input`: menu navigation with arrows/Enter, walking, dodging, interacting,
   Escape/back. See `Docs/real-input-session.txt`.
@@ -78,8 +87,8 @@ powershell -ExecutionPolicy Bypass -File Tools\sync.ps1
 powershell -ExecutionPolicy Bypass -File Tools\unity.ps1 tests tests
 powershell -ExecutionPolicy Bypass -File Tools\unity.ps1 FHBuild.Build build
 powershell -ExecutionPolicy Bypass -File Tools\verify.ps1
-python Tools\review_sightforge.py
 powershell -ExecutionPolicy Bypass -File Tools\record_tour.ps1
+python Tools\review_sightforge.py      # after the recording: it reviews the tour's actor track too
 ```
 No purchases, paid generation, asset-store imports, publishing or account changes were made. uGUI and the Test
 Framework are built-in packages bundled with the installed editor (no download).

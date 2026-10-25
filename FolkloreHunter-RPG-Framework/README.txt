@@ -26,7 +26,8 @@ Tools\unity.ps1 FHBuild.Build build      regenerate the scene and build Build-RP
 Tools\unity.ps1 tests tests              run the 53 Core tests in Unity (Docs\unity-test-results.xml)
 Tools\verify.ps1        two-phase in-player verification (Captures\RPG\verification*.txt)
 Tools\record_tour.ps1   gameplay video (Folklore-Hunter-RPG-Framework-Gameplay.mp4)
-Tools\review_sightforge.py   SightForge / Claude Eyes review of pose captures
+Tools\review_sightforge.py   SightForge / Claude Eyes: pose clips, actor tracks from real play, sample comparison
+                              (any run can record a track: FolkloreHunterRPG.exe --eyes-track <file.jsonl>)
 
 DOCUMENTS
 Docs\HANDOFF.md        status, results, limitations, next steps
