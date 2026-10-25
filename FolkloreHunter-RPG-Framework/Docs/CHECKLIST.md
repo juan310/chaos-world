@@ -94,5 +94,5 @@ Schema v3 with step migrations, atomic writes + backup, damaged-file quarantine 
 | SightForge / Claude Eyes on actual captures | Done | pose clips (2D silhouette scope), actor tracks recorded from real 3D play (temporal checks; 0 findings on the final recording), comparison with the sample's renders; both negative controls detected. `Docs/sightforge-review.json`, `visual-review.md` |
 | Real player input (not only scripted) | Done | window-targeted Windows key messages read by Unity `Input`; audit log |
 | Windows build | Done | `Build-RPG/FolkloreHunterRPG.exe`, `Docs/build-result.txt` |
-| Gameplay recording | Done | `Folklore-Hunter-RPG-Framework-Gameplay.mp4` (94 s; two kills shown as labelled 4x time-lapse; timber/nails bought off-screen) |
+| Gameplay recording | Done | `Folklore-Hunter-RPG-Framework-Gameplay.mp4` (95 s; two kills shown as labelled 4x time-lapse; timber/nails bought off-screen) |
 | Desktop shortcut and build opened on the Acer | Done | `Folklore Hunter RPG - Framework Build` |

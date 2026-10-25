@@ -34,9 +34,9 @@ dithering, position pops, pose flicker, and the expectation "while an actor move
 
 | Track (frames) | Findings | Reading |
 |---|---|---|
-| Gameplay recording (~2,600-3,000 game frames, 5 areas, 9 actors) | **0** | clean after the fixes below; walk stride measured at 0.69 m per cycle |
-| Real Windows key input (1,938 frames) | 1 likely: jitter 4.2 px | one dodge frame during a 0.14 s start-up hitch (13 fps) dominates the 95th percentile of a short session; steady walking is smooth |
-| Verifier play-through (~6,000-8,600 frames) | 3 likely | scripted: the verifier repositions the hunter between test steps (idle "moves" of 0.3-0.5 m, a 2 m reposition during a load hitch), and a monster reset to its spawn after the death-and-recovery test |
+| Gameplay recording (3,225 game frames, 5 areas, 9 actors) | **0** | clean after the fixes below; walk stride measured at 0.69 m per cycle |
+| Real Windows key input (1,929 frames) | **0** | (an earlier run flagged 4.2 px jitter: one dodge frame during a 0.14 s start-up hitch; it did not recur) |
+| Verifier play-through (6,221 frames) | 2 likely | scripted: the verifier repositions the hunter between test steps (idle "moves" of 0.3-0.5 m, a 2 m reposition during a load hitch) |
 | Negative control (the real tour track with the hunter's walk frozen and facing reversed) | flagged | facing against travel + E1 "picture stuck while moving": the inspector detects both |
 
 What the tracks found in the game, before the fixes (all fixed, see the table below): a 0.25 m one-frame jump on every

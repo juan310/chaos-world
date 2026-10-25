@@ -8,7 +8,7 @@ Build **0.4.0-framework** · Unity 6000.6.7f1 · Windows x64 (D3D11) · prepared
 | Isolated Unity project (work happens here) | `C:\Users\juana\Documents\FolkloreHunter-RPG-Framework` |
 | Windows player | `...\FolkloreHunter-RPG-Framework\Build-RPG\FolkloreHunterRPG.exe` |
 | Desktop shortcut | `Folklore Hunter RPG - Framework Build` (OneDrive Desktop) |
-| Gameplay video (94 s, 30 fps, in-engine capture with UI) | `...\Folklore-Hunter-RPG-Framework-Gameplay.mp4` |
+| Gameplay video (95 s, 30 fps, in-engine capture with UI) | `...\Folklore-Hunter-RPG-Framework-Gameplay.mp4` |
 | Verification results + captures | `...\Captures\RPG\verification.txt`, `verification-continue.txt`, `*.png`, `Poses\` |
 | Real-input audit log | `...\Docs\real-input-session.txt` |
 | Unity test results (53 tests) | `...\Docs\unity-test-results.xml` |
