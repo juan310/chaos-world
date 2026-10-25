@@ -469,6 +469,7 @@ namespace FH.Game
             Check("broken helm mesh is hidden and a physical piece falls", helmet && !helmet.enabled && FindObjectsByType<Rigidbody>().Any(r => r.name.Contains("broken piece")));
             if (m.Alive && broke)
             {
+                m.Brain.Health = m.Def.maxHealth;   // measure the full blow, not the health that happened to be left
                 float before = m.Brain.Health;
                 m.ReceiveHit(head, head.transform.position, (part, broken) => DamageMath.PlayerHit(w, w.combo[0], S.Hunter.Stats, m.Def, part, broken, false));
                 float skull = before - m.Brain.Health;
@@ -574,10 +575,10 @@ namespace FH.Game
             Check("forging upgrades the equipped blade", C.Stats.EquippedWeapon().id == "hunter_blade_grave" && weaponBefore == "hunter_blade", weaponBefore + "→" + C.Stats.EquippedWeapon().id);
             Check("upgrade changes the hunter's stats", S.Hunter.Stats[Stat.CritChance] > before);
             Check("upgraded blade shows a new material on the real sword mesh", WorldKit.Find(S.Hunter.Visual, "1H_Sword").GetComponent<Renderer>().sharedMaterial.name.Contains("blade"));
-            Click("Bonewoven Vest");
+            Click("Unknown recipe");
             yield return Frames(2);
             var b = FindButton("Craft");
-            Check("unavailable recipe explains what is missing", b && !b.interactable && Top.Root.GetComponentsInChildren<Text>().Any(t => t.text.Contains("Needs") || t.text.Contains("have")));
+            Check("unavailable recipe explains what is missing", b && !b.interactable && Top.Root.GetComponentsInChildren<Text>().Any(t => t.text.Contains("not learned")));
             yield return Snap("09b-forge-missing");
             while (Top != null) { Top.Back(); yield return Frames(2); }
 
