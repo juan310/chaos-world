@@ -23,6 +23,30 @@ The inspector's own front-view note says it does not measure foot sliding for fr
 | Dodge | 0 | 1 | "Loop does not close": the roll is a one-shot action, not a loop. Expected. |
 | Negative control (one frozen walk frame ×16) | — | flagged | The inspector correctly detects a frozen walk. |
 
+## SightForge temporal review of real 3D play (actor tracks)
+The game writes the inspector's own actor-track format while it runs (`MotionTrack.cs`, `--eyes-track <file>`; always on
+during the gameplay recording). One line per game frame: the hunter, monsters and NPCs within 40 m, with x = world X,
+y = world Z, the rendered model's facing quantised to S/E/N/W, and the playing clip with its cycle frame (16 per loop;
+idle carries no frame number, so a body gliding in its standing pose reads as a stuck picture). The installed
+`eyes_inspect.py track` then runs its checks on every frame: facing against travel, stride per walk cycle, jitter,
+dithering, position pops, pose flicker, and the expectation "while an actor moves, its picture keeps changing" (E1).
+`Tools/track_events.py` and `Tools/track_pops.py` list the frames behind any finding.
+
+TRACK_RESULTS_PLACEHOLDER
+
+## Port check against the approved sample (SightForge `compare`)
+The framework's hunter pose renders were compared with the 3D sample's own renders (`FolkloreHunter-3D-Sample-20261025/Captures/Poses`,
+read only) at the same clip and frame (idle, walk, attack; frames 0, 4, 8, 12). Silhouettes match in all 12 (no
+missing or extra outline). Three frames are flagged "colours not in reference" (3.6-4% of pixels): the pose renders
+are lit by the world's light at capture time, and the framework's daylight curve is brighter than the sample's fixed
+afternoon sun, so the candidate has lighter highlight tones. Same mesh, texture, sword, shield and emblem.
+Not declared same-capture, so absolute size was not compared.
+
+## Not used, and why
+- `regression` (screenshot baselines) needs Claude Eyes 1 sidecars with sprite boxes, collision cells and an
+  orthographic world-unit view; the 3D perspective captures have none, so it would not measure anything real.
+- `opinion` sends images to an external paid vision API; not run (no paid services without authorisation).
+
 ## 3D checks measured in the running player (not by the inspector)
 - Planted foot speed while walking: 0.01 m/s against 1.60 m/s body travel (before the fix: 1.23 m/s, visible
   ice-skating). Travel speed is now derived from the authored stride measured from the foot bones.
@@ -47,6 +71,8 @@ The inspector's own front-view note says it does not measure foot sliding for fr
 | Two loot sacks overlapping at one kill site | drops merge into one sack per site |
 | Part-break loot could land behind the monster inside a wall (Warden in the crypt) | all drops land at the monster's feet |
 | Warden helm-fragment sack hung in mid-air (the drop ray hit the falling helm piece) and placement above it put the hunter on the crypt roof | broken pieces ignore ground rays; crypt ground rays start under the ceiling |
+| Hunter jumped 0.25 m in one frame when hit (SightForge track: 30-60 units/s pops on every `hit_a` frame) | knockback is a 0.2 s decaying push through the movement constraints |
+| A leashed Gravebound could walk into scenery on its way home and never arrive (verifier leash check) | Return mode steps around obstacles and resets home when blocked with the hunter far away |
 
 ## Known visual limitations (not fixed)
 - KayKit chibi strides are short, so honest (non-sliding) travel is 1.6 m/s walking and 2.4 m/s running.
