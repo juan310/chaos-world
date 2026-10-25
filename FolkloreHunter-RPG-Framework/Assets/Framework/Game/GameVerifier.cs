@@ -93,7 +93,7 @@ namespace FH.Game
         {
             var d = faceTowards - p; d.y = 0;
             S.Hunter.Teleport(S.SafeGround(p), d.sqrMagnitude > .01f ? Quaternion.LookRotation(d).eulerAngles.y : 0);
-            S.CameraRig.Yaw = S.Hunter.transform.eulerAngles.y + 180;
+            S.CameraRig.Yaw = S.Hunter.transform.eulerAngles.y;   // camera sits behind the hunter
             S.CameraRig.Snap();
         }
 

@@ -85,8 +85,8 @@ namespace FH.UI
             Root.GetComponentsInChildren<Text>().First(t => t.name == "Title").text = Title;
             var tabs = UiKit.Row("Tabs", Body, 8, 48);
             tabs.Place(new Vector2(0, 1), new Vector2(.5f, 1), new Vector2(0, -48), Vector2.zero);
-            UiKit.Button(tabs, selling ? "Buy" : "<b>Buy</b>", () => { selling = false; selected = null; qty = 1; Refresh(); });
-            UiKit.Button(tabs, selling ? "<b>Sell</b>" : "Sell", () => { selling = true; selected = null; qty = 1; Refresh(); });
+            UiKit.Button(tabs, "Buy", () => { selling = false; selected = null; qty = 1; Refresh(); }).Active(!selling);
+            UiKit.Button(tabs, "Sell", () => { selling = true; selected = null; qty = 1; Refresh(); }).Active(selling);
             var content = UiKit.Rect("Content", Body).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -60));
             Layout.Split(content, .48f, out list, out detail);
             if (!selling)

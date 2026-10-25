@@ -107,7 +107,7 @@ namespace FH.Game
         {
             var d = look - p; d.y = 0;
             S.Hunter.Teleport(S.SafeGround(p), Quaternion.LookRotation(d).eulerAngles.y);
-            S.CameraRig.Yaw = S.Hunter.transform.eulerAngles.y + 180;
+            S.CameraRig.Yaw = S.Hunter.transform.eulerAngles.y;
             S.CameraRig.Snap();
         }
 
@@ -255,7 +255,7 @@ namespace FH.Game
             yield return Hold(2.4f);
             S.Ui.Top?.Back();
             var inside = S.World.Anchor("crypt_inside");
-            yield return Fade(() => { S.Hunter.Teleport(inside.position + Vector3.forward * 8, 0); S.CameraRig.Yaw = 180; S.CameraRig.Snap(); });
+            yield return Fade(() => { S.Hunter.Teleport(inside.position + Vector3.forward * 8, 0); S.CameraRig.Yaw = 0; S.CameraRig.Snap(); });
             var boss = S.Monsters.FirstOrDefault(x => x && x.Alive && x.MonsterId == "grave_warden");
             if (boss) { InputRouter.Press(GameAction.LockOn); }
             t = 0;

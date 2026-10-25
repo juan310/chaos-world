@@ -333,7 +333,7 @@ namespace FH.Game
             World.Sun.color = Color.Lerp(new Color(.55f, .62f, .95f), new Color(1, .88f, .69f), day);
             float amb = Mathf.Lerp(.32f, 1, day);
             bool below = World.IsInCrypt(Hunter.transform.position);
-            if (below) amb *= .45f;
+            if (below) amb = .75f;
             RenderSettings.ambientSkyColor = new Color(.62f, .69f, .70f) * amb;
             RenderSettings.ambientEquatorColor = new Color(.40f, .45f, .34f) * amb;
             RenderSettings.ambientGroundColor = new Color(.23f, .24f, .20f) * amb;
@@ -498,7 +498,7 @@ namespace FH.Game
             Ui.Fade(() =>
             {
                 Hunter.Teleport(SafeGround(door.Destination.position), door.Destination.eulerAngles.y);
-                CameraRig.Yaw = door.Destination.eulerAngles.y + 180;
+                CameraRig.Yaw = door.Destination.eulerAngles.y;   // behind the hunter, looking where they face
                 CameraRig.Snap();
                 UpdateArea();
                 RefreshSpawns(true);

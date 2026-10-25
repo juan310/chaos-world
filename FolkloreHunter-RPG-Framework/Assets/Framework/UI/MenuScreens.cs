@@ -25,7 +25,7 @@ namespace FH.UI
             var b = UiKit.Button(list, text, click, 52, 20);
             b.Text.alignment = TextAnchor.MiddleLeft;
             b.Text.rectTransform.Stretch(14);
-            if (selected) b.Button.GetComponent<Image>().color = new Color(1.25f, 1.15f, .9f);
+            if (selected) b.Active();
             if (focus != null) UiHover.Attach(b, focus);
             return b;
         }

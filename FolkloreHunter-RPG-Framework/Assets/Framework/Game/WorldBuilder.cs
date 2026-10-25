@@ -237,7 +237,7 @@ namespace FH.Game
                 var box = WorldKit.Box("Window planter", c + new Vector3(i * 1.9f, .35f, -2.75f), new Vector3(.9f, .3f, .3f), oak, t1);
                 Nature(i < 0 ? "flower_yellowA" : "flower_purpleA", box.transform.position + Vector3.up * .15f, .35f, 0, false, t1);
             }
-            for (int i = 0; i < 7; i++) Nature("fence_simple", Ground(c.x - 3 + i * 1.25f, c.z - 5.2f), .9f, 0, false, t1);
+            for (int i = 0; i < 8; i++) if (i < 2 || i > 4) Nature("fence_simple", Ground(c.x - 4.4f + i * 1.25f, c.z - 5.6f), .9f, 0, false, t1);   // gap is the garden gate
             vis.Groups.Add(new EstateVisuals.Group { id = "tier1", minTier = 1, root = t1.gameObject });
 
             var ledger = WorldKit.Box("Estate ledger lectern", Ground(c.x + 2.2f, c.z - 3.9f, .55f), new Vector3(.45f, 1.1f, .4f), oak, refs.Cottage, true);
@@ -470,7 +470,7 @@ namespace FH.Game
                 WorldKit.Orb("Torch flame", tp, .14f, WorldKit.Glow(new Color(1f, .5f, .15f), 3), g);
                 WorldKit.Box("Torch bracket", tp + Vector3.down * .3f, new Vector3(.1f, .5f, .1f), M("Iron", new Color(.25f, .25f, .27f)), g);
                 var l = new GameObject("Torch light").AddComponent<Light>(); l.transform.SetParent(g); l.transform.position = tp;
-                l.type = LightType.Point; l.color = new Color(1f, .55f, .2f); l.range = 9; l.intensity = 2.2f;
+                l.type = LightType.Point; l.color = new Color(1f, .6f, .28f); l.range = 12; l.intensity = 2.6f;
             }
             Anchor("crypt_inside", o + new Vector3(0, .1f, -12), 0);
             var exit = new GameObject("Crypt exit stairs").AddComponent<AreaDoor>(); exit.transform.SetParent(g); exit.transform.position = o + new Vector3(0, .1f, -14);

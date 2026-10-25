@@ -21,7 +21,9 @@ namespace FH.UI
         public static readonly Color Stamina = new Color(.52f, .7f, .3f);
         public static readonly Color Magic = new Color(.3f, .5f, .9f);
         public static readonly Color ButtonIdle = new Color(.18f, .2f, .17f, 1);
-        public static readonly Color ButtonHot = new Color(.38f, .32f, .2f, 1);
+        public static readonly Color ButtonHot = new Color(.46f, .36f, .18f, 1);
+        public static readonly Color ButtonAccent = new Color(.30f, .26f, .16f, 1);
+        public static readonly Color ButtonDisabled = new Color(.11f, .11f, .10f, .92f);
 
         static Font font;
         static Sprite rounded, solid;
@@ -113,11 +115,10 @@ namespace FH.UI
             var img = r.gameObject.AddComponent<Image>();
             img.sprite = Rounded; img.type = Image.Type.Sliced; img.color = Color.white;
             var b = r.gameObject.AddComponent<Button>();
-            var colors = b.colors;
-            colors.normalColor = ButtonIdle; colors.highlightedColor = ButtonHot; colors.selectedColor = ButtonHot;
-            colors.pressedColor = new Color(.5f, .42f, .25f); colors.disabledColor = new Color(.12f, .12f, .11f, .9f); colors.fadeDuration = .06f;
-            b.colors = colors;
+            b.transition = Selectable.Transition.None;
             b.targetGraphic = img;
+            img.color = ButtonIdle;
+            r.gameObject.AddComponent<ButtonVisual>();
             var outline = r.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(Border.r, Border.g, Border.b, .45f);
             var t = Label("Text", r, label, fontSize, Text, TextAnchor.MiddleCenter);
             t.rectTransform.Stretch(6);
@@ -201,6 +202,8 @@ namespace FH.UI
         public Text Text;
         public LayoutElement Layout;
         Text reason;
+
+        public UiButton Active(bool on = true) { Button.GetComponent<ButtonVisual>().Accent = on; return this; }
 
         public UiButton Enabled(bool on, string why = null)
         {

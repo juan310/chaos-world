@@ -33,7 +33,7 @@ namespace FH.UI
                 var tt = t;
                 string key = t == JournalTab.Pack ? "I" : t == JournalTab.Hunts ? "J" : t == JournalTab.Hunter ? "K" : t == JournalTab.Map ? "M" : "";
                 var b = UiKit.Button(tabs, (t == JournalTab.Hunts ? "Hunts & Story" : t.ToString()) + (key != "" ? "  <size=15><color=#a9a59a>" + key + "</color></size>" : ""), () => Show(tt), 50, 21);
-                if (t == Tab) b.Button.GetComponent<Image>().color = new Color(1.5f, 1.3f, .9f);
+                if (t == Tab) b.Active();
             }
             var content = UiKit.Rect("Tab content", Body).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -64));
             switch (Tab)
