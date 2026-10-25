@@ -89,6 +89,17 @@ namespace FH.Tests
         }
 
         [Test]
+        public void StarterHuntAlwaysYieldsTheForgeMaterials()
+        {
+            // Guards against luck blocking progression: three kills with the worst rolls still afford the Gravebane.
+            var db = TestSupport.Db();
+            var worst = new WorstRandom();
+            var drops = Enumerable.Range(0, 3).SelectMany(_ => new LootRoller(db).Roll(db.Monsters["gravebound"].lootTable, worst)).ToList();
+            foreach (var input in db.Recipes["r_gravebane"].inputs)
+                Assert.That(drops.Where(d => d.itemId == input.itemId).Sum(d => d.count), Is.GreaterThanOrEqualTo(input.count), input.itemId);
+        }
+
+        [Test]
         public void StoryQuestAdvancesThroughConnectedSystems()
         {
             var core = TestSupport.NewCore();

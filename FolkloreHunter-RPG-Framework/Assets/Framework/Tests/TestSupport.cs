@@ -68,4 +68,11 @@ namespace FH.Tests
         public float Value() => 0;
         public int Range(int min, int max) => max;
     }
+
+    /// <summary>Random source that fails every chance roll below 100% and picks the minimum amount.</summary>
+    public class WorstRandom : IRandom
+    {
+        public float Value() => .9999f;
+        public int Range(int min, int max) => min;
+    }
 }
