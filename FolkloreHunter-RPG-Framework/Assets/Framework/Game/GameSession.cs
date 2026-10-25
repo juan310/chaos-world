@@ -287,7 +287,8 @@ namespace FH.Game
                 if (!i.Available(this)) continue;
                 float d = Vector3.Distance(Flat(hp), Flat(i.Point));
                 if (d > i.Range || Mathf.Abs(hp.y - i.Point.y) > 2.5f) continue;
-                float score = d - Vector3.Dot((i.Point - hp).normalized, Hunter.transform.forward) * .6f;
+                // People win ties: facing someone and pressing E should always start a conversation.
+                float score = d - Vector3.Dot((i.Point - hp).normalized, Hunter.transform.forward) * .6f - (i is NpcActor ? .5f : 0);
                 if (score < best) { best = score; Focus = i; }
             }
         }

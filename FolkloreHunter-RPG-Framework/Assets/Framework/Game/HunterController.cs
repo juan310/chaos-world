@@ -63,6 +63,7 @@ namespace FH.Game
             }
             walkNatural = Anim.NaturalSpeed("Walking_A", footL, footR, transform);
             runNatural = Anim.NaturalSpeed("Running_A", footL, footR, transform);
+            Debug.Log("FH_LOCO walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
             Stamina = new StaminaPool(100, 24, s.Core.Db.Balance.staminaRegenDelay, s.Core.Db.Balance.exhaustedThreshold);
             RefreshStats(true);
             Anim.Play("Idle");

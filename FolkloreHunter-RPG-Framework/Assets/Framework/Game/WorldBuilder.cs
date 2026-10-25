@@ -264,9 +264,8 @@ namespace FH.Game
             WorldKit.Box("Stall canopy", st + new Vector3(0, 2.25f, 0), new Vector3(3, .08f, 2.1f), cloth, town).transform.rotation = Quaternion.Euler(-10, 0, 0);
             WorldKit.Box("Stall counter", st + new Vector3(0, .5f, -.55f), new Vector3(2.5f, 1f, .6f), oak, town, true);
             for (int i = 0; i < 5; i++) WorldKit.Cylinder("Herb jar", st + new Vector3(-1 + i * .5f, 1.12f, -.55f), .1f, .24f, WorldKit.Mat("Jar " + i, Color.Lerp(new Color(.5f, .7f, .4f), new Color(.7f, .45f, .6f), i / 4f)), town);
-            var mortar = new GameObject("Mira's mortar and pestle").AddComponent<CraftStation>(); mortar.transform.SetParent(town); mortar.transform.position = st + new Vector3(1.0f, 1.1f, -.55f);
-            mortar.Station = Station.Alchemy; mortar.Label = "Mira's mortar and pestle"; mortar.Id = "alchemy_mira"; mortar.Range = 1.6f;
-            WorldKit.Cylinder("Mortar", mortar.transform.position, .14f, .16f, stone, town);
+            // Mira's mortar is set dressing; alchemy is offered through her dialogue so talking to her is never ambiguous.
+            WorldKit.Cylinder("Mortar", st + new Vector3(1.0f, 1.1f, -.55f), .14f, .16f, stone, town);
             Npc("mira", "Herbalist", 1.75f, null, st + new Vector3(0, 0, .35f), 180, HousePos + new Vector3(-2.4f, 0, -3.6f), 160, town);
 
             // Bram's forge.

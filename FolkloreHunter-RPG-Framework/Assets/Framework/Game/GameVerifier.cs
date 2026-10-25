@@ -146,24 +146,19 @@ namespace FH.Game
             yield return Real(1.5f);
             yield return Snap("02-start-hud");
 
-            yield return SampleRegression();
-            yield return Movement();
-            yield return InputLeak();
-            yield return AcceptHunt();
-            yield return CryptSealed();
-            yield return Combat();
-            yield return Leash();
-            yield return ClaimHunt();
-            yield return ForgeAndShop();
-            yield return EstateUpgrade();
-            yield return StorageAndGifts();
-            yield return Skills();
-            yield return WardenDungeon();
-            yield return MapAndJournal();
-            yield return SleepAndIncome();
-            yield return DeathAndRecovery();
-            yield return CorruptSlot();
-            yield return SaveAndQuit();
+            var sections = new Func<IEnumerator>[] { SampleRegression, Movement, InputLeak, AcceptHunt, CryptSealed, Combat, Leash, ClaimHunt, ForgeAndShop,
+                EstateUpgrade, StorageAndGifts, Skills, WardenDungeon, MapAndJournal, SleepAndIncome, DeathAndRecovery, CorruptSlot, SaveAndQuit };
+            foreach (var section in sections)
+            {
+                yield return section();
+                Stop();
+                if (Top != null)
+                {
+                    Check("section " + section.Method.Name + " left no window open", false, S.Ui.Describe());
+                    S.Ui.CloseAll();
+                    yield return Frames(2);
+                }
+            }
         }
 
         IEnumerator SampleRegression()
@@ -275,7 +270,7 @@ namespace FH.Game
             float stam = h.Stamina.Current;
             start = h.transform.position;
             t = 0;
-            while (t < 1f) { SteerTo(new Vector3(-30, 0, -29), true); yield return null; t += Time.deltaTime; }
+            while (t < 1f) { SteerTo(new Vector3(-30, 0, -29), true); yield return null; t += Time.unscaledDeltaTime; }
             float ran = Vector3.Distance(start, h.transform.position);
             Stop();
             Check("running is faster and spends stamina", ran > walked / 1.6f * 1.4f && h.Stamina.Current < stam, ran.ToString("0.00") + " m/s; stamina " + stam.ToString("0") + "→" + h.Stamina.Current.ToString("0"));
@@ -293,11 +288,11 @@ namespace FH.Game
             InputRouter.Press(GameAction.Attack); InputRouter.Press(GameAction.Dodge);
             yield return Frames(3);
             Check("attack and dodge pressed in a menu do not reach combat", h.Attack.SwingId == swing && !h.Dodging);
-            yield return Press(GameAction.Pause);
+            // The closing key and an attack click arrive in the same frame, as a mouse click on "Resume" would.
+            InputRouter.Press(GameAction.Pause); InputRouter.Press(GameAction.Attack);
+            yield return Frames(3);
             Check("Escape closes the menu", Top == null && Time.timeScale == 1);
-            InputRouter.Press(GameAction.Attack);
-            yield return Frames(1);
-            Check("the key that closed a menu does not also swing", h.Attack.SwingId == swing);
+            Check("the input that closed a menu does not also swing", h.Attack.SwingId == swing);
             yield return Real(.6f);
         }
 
@@ -338,7 +333,7 @@ namespace FH.Game
             Place(m.Home + new Vector3(0, 0, -3.2f), m.transform.position);
             h.RefreshStats(true);
             float waitT = 0;
-            while (waitT < 4 && !m.Brain.Engaged) { waitT += Time.deltaTime; yield return null; }
+            while (waitT < 4 && !m.Brain.Engaged) { waitT += Time.unscaledDeltaTime; yield return null; }
             Check("monster perceives the hunter and engages", m.Brain.Engaged, m.Brain.Mode.ToString());
             yield return Press(GameAction.LockOn);
             Check("lock-on selects the monster", h.LockTarget == m);
@@ -348,7 +343,7 @@ namespace FH.Game
 
             // Telegraph readability: ring visible during wind-up, sized to the attack.
             float t = 0;
-            while (t < 6 && m.Brain.Mode != MonsterMode.Telegraph) { SteerTo(m.transform.position); if (Vector3.Distance(h.transform.position, m.transform.position) < 1.4f) Stop(); t += Time.deltaTime; yield return null; }
+            while (t < 6 && m.Brain.Mode != MonsterMode.Telegraph) { SteerTo(m.transform.position); if (Vector3.Distance(h.transform.position, m.transform.position) < 1.4f) Stop(); t += Time.unscaledDeltaTime; yield return null; }
             Stop();
             var ring = m.transform.Find("Attack warning");
             Check("monster telegraphs with a visible warning ring", m.Brain.Mode == MonsterMode.Telegraph && ring && ring.gameObject.activeSelf, m.Brain.Mode.ToString());
@@ -363,7 +358,7 @@ namespace FH.Game
             InputRouter.VirtualMove = new Vector2(Vector3.Dot(toward.normalized, r), Vector3.Dot(toward.normalized, f)) * .01f;
             InputRouter.Press(GameAction.Dodge);
             float evadeBefore = h.LastDodgeEvade;
-            t = 0; while (t < 1.2f) { t += Time.deltaTime; yield return null; }
+            t = 0; while (t < 1.2f) { t += Time.unscaledDeltaTime; yield return null; }
             Stop();
             Check("dodging through a telegraphed strike takes no damage", h.Health >= hp, "health " + hp + "→" + h.Health + (h.LastDodgeEvade > evadeBefore ? ", evaded by invulnerability" : ", stepped out of range"));
             // Standing in the ring is punished.
@@ -372,7 +367,7 @@ namespace FH.Game
             while (t < 6 && !hit)
             {
                 if (Vector3.Distance(h.transform.position, m.transform.position) > 1.6f) SteerTo(m.transform.position); else Stop();
-                t += Time.deltaTime; yield return null; hit = h.Health < hp;
+                t += Time.unscaledDeltaTime; yield return null; hit = h.Health < hp;
             }
             Stop();
             Check("standing in the warning ring is punished", hit, "health " + hp + "→" + h.Health);
@@ -414,7 +409,7 @@ namespace FH.Game
                 if (to.magnitude > 1.5f) SteerTo(m.transform.position); else Stop();
                 if (to.magnitude <= 1.6f && !h.Attack.Running && m.Brain.Mode != MonsterMode.Telegraph && m.Brain.Mode != MonsterMode.Attack) InputRouter.Press(GameAction.Attack);
                 float before = m.Brain.Health;
-                yield return null; t += Time.deltaTime;
+                yield return null; t += Time.unscaledDeltaTime;
                 if (m.Brain.Health < before && h.Attack.Running) { damageAtTime = h.Attack.Time; damagePhase = h.Attack.Phase; }
                 if (!m.Alive) break;
                 if (h.Health < h.Stats[Stat.MaxHealth] * .5f) h.RefreshStats(true);
@@ -432,15 +427,15 @@ namespace FH.Game
             else Check("sword strike connected", false, "no damage in 8 s");
             // Combo: a press during recovery chains into the second strike.
             t = 0;
-            while (t < 4 && h.Attack.Running) { t += Time.deltaTime; yield return null; }
+            while (t < 4 && h.Attack.Running) { t += Time.unscaledDeltaTime; yield return null; }
             InputRouter.Press(GameAction.Attack);
             yield return Frames(3);
             string first = h.Attack.Def?.id;
             float wait = 0;
-            while (wait < 1.5f && !(h.Attack.Running && h.Attack.Phase == AttackPhase.Recovery)) { wait += Time.deltaTime; yield return null; }
+            while (wait < 1.5f && !(h.Attack.Running && h.Attack.Phase == AttackPhase.Recovery)) { wait += Time.unscaledDeltaTime; yield return null; }
             InputRouter.Press(GameAction.Attack);
             wait = 0;
-            while (wait < 1.5f && h.Attack.Def?.id == first && h.Attack.Running) { wait += Time.deltaTime; yield return null; }
+            while (wait < 1.5f && h.Attack.Def?.id == first && h.Attack.Running) { wait += Time.unscaledDeltaTime; yield return null; }
             Check("a press during recovery chains the combo", h.Attack.Def?.id == "chop2", first + " → " + h.Attack.Def?.id);
             yield return Snap("07-combo-strike");
             yield return Real(1f);
@@ -490,7 +485,7 @@ namespace FH.Game
                 var to = m.transform.position - h.transform.position; to.y = 0;
                 if (to.magnitude > 1.45f) SteerTo(m.transform.position, to.magnitude > 5); else Stop();
                 if (to.magnitude < 1.7f && (!h.Attack.Running || h.Attack.InChainWindow || h.Attack.Phase == AttackPhase.Recovery)) InputRouter.Press(GameAction.Attack);
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 yield return null;
             }
             Stop();
@@ -518,15 +513,15 @@ namespace FH.Game
             if (!m) { Note("leash test skipped: no Gravebound alive"); yield break; }
             Place(m.Home + new Vector3(0, 0, -6), m.transform.position);
             float t = 0;
-            while (t < 4 && !m.Brain.Engaged) { t += Time.deltaTime; yield return null; }
+            while (t < 4 && !m.Brain.Engaged) { t += Time.unscaledDeltaTime; yield return null; }
             m.ReceiveHit(null, m.AimPoint.position, (p, b) => new HitInfo { Damage = 20, Poise = 0 });
             // Run far away: past the leash and out of sight.
             Place(new Vector3(-2, 0, -15), new Vector3(-2, 0, -20));
             t = 0;
-            while (t < 12 && m.Brain.Mode != MonsterMode.Return && m.Brain.Mode != MonsterMode.Idle) { t += Time.deltaTime; yield return null; }
+            while (t < 12 && m.Brain.Mode != MonsterMode.Return && m.Brain.Mode != MonsterMode.Idle) { t += Time.unscaledDeltaTime; yield return null; }
             bool returned = m.Brain.Mode == MonsterMode.Return || m.Brain.Mode == MonsterMode.Idle;
             t = 0;
-            while (t < 15 && m.Brain.Mode != MonsterMode.Idle) { t += Time.deltaTime; yield return null; }
+            while (t < 15 && m.Brain.Mode != MonsterMode.Idle) { t += Time.unscaledDeltaTime; yield return null; }
             Check("leashed monster gives up, walks home and resets", returned && m.Brain.Mode == MonsterMode.Idle && m.Brain.Health >= m.Def.maxHealth - .01f && Vector3.Distance(m.transform.position, m.Home) < 2, m.Brain.Mode + " hp " + m.Brain.Health);
         }
 
@@ -685,7 +680,7 @@ namespace FH.Game
             if (!boss) yield break;
             Place(S.World.CryptOrigin + new Vector3(0, 0, 4), boss.transform.position);
             float t = 0;
-            while (t < 5 && !boss.Brain.Engaged) { t += Time.deltaTime; yield return null; }
+            while (t < 5 && !boss.Brain.Engaged) { t += Time.unscaledDeltaTime; yield return null; }
             yield return Real(.6f);
             Check("boss HUD shows the Warden and its helm", S.Hud.TargetShown);
             yield return Snap("15-boss");
@@ -768,7 +763,7 @@ namespace FH.Game
             Place(m.transform.position + (h.transform.position - m.transform.position).normalized * 1.3f, m.transform.position);
             h.Health = 1;
             float t = 0;
-            while (t < 12 && !h.Dead) { if (Vector3.Distance(h.transform.position, m.transform.position) > 1.5f) SteerTo(m.transform.position); else Stop(); t += Time.deltaTime; yield return null; }
+            while (t < 12 && !h.Dead) { if (Vector3.Distance(h.transform.position, m.transform.position) > 1.5f) SteerTo(m.transform.position); else Stop(); t += Time.unscaledDeltaTime; yield return null; }
             Stop();
             Check("a monster strike can defeat the hunter", h.Dead);
             t = 0;
