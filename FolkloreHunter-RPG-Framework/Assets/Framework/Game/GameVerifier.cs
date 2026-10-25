@@ -147,7 +147,7 @@ namespace FH.Game
             yield return Snap("02-start-hud");
 
             var sections = new Func<IEnumerator>[] { SampleRegression, Movement, InputLeak, AcceptHunt, CryptSealed, Combat, Leash, ClaimHunt, ForgeAndShop,
-                EstateUpgrade, StorageAndGifts, Skills, WardenDungeon, MapAndJournal, SleepAndIncome, DeathAndRecovery, CorruptSlot, SaveAndQuit };
+                EstateUpgrade, StorageAndGifts, Skills, WardenDungeon, Courtship, MapAndJournal, SleepAndIncome, DeathAndRecovery, CorruptSlot, SaveAndQuit };
             foreach (var section in sections)
             {
                 yield return section();
@@ -716,6 +716,53 @@ namespace FH.Game
             while (Top != null) { Top.Back(); yield return Frames(2); }
         }
 
+        IEnumerator Courtship()
+        {
+            var rel = C.Relationships.Get("mira");
+            // Shortcut (labelled): days of daily gifts are replaced by setting the bond; every step after this is real UI.
+            rel.affinity = Mathf.Max(rel.affinity, 32);
+            C.Relationships.ChangeAffinity("mira", 1);
+            Note("TEST SHORTCUT: Mira's bond set to " + rel.affinity + " (stands in for several days of gifts)");
+            Check("bond grows Mira to Friend automatically", rel.stage == "friend", rel.stage);
+            yield return InteractWith(Npc("mira"));
+            Click("Would you walk with me");
+            yield return Frames(3);
+            Check("asking in dialogue starts courting", rel.stage == "courting", rel.stage);
+            while (Top != null) { Top.Back(); yield return Frames(2); }
+            // Ring: silver from Bram, moonpetals from the riverbank, made at the estate workbench.
+            yield return InteractWith(Npc("bram"));
+            Click("Buy materials"); yield return Frames(2);
+            Click("Silver Ingot"); yield return Frames(2);
+            Click("Buy 1"); yield return Frames(2);
+            while (Top != null) { Top.Back(); yield return Frames(2); }
+            foreach (var node in FindObjectsByType<GatherNode>().Where(g => g.ItemId == "moonpetal" && g.Available(S)).Take(2).ToList())
+                yield return InteractWith(node);
+            yield return InteractWith(Find<CraftStation>(x => x.Station == Station.Workbench), Vector3.back);
+            Check("estate workbench opens crafting", Top is CraftScreen, S.Ui.Describe());
+            Click("Silver Promise Ring"); yield return Frames(2);
+            Click("Craft"); yield return Frames(2);
+            Check("promise ring crafted at the workbench", C.Inventory.Count("promise_ring") == 1, "silver " + C.Inventory.Count("silver_ingot") + ", petals " + C.Inventory.Count("moonpetal"));
+            while (Top != null) { Top.Back(); yield return Frames(2); }
+            rel.affinity = Mathf.Max(rel.affinity, 50);
+            yield return InteractWith(Npc("mira"));
+            var propose = FindButton("will you marry me");
+            Check("proposal is offered while courting", propose && propose.interactable);
+            Click("will you marry me"); yield return Frames(3);
+            Check("proposal accepted: engaged, ring given", rel.stage == "engaged" && C.Inventory.Count("promise_ring") == 0, rel.stage);
+            Click("There's room"); yield return Frames(2);
+            Click("Marry me at the cottage"); yield return Frames(3);
+            Check("wedding makes Mira your spouse", C.Relationships.IsSpouse("mira"));
+            while (Top != null) { Top.Back(); yield return Frames(2); }
+            var mira = Npc("mira");
+            Check("spouse visibly moves to the cottage", Vector3.Distance(mira.transform.position, S.World.Cottage.position) < 6, mira.transform.position.ToString());
+            S.CameraRig.Manual = true;
+            var cam = S.CameraRig.Camera.transform;
+            cam.position = mira.transform.position + new Vector3(4, 3, -5); cam.LookAt(mira.transform.position + Vector3.up * 1.2f);
+            yield return Frames(2);
+            yield return Snap("17b-spouse-at-home");
+            S.CameraRig.Manual = false;
+        }
+
         IEnumerator MapAndJournal()
         {
             yield return Press(GameAction.Map);
@@ -810,6 +857,7 @@ namespace FH.Game
                 ["level"] = (double)C.State.player.level,
                 ["skills"] = string.Join(",", C.State.player.skills),
                 ["claims"] = string.Join(",", C.State.world.claimedRewards),
+                ["spouse"] = C.Relationships.IsSpouse("mira"),
             };
             File.WriteAllText(Path.Combine(root, "phase1-expect.json"), Json.Write(e));
             Note("saved slot 1 at " + C.Clock.Label + "; quitting the player now");
@@ -837,6 +885,8 @@ namespace FH.Game
             Check("level and skills persisted", C2.State.player.level == (int)(double)expect["level"] && string.Join(",", C2.State.player.skills) == (string)expect["skills"]);
             Check("reward-once keys persisted", string.Join(",", C2.State.world.claimedRewards) == (string)expect["claims"]);
             Check("claimed contract cannot be claimed again after reload", !C2.Contracts.Claim("c_gravebound_cull").Ok);
+            bool spouse = expect.TryGetValue("spouse", out var sp) && sp is bool b && b;
+            Check("marriage persisted and Mira is at the cottage after reload", C2.Relationships.IsSpouse("mira") == spouse && (!spouse || Vector3.Distance(Npc("mira").transform.position, S.World.Cottage.position) < 6));
             Check("player resumed near the cottage", Vector3.Distance(S.Hunter.transform.position, S.World.Anchor("spawn_home").position) < 4, S.Hunter.transform.position.ToString());
             Check("helm-broken Warden's crypt state persisted (respawn timer)", C2.Spawns.HoursUntilRespawn("sp_warden") > 0);
             Check("no monster is mid-attack right after loading", S.Monsters.All(m => !m || !m.Alive || (m.Brain.Mode != MonsterMode.Attack && m.Brain.Mode != MonsterMode.Telegraph)));
