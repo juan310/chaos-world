@@ -1,6 +1,6 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
-Results for build 0.4.0: Core tests 52/52 (Unity Test Runner and dotnet); in-player play-through 126/126; relaunch/continue 16/16; real Windows key input exercised (`Docs/real-input-session.txt`).
+Results for build 0.4.0: Core tests 53/53 (Unity Test Runner and dotnet); in-player play-through 126/126; relaunch/continue 16/16; real Windows key input exercised (`Docs/real-input-session.txt`).
 
 Legend: **Done** = implemented and verified in the running Windows player (see `Captures/RPG/verification*.txt`) and/or by the Core unit tests (`Docs/unity-test-results.xml`, `Tools/CoreTests`).
 **Partial** = works, with the stated gap. **Placeholder/hook** = data and code path exist, content or art does not. **Missing** = not built.
@@ -94,5 +94,5 @@ Schema v3 with step migrations, atomic writes + backup, damaged-file quarantine 
 | SightForge / Claude Eyes on actual captures | Done (2D scope) | `Docs/sightforge-review.json`; negative control detected |
 | Real player input (not only scripted) | Done | window-targeted Windows key messages read by Unity `Input`; audit log |
 | Windows build | Done | `Build-RPG/FolkloreHunterRPG.exe`, `Docs/build-result.txt` |
-| Gameplay recording | Done | `Folklore-Hunter-RPG-Framework-Gameplay.mp4` (103 s; two kills shown as labelled 4x time-lapse; timber/nails bought off-screen) |
+| Gameplay recording | Done | `Folklore-Hunter-RPG-Framework-Gameplay.mp4` (94 s; two kills shown as labelled 4x time-lapse; timber/nails bought off-screen) |
 | Desktop shortcut and build opened on the Acer | Done | `Folklore Hunter RPG - Framework Build` |

@@ -44,6 +44,7 @@ The inspector's own front-view note says it does not measure foot sliding for fr
 | Title backdrop showed tier-1 estate pieces before any game existed | title applies the starting estate |
 | Interact chose Mira's mortar instead of Mira | mortar made set dressing; people preferred on ties |
 | Helm break had no visible effect | rigid bone-attached meshes supported (hidden + physical piece) |
+| Two loot sacks overlapping at one kill site | drops merge into one sack per site |
 
 ## Known visual limitations (not fixed)
 - KayKit chibi strides are short, so honest (non-sliding) travel is 1.6 m/s walking and 2.4 m/s running.

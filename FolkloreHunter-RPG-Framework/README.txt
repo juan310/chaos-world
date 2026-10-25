@@ -23,7 +23,7 @@ Bram's repeatable Bone Harvest, estate storage/workbench/rent, Mira's friendship
 VERIFY / BUILD (PowerShell)
 Tools\sync.ps1          pull the framework source from git into this project
 Tools\unity.ps1 FHBuild.Build build      regenerate the scene and build Build-RPG
-Tools\unity.ps1 tests tests              run the 52 Core tests in Unity (Docs\unity-test-results.xml)
+Tools\unity.ps1 tests tests              run the 53 Core tests in Unity (Docs\unity-test-results.xml)
 Tools\verify.ps1        two-phase in-player verification (Captures\RPG\verification*.txt)
 Tools\record_tour.ps1   gameplay video (Folklore-Hunter-RPG-Framework-Gameplay.mp4)
 Tools\review_sightforge.py   SightForge / Claude Eyes review of pose captures
