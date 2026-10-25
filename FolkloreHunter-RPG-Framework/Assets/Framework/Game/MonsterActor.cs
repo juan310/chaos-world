@@ -133,7 +133,8 @@ namespace FH.Game
 
         void Update()
         {
-            if (!Ready || session == null || !session.Simulating) return;
+            if (!Ready || session == null) return;
+            if (!session.Simulating) { if (Brain.Alive && Anim.Current.EndsWith("Walking_A")) Anim.Play("Idle"); return; }   // held world: no walking in place
             Tick(Time.deltaTime);
         }
 
@@ -206,7 +207,7 @@ namespace FH.Game
                             var dir = d / left;
                             if (returnStall > 1f && detourFor <= 0) { detour = Vector3.Cross(Vector3.up, dir) * (Random.value < .5f ? 1 : -1); detourFor = 1.2f; }
                             if (detourFor > 0) { detourFor -= dt; dir = (dir * .3f + detour).normalized; }   // step around whatever blocks the way
-                            Face(dir, dt); move = Flat(transform.forward); speed = Def.chaseSpeed;
+                            Face(dir, dt); move = Flat(transform.forward); speed = Def.chaseSpeed; Anim.Play("Walking_A", true, Gait(Def.chaseSpeed));
                         }
                         break;
                     }

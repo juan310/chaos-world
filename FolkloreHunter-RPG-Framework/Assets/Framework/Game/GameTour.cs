@@ -240,7 +240,7 @@ namespace FH.Game
 
             // Forge the blade at Bram's.
             var forge = FindObjectsByType<CraftStation>().First(c => c.Station == Station.Forge);
-            yield return Fade(() => Put(forge.Point + Vector3.left * 1.1f, forge.Point));
+            yield return Fade(() => Put(forge.Point + new Vector3(-1, 0, -1).normalized * 1.2f, forge.Point));
             InputRouter.Press(GameAction.Interact);
             yield return Hold(1.2f);
             yield return Click("Gravebane Shortsword", .8f);

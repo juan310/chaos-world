@@ -115,7 +115,9 @@ namespace FH.Game
 
         void Update()
         {
-            if (!Ready || !session.Simulating) return;
+            if (!Ready) return;
+            // A fade or a window that does not pause time (dialogue, shop) holds the world: stand, don't run in place.
+            if (!session.Simulating) { if (Anim.Current.EndsWith("Walking_A") || Anim.Current.EndsWith("Running_A")) Anim.Play("Idle"); return; }
             var mv = InputRouter.Move();
             var cam = session.CameraRig.Camera.transform;
             Vector3 fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized, right = Vector3.Cross(Vector3.up, fwd);

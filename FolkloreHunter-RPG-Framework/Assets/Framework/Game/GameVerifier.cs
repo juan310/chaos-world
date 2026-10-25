@@ -246,13 +246,6 @@ namespace FH.Game
             var h = S.Hunter;
             Place(new Vector3(-7, 0, -21), new Vector3(0, 0, -12));
             yield return Frames(3);
-            // TEMP route probe: what stands on the straight run west from the cottage toward Thornbury.
-            foreach (var z in new[] { -21f, -22.5f, -24f })
-            {
-                var o = S.SafeGround(new Vector3(-9, 0, z)) + Vector3.up * .9f;
-                Note(Physics.SphereCast(o, .34f, Vector3.left, out var hit, 12, Layers.WorldMask, QueryTriggerInteraction.Ignore)
-                    ? "route probe z " + z + ": " + hit.collider.name + " at " + hit.point.ToString("F2") + " (" + hit.collider.transform.position.ToString("F1") + ")" : "route probe z " + z + ": clear for 12 m");
-            }
             Vector3 start = h.transform.position;
             Vector3 walkGoal = new Vector3(4, 0, -6);
             var footL = WorldKit.Find(h.Visual, "foot.l"); var footR = WorldKit.Find(h.Visual, "foot.r");
@@ -575,7 +568,7 @@ namespace FH.Game
         IEnumerator ForgeAndShop()
         {
             var forge = Find<CraftStation>(x => x.Station == Station.Forge);
-            yield return InteractWith(forge, Vector3.left);
+            yield return InteractWith(forge, new Vector3(-1, 0, -1));   // south-west of the anvil: clear of the quench trough, nearer the anvil than Bram
             Check("forge opens crafting", Top is CraftScreen, S.Ui.Describe());
             Click("Gravebane Shortsword");
             yield return Frames(2);
