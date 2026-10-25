@@ -529,7 +529,9 @@ namespace FH.Game
         // ---------------- world queries ----------------
         public float GroundHeight(Vector3 p)
         {
-            if (Physics.Raycast(new Vector3(p.x, p.y + 3, p.z), Vector3.down, out var hit, 12, Layers.WorldMask, QueryTriggerInteraction.Ignore)) return hit.point.y;
+            float top = p.y + 3;
+            if (World.IsInCrypt(p)) top = Mathf.Min(top, World.CryptFloor + 4.5f);   // start under the crypt ceiling, never on its roof
+            if (Physics.Raycast(new Vector3(p.x, top, p.z), Vector3.down, out var hit, 12, Layers.WorldMask, QueryTriggerInteraction.Ignore)) return hit.point.y;
             return World.IsInCrypt(p) ? World.CryptFloor : WorldBuilder.Height(p.x, p.z);
         }
 

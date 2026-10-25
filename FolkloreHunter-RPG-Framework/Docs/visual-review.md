@@ -46,6 +46,7 @@ The inspector's own front-view note says it does not measure foot sliding for fr
 | Helm break had no visible effect | rigid bone-attached meshes supported (hidden + physical piece) |
 | Two loot sacks overlapping at one kill site | drops merge into one sack per site |
 | Part-break loot could land behind the monster inside a wall (Warden in the crypt) | all drops land at the monster's feet |
+| Warden helm-fragment sack hung in mid-air (the drop ray hit the falling helm piece) and placement above it put the hunter on the crypt roof | broken pieces ignore ground rays; crypt ground rays start under the ceiling |
 
 ## Known visual limitations (not fixed)
 - KayKit chibi strides are short, so honest (non-sliding) travel is 1.6 m/s walking and 2.4 m/s running.

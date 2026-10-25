@@ -271,6 +271,7 @@ namespace FH.Game
                 piece.AddComponent<MeshRenderer>().sharedMaterials = renderer.sharedMaterials;
                 var col = piece.AddComponent<BoxCollider>();
                 col.center = mesh.bounds.center; col.size = Vector3.Max(mesh.bounds.size, Vector3.one * .02f);
+                piece.layer = 2;   // debris: never mistaken for ground by drop/placement rays
                 var rb = piece.AddComponent<Rigidbody>();
                 rb.mass = 2;
                 rb.AddForce((Vector3.up * 2.5f + Random.insideUnitSphere) * 2f, ForceMode.Impulse);
