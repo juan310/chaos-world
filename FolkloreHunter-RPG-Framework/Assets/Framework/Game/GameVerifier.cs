@@ -519,7 +519,8 @@ namespace FH.Game
             if (opened) { yield return Snap("08b-loot"); Click("Take all"); }
             yield return Frames(3);
             if (Top != null) { Top.Back(); yield return Frames(2); }
-            Check("loot bag opens a loot window and is emptied", opened && !bag, opened ? "" : S.Ui.Describe());
+            Check("loot bag opens a loot window and is emptied", opened && !bag, opened ? "" : "ui '" + S.Ui.Describe() + "' sim " + S.Simulating + " mode " + S.Mode
+                + (bag ? " bag " + bag.transform.position.ToString("F2") + " active " + bag.gameObject.activeInHierarchy : " bag gone") + " hunter " + S.Hunter.transform.position.ToString("F2") + " dead " + S.Hunter.Dead);
             yield return Real(.3f);
         }
 
