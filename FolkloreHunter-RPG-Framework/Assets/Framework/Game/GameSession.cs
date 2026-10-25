@@ -104,6 +104,10 @@ namespace FH.Game
         {
             Mode = SessionMode.Title;
             ClearMonsters();
+            // The title backdrop shows the valley as a new game starts it: modest cottage, everyone at home in Thornbury.
+            Core = new GameCore(Db, GameCore.NewGameState(Db, "title"));
+            World.Estate.Apply(0);
+            foreach (var n in World.Npcs) n.PlaceFor(this);
             CameraRig.Manual = true;
             Ui.ShowTitle();
         }

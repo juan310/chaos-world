@@ -43,6 +43,7 @@ namespace FH.UI
     {
         public override string Title => "";
         public override bool Dim => false;
+        public override bool ShowBackHint => false;
         public override Vector2 Size => new Vector2(560, 640);
         float t;
 

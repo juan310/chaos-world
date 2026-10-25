@@ -14,7 +14,7 @@ namespace FH.UI
         public DialogueRunner Runner => runner;
         public DialogueScreen(NpcActor n) { npc = n; }
         public override string Title => C.Db.Npcs[npc.NpcId].name;
-        public override Vector2 Size => new Vector2(1320, 520);
+        public override Vector2 Size => new Vector2(1320, 300 + 52 * Mathf.Max(2, runner == null ? 4 : runner.Choices().Count));
         public override bool Dim => false;
 
         public override void Build()

@@ -18,6 +18,7 @@ namespace FH.UI
         public RectTransform Root, Body;
         public virtual bool PausesWorld => true;
         public virtual bool Dim => true;
+        public virtual bool ShowBackHint => true;
         public virtual Vector2 Size => new Vector2(1500, 860);
         protected int selectIndex;
         public abstract string Title { get; }
@@ -109,7 +110,7 @@ namespace FH.UI
             panel.rectTransform.Box(new Vector2(.5f, .5f), Vector2.zero, screen.Size);
             var title = UiKit.Label("Title", panel.transform, screen.Title, 34, UiKit.Gold, TextAnchor.UpperLeft, FontStyle.Bold);
             title.rectTransform.Place(new Vector2(0, 1), new Vector2(1, 1), new Vector2(32, -64), new Vector2(-32, -18));
-            var hint = UiKit.Label("Back hint", panel.transform, "Esc  Back", 18, UiKit.Muted, TextAnchor.UpperRight);
+            var hint = UiKit.Label("Back hint", panel.transform, screen.ShowBackHint ? "Esc  Back" : "", 18, UiKit.Muted, TextAnchor.UpperRight);
             hint.rectTransform.Place(new Vector2(0, 1), new Vector2(1, 1), new Vector2(32, -56), new Vector2(-32, -24));
             screen.Root = root;
             screen.Body = UiKit.Rect("Body", panel.transform).Place(Vector2.zero, Vector2.one, new Vector2(32, 28), new Vector2(-32, -78));
