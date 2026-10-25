@@ -129,7 +129,9 @@ namespace FH.Game
             var mira = S.World.Npcs.First(n => n.NpcId == "mira");
             yield return WalkTo(new Vector3(-17, 0, -21), 3.2f, true);  // leave the cottage toward Thornbury
             yield return Fade(() => Put(mira.transform.position + mira.transform.forward * 4.5f, mira.transform.position));
-            yield return WalkTo(mira.transform.position + mira.transform.forward * 1.9f, 2.5f);
+            yield return WalkTo(mira.transform.position + mira.transform.forward * 3f, 1.5f);
+            Put(mira.transform.position + mira.transform.forward * 1.9f, mira.transform.position);
+            yield return Hold(.3f);
             InputRouter.Press(GameAction.Interact);
             yield return Hold(2.6f);
             yield return Click("I'm a hunter", 1f);
@@ -147,8 +149,6 @@ namespace FH.Game
             yield return Hold(.6f);
             float t = 0;
             int dodges = 0;
-            var w = S.Core.Stats.EquippedWeapon();
-            var head = m.Hurtboxes.FirstOrDefault(b => b.Parts.Contains("helmet"));
             while (t < 22 && m.Alive)
             {
                 var h = S.Hunter;
@@ -215,7 +215,7 @@ namespace FH.Game
 
             // Forge the blade at Bram's.
             var forge = FindObjectsByType<CraftStation>().First(c => c.Station == Station.Forge);
-            yield return Fade(() => Put(forge.Point + (forge.transform.position - S.World.Npcs.First(n => n.NpcId == "bram").transform.position).normalized * 1.3f, forge.Point));
+            yield return Fade(() => Put(forge.Point + Vector3.left * 1.1f, forge.Point));
             InputRouter.Press(GameAction.Interact);
             yield return Hold(1.2f);
             yield return Click("Gravebane Shortsword", .8f);
@@ -252,7 +252,7 @@ namespace FH.Game
             yield return Hold(2.4f);
             S.Ui.Top?.Back();
             var inside = S.World.Anchor("crypt_inside");
-            yield return Fade(() => { S.Hunter.Teleport(inside.position + Vector3.forward * 8, 0); S.CameraRig.Yaw = 0; S.CameraRig.Snap(); });
+            yield return Fade(() => { S.Hunter.Teleport(inside.position + Vector3.forward * 14, 0); S.CameraRig.Yaw = 0; S.CameraRig.Pitch = 26; S.CameraRig.Snap(); });
             var boss = S.Monsters.FirstOrDefault(x => x && x.Alive && x.MonsterId == "grave_warden");
             if (boss) { InputRouter.Press(GameAction.LockOn); }
             t = 0;
@@ -264,6 +264,11 @@ namespace FH.Game
                 t += 1f / Fps; yield return null;
             }
             Stop();
+            // Leave the crypt (no saving mid-fight), then save from the pause menu.
+            var exit = FindObjectsByType<AreaDoor>().First(d => d.TargetArea == "ashen_fields");
+            yield return Fade(() => Put(exit.Point + Vector3.forward * 1.2f, exit.Point));
+            InputRouter.Press(GameAction.Interact);
+            yield return Hold(2.2f);
             InputRouter.Press(GameAction.Pause);
             yield return Hold(1.2f);
             yield return Click("Save Game", .8f);
