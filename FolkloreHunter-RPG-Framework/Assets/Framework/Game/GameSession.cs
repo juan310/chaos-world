@@ -442,6 +442,17 @@ namespace FH.Game
 
         public LootBag DropLoot(Vector3 at, List<ItemAmount> items, string label)
         {
+            // One sack per kill site: drops landing next to an existing sack are added to it.
+            var near = bags.FirstOrDefault(b => b && b.State.areaId == CurrentArea && Vector3.Distance(b.transform.position, at) < 2.5f);
+            if (near)
+            {
+                foreach (var it in items)
+                {
+                    var same = near.State.items.FirstOrDefault(x => x.itemId == it.itemId);
+                    if (same != null) same.count += it.count; else near.State.items.Add(new ItemAmount { itemId = it.itemId, count = it.count });
+                }
+                return near;
+            }
             var st = new LootBagState { id = "bag" + Environment.TickCount + bags.Count, areaId = CurrentArea, label = label, x = at.x, y = at.y, z = at.z, items = items };
             var bag = SpawnBag(st);
             bags.Add(bag);

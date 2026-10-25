@@ -1,5 +1,7 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
+Results for build 0.4.0: Core tests 52/52 (Unity Test Runner and dotnet); in-player play-through 126/126; relaunch/continue 16/16; real Windows key input exercised (`Docs/real-input-session.txt`).
+
 Legend: **Done** = implemented and verified in the running Windows player (see `Captures/RPG/verification*.txt`) and/or by the Core unit tests (`Docs/unity-test-results.xml`, `Tools/CoreTests`).
 **Partial** = works, with the stated gap. **Placeholder/hook** = data and code path exist, content or art does not. **Missing** = not built.
 
@@ -16,7 +18,7 @@ Legend: **Done** = implemented and verified in the running Windows player (see `
 | Item | Status | Evidence / notes |
 |---|---|---|
 | Movement, run with stamina, camera orbit/zoom | Done | verifier movement + run checks |
-| Locomotion playback matched to stride (no foot sliding) | See verification | measured stride drives move speed; verifier "planted foot" check |
+| Locomotion playback matched to stride (no foot sliding) | Done | planted foot 0.01 m/s vs 1.60 m/s travel (was 1.23 before the fix); trade-off: KayKit strides cap honest speed at 1.6 walk / 2.4 run |
 | Attack windup / active / recovery from data, deterministic timeline | Done | `AttackTimeline`; verifier: damage lands at 0.267 s inside 0.26–0.40 active window |
 | Three-hit combo with buffered input in recovery | Done | verifier "press during recovery chains the combo" |
 | Real blade hit volume (sword mesh endpoints under `handslot.r`, swept capsule) | Done | `HunterController.SweepBlade` |
@@ -28,7 +30,7 @@ Legend: **Done** = implemented and verified in the running Windows player (see `
 | Hurt / death reactions, stagger / poise, resistances, statuses | Done | unit tests; Hit_A / Death_A clips |
 | Death and recovery (carried home, 10% gold lost) | Done | verifier |
 | Damage independent of animation asset | Done | timeline drives clips via measured strike time |
-| Feet / hips / grip visual validation | Partial | pose frames + SightForge review (2D-oriented inspector; see Docs/visual-review) |
+| Feet / hips / grip visual validation | Done (with stated limits) | in-engine foot/travel measurement, sword on `handslot.r`, pose frames reviewed in SightForge (2D inspector: no 3D certification) — see `visual-review.md` |
 
 ## 3. Monster framework
 | Item | Status | Evidence / notes |
@@ -84,3 +86,13 @@ Gamepad bindings are mapped for the main actions through the legacy Input Manage
 
 ## 12. Persistence
 Schema v3 with step migrations, atomic writes + backup, damaged-file quarantine and graceful refusal, isolated test saves (`--save-dir`), verified across a real exit and relaunch — **Done**.
+
+## Verification and delivery (Phase D)
+| Item | Status | Evidence |
+|---|---|---|
+| Native Unity captures reviewed | Done | `Captures/RPG/*.png`; defects found and fixed are listed in `visual-review.md` |
+| SightForge / Claude Eyes on actual captures | Done (2D scope) | `Docs/sightforge-review.json`; negative control detected |
+| Real player input (not only scripted) | Done | window-targeted Windows key messages read by Unity `Input`; audit log |
+| Windows build | Done | `Build-RPG/FolkloreHunterRPG.exe`, `Docs/build-result.txt` |
+| Gameplay recording | Done | `Folklore-Hunter-RPG-Framework-Gameplay.mp4` (103 s; two kills shown as labelled 4x time-lapse; timber/nails bought off-screen) |
+| Desktop shortcut and build opened on the Acer | Done | `Folklore Hunter RPG - Framework Build` |

@@ -423,7 +423,9 @@ namespace FH.Game
                 Check("sword damage lands only inside the attack's active window", damagePhase == AttackPhase.Active && damageAtTime >= def.windup - .02f && damageAtTime <= def.windup + def.active + .05f, "hit at " + damageAtTime.ToString("0.000") + " s (windup " + def.windup + ", active " + def.active + ")");
             }
             else Check("sword strike connected", false, "no damage in 8 s");
-            // Combo: a press during recovery chains into the second strike.
+            // Combo: a press during recovery chains into the second strike. The monster is held off so its own
+            // strike (which correctly interrupts the hunter) cannot break the sequence under test.
+            m.Calm(4);
             t = 0;
             while (t < 4 && h.Attack.Running) { t += Time.unscaledDeltaTime; yield return null; }
             InputRouter.Press(GameAction.Attack);
@@ -466,6 +468,7 @@ namespace FH.Game
                 Check("exposed skull is a weak point taking more damage", skull > firstHit * 1.8f, "helm hit " + firstHit + ", skull hit " + skull);
             }
             Check("helm break dropped grave iron", FindObjectsByType<LootBag>().Any(b => b.State.items.Any(i => i.itemId == "grave_iron")));
+            Check("drops at one kill site share a single sack", FindObjectsByType<LootBag>().Count(b => Vector3.Distance(b.transform.position, m.transform.position) < 2.5f) <= 1);
             Check("part break is remembered for this spawn", C.State.world.spawns.Any(s => s.spawnId == m.SpawnId && s.brokenParts.Contains("helmet")));
             yield return Snap("07b-helm-broken");
             yield return Real(.8f);
