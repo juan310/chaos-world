@@ -264,7 +264,7 @@ namespace FH.Game
             foreach (var group in found.Select(c => c.GetComponent<Hurtbox>()).Where(h => h && h.Owner && h.Owner.Alive).GroupBy(h => h.Owner))
             {
                 var monster = group.Key;
-                if (!swingHits.TryRegister(Attack.SwingId, monster.GetInstanceID().ToString())) continue;
+                if (!swingHits.TryRegister(Attack.SwingId, monster.InstanceKey)) continue;
                 var box = group.OrderBy(h => DistanceToSegment(h.transform.position, BladeBase, BladeTip)).First();
                 Vector3 point = ClosestOnSegment(box.transform.position, BladeBase, BladeTip);
                 var atk = Attack.Def;

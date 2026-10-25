@@ -29,6 +29,8 @@ namespace FH.Game
         readonly List<Hurtbox> hurtboxes = new List<Hurtbox>();
         GameSession session;
 
+        static int serial;
+        public string InstanceKey { get; private set; }
         public string DisplayName => Def?.name ?? name;
         public bool Alive => Ready && Brain.Alive;
         public Transform AimPoint => chest ? chest : transform;
@@ -36,7 +38,7 @@ namespace FH.Game
 
         public void Initialize(GameSession s, MonsterDef def, IEnumerable<string> brokenParts)
         {
-            session = s; Def = def; MonsterId = def.id;
+            session = s; Def = def; MonsterId = def.id; InstanceKey = "m" + (++serial);
             Brain = new MonsterBrain(def);
             Parts = new PartTracker(def, brokenParts);
             cc = GetComponent<CharacterController>();

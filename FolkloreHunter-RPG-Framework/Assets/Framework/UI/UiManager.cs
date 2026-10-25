@@ -72,7 +72,7 @@ namespace FH.UI
             scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = .5f;
             go.AddComponent<GraphicRaycaster>();
-            if (!FindFirstObjectByType<EventSystem>())
+            if (!FindAnyObjectByType<EventSystem>())
             {
                 var es = new GameObject("Event System");
                 es.transform.SetParent(transform, false);
