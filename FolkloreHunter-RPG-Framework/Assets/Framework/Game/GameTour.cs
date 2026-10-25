@@ -168,9 +168,6 @@ namespace FH.Game
                     Stop();
                     if (!h.Attack.Running || h.Attack.Phase == AttackPhase.Recovery) InputRouter.Press(GameAction.Attack);
                 }
-                // A well-aimed overhead blow on the helm at the start of the fight shows the break.
-                if (t > 5 && t < 5.1f && head && !m.Parts.Broken.Contains("helmet"))
-                    for (int i = 0; i < 2; i++) m.ReceiveHit(head, head.transform.position, (p, b) => DamageMath.PlayerHit(w, w.combo[2], h.Stats, m.Def, p, b, false));
                 t += 1f / Fps;
                 yield return null;
             }
