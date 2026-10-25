@@ -1,6 +1,9 @@
 """Single-frame position pops (over 10 units/s, 0.15-3 units) per actor in a SightForge track, and the hunter at frames 180-192."""
 import json, math, sys, collections
-rows = [json.loads(l) for l in open(sys.argv[1], encoding='utf-8') if l.strip()]
+rows = []
+for l in open(sys.argv[1], encoding='utf-8'):
+    try: rows.append(json.loads(l))
+    except ValueError: pass   # a line cut short when the game was stopped
 last, pops = {}, collections.defaultdict(list)
 for r in rows:
     for a in r['actors']:

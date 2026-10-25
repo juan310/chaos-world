@@ -1,7 +1,10 @@
 """Lists the frames behind SightForge track findings for one actor: fast travel while facing elsewhere, and
 movement while the picture stays on one idle pose (python Tools/track_events.py <track.jsonl> [actor])."""
 import json, math, sys
-rows = [json.loads(l) for l in open(sys.argv[1], encoding='utf-8') if l.strip()]
+rows = []
+for l in open(sys.argv[1], encoding='utf-8'):
+    try: rows.append(json.loads(l))
+    except ValueError: pass   # a line cut short when the game was stopped
 who = sys.argv[2] if len(sys.argv) > 2 else 'hunter'
 ss = [(r, next((a for a in r['actors'] if a['id'] == who), None)) for r in rows]
 ss = [(r, a) for r, a in ss if a]

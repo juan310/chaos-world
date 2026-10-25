@@ -32,9 +32,15 @@ summary['negativeControlDetected'] = data['summary'].get('likely', 0) + data['su
 # Temporal review of real play: the game writes the inspector's track format (MotionTrack.cs) during the gameplay
 # recording and the real-input session. Facing against travel, walk-cycle stride, jitter, pops, pose flicker and
 # "moving while the picture does not change" are checked on every recorded frame of the actual 3D game.
+def E_load(path):
+    # the same tolerant reader the inspector uses: a line cut short by a stopped process is skipped
+    from eyeslib import temporal
+    return temporal.load(str(path))
+
+
 def track_review(path, run):
     page, data = E.cmd_track(SimpleNamespace(project=p, run=run, track=str(path)))
-    rows = [json.loads(l) for l in open(path, encoding='utf-8') if l.strip()]
+    rows = E_load(path)
     met = data.get('meta', {}).get('metrics', {})
     out = {'summary': data['summary'], 'findings': data['findings'], 'page': page, 'frames': len(rows),
            'track': met.get('track'), 'hunter': met.get('actors', {}).get('hunter'),
