@@ -143,6 +143,8 @@ namespace FH.Core
             if (s.player.skillPoints < 0) s.player.skillPoints = 0;
             while (s.player.hotbar.Count < 4) s.player.hotbar.Add("");
             s.world.claimedRewards = s.world.claimedRewards.Distinct().ToList();
+            foreach (var bag in s.world.lootBags) bag.items.RemoveAll(i => i == null || db.Item(i.itemId) == null || i.count <= 0);
+            s.world.lootBags.RemoveAll(b => b == null || b.items.Count == 0);
         }
 
         static void CleanStacks(List<ItemStack> stacks, GameDatabase db, List<string> repairs, string where)

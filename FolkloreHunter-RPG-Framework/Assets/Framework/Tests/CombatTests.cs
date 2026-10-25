@@ -88,6 +88,23 @@ namespace FH.Tests
         }
 
         [Test]
+        public void HitsOnASharedBoneStrikeTheHelmUntilItBreaksThenTheSkull()
+        {
+            var m = TestSupport.Db().Monsters["grave_warden"];
+            var parts = new PartTracker(m);
+            var head = m.parts.Where(p => p.bone == "head").Select(p => p.id).ToList();
+            Assert.That(parts.Resolve(head).id, Is.EqualTo("helmet"));
+            Assert.That(parts.Resolve(head).weakPoint, Is.False);
+            parts.Damage("helmet", 999);
+            var exposed = parts.Resolve(head);
+            Assert.That(exposed.id, Is.EqualTo("skull"));
+            Assert.That(exposed.weakPoint, Is.True);
+            Assert.That(parts.Resolve(new[] { "body" }).id, Is.EqualTo("body"));
+            var restored = new PartTracker(m, new[] { "helmet" });
+            Assert.That(restored.Resolve(head).id, Is.EqualTo("skull"), "a helm broken before saving stays broken");
+        }
+
+        [Test]
         public void PoiseBreakCausesStaggerWhichEnds()
         {
             var def = TestSupport.Db().Monsters["gravebound"];

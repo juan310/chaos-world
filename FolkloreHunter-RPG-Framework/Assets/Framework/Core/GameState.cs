@@ -76,6 +76,9 @@ namespace FH.Core
         public int totalIncome;
     }
 
+    [Serializable]
+    public class LootBagState { public string id, areaId, label; public float x, y, z; public List<ItemAmount> items = new List<ItemAmount>(); }
+
     [Serializable] public class VendorSale { public string vendorId, itemId; public int count, day; }
 
     [Serializable] public class SpawnState { public string spawnId; public double deadUntilHour = -1; public List<string> brokenParts = new List<string>(); }
@@ -89,6 +92,7 @@ namespace FH.Core
         public List<SpawnState> spawns = new List<SpawnState>();
         public List<string> claimedRewards = new List<string>(); // reward-once guard keys
         public List<string> discoveredAreas = new List<string>();
+        public List<LootBagState> lootBags = new List<LootBagState>();   // dropped loot not yet picked up
         public int Day => (int)Math.Floor(hours / 24.0);
         public double HourOfDay => hours - Day * 24.0;
     }

@@ -349,6 +349,17 @@ namespace FH.Core
             return p;
         }
 
+        /// <summary>Several parts can share a bone (a helm over a skull). An intact breakable cover takes the hit;
+        /// once broken, the part it was protecting is struck instead.</summary>
+        public MonsterPartDef Resolve(IList<string> partIdsOnBone)
+        {
+            var parts = partIdsOnBone.Select(Part).Where(p => p != null).ToList();
+            if (parts.Count == 0) return null;
+            foreach (var p in parts) if (p.breakHealth > 0 && !Broken.Contains(p.id)) return Effective(p.id);
+            foreach (var p in parts) if (!string.IsNullOrEmpty(p.requiresBrokenPart) && Broken.Contains(p.requiresBrokenPart)) return Effective(p.id);
+            return Effective((parts.FirstOrDefault(p => p.breakHealth <= 0) ?? parts[0]).id);
+        }
+
         /// <summary>Returns true if this damage broke the part.</summary>
         public bool Damage(string partId, float amount)
         {
