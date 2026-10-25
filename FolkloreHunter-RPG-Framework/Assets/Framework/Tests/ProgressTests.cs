@@ -372,6 +372,8 @@ namespace FH.Tests
         {
             var core = TestSupport.NewCore();
             var sp = core.Db.Spawns["sp_bridge_1"];
+            var night = core.Db.Spawns["sp_night_1"];
+            Assert.That(core.Spawns.ShouldBeAlive(night), Is.False, "a new game starts in daylight");
             Assert.That(core.Spawns.ShouldBeAlive(sp));
             core.Spawns.MarkKilled("sp_bridge_1");
             Assert.That(core.Spawns.ShouldBeAlive(sp), Is.False);
@@ -379,8 +381,6 @@ namespace FH.Tests
             Assert.That(core.Spawns.ShouldBeAlive(sp), Is.False);
             core.Clock.Advance(0.2);
             Assert.That(core.Spawns.ShouldBeAlive(sp));
-            var night = core.Db.Spawns["sp_night_1"];
-            Assert.That(core.Spawns.ShouldBeAlive(night), Is.False, "starts in the morning");
             core.Clock.Advance((21 - core.Clock.Hour + 24) % 24);
             Assert.That(core.Clock.Hour, Is.EqualTo(21).Within(1e-6));
             Assert.That(core.Spawns.ShouldBeAlive(night), Is.True, "21:00");
