@@ -100,7 +100,9 @@ namespace FH.Game
         IEnumerator Fade(Action mid)
         {
             S.Ui.Fade(mid);
-            yield return Hold(.8f);
+            // Wait out the fade plus the frame after it, when input is deliberately ignored.
+            while (S.Ui.BlocksWorld && S.Ui.Top == null) yield return null;
+            yield return Hold(.25f);
         }
 
         void Put(Vector3 p, Vector3 look)
