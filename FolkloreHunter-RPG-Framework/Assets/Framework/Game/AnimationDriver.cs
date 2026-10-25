@@ -116,7 +116,18 @@ namespace FH.Game
             return speed;
         }
 
-        List<(Transform, Vector3, Quaternion)> SavePose() => Anim.GetComponentsInChildren<Transform>().Select(t => (t, t.localPosition, t.localRotation)).ToList();
-        void RestorePose(List<(Transform, Vector3, Quaternion)> pose) { foreach (var (t, p, r) in pose) { t.localPosition = p; t.localRotation = r; } }
+        // Sampling must isolate one clip: any other enabled state would blend in and distort the measurement.
+        List<(AnimationState, bool, float, float)> savedStates;
+        List<(Transform, Vector3, Quaternion)> SavePose()
+        {
+            savedStates = Anim.Cast<AnimationState>().Select(s => (s, s.enabled, s.weight, s.time)).ToList();
+            foreach (var (s, _, _, _) in savedStates) { s.enabled = false; s.weight = 0; }
+            return Anim.GetComponentsInChildren<Transform>().Select(t => (t, t.localPosition, t.localRotation)).ToList();
+        }
+        void RestorePose(List<(Transform, Vector3, Quaternion)> pose)
+        {
+            foreach (var (t, p, r) in pose) { t.localPosition = p; t.localRotation = r; }
+            foreach (var (s, en, w, time) in savedStates) { s.enabled = en; s.weight = w; s.time = time; }
+        }
     }
 }

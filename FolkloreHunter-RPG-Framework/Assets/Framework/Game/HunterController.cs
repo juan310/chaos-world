@@ -40,7 +40,9 @@ namespace FH.Game
         bool prevTipValid;
         readonly SwingHits swingHits = new SwingHits();
         float walkNatural, runNatural;
-        public const float WalkSpeed = 2.9f, RunSpeed = 5.3f, RunCost = 9;
+        public float WalkSpeed { get; private set; } = 2.9f;
+        public float RunSpeed { get; private set; } = 5.3f;
+        public const float RunCost = 9;
 
         public void Initialize(GameSession s)
         {
@@ -63,7 +65,10 @@ namespace FH.Game
             }
             walkNatural = Anim.NaturalSpeed("Walking_A", footL, footR, transform);
             runNatural = Anim.NaturalSpeed("Running_A", footL, footR, transform);
-            Debug.Log("FH_LOCO walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
+            // Travel speed follows the authored stride so planted feet do not slide; playback runs slightly fast for pace.
+            if (walkNatural > .3f) WalkSpeed = Mathf.Clamp(walkNatural * 1.3f, 1.6f, 3.2f);
+            if (runNatural > .6f) RunSpeed = Mathf.Clamp(runNatural * 1.3f, WalkSpeed * 1.5f, 6f);
+            Debug.Log("FH_LOCO walk speed " + WalkSpeed.ToString("0.00") + ", run speed " + RunSpeed.ToString("0.00") + ",  walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
             Stamina = new StaminaPool(100, 24, s.Core.Db.Balance.staminaRegenDelay, s.Core.Db.Balance.exhaustedThreshold);
             RefreshStats(true);
             Anim.Play("Idle");
@@ -156,7 +161,7 @@ namespace FH.Game
             float speed = 0;
             Vector3 moveDir = Vector3.zero;
             if (Dodging) { moveDir = dodgeDir; speed = 7.2f; }
-            else if (Attack.Running && Attack.Phase == AttackPhase.Recovery) { moveDir = dir; speed = WalkSpeed * .35f; }
+            else if (Attack.Running && Attack.Phase == AttackPhase.Recovery) { moveDir = dir; speed = WalkSpeed * .3f; }
             else if (!locked && dir.sqrMagnitude > .01f)
             {
                 bool canRun = run && !Stamina.Exhausted && Stamina.Current > 1;
@@ -164,7 +169,7 @@ namespace FH.Game
                 if (canRun) Stamina.Drain(RunCost, dt);
                 moveDir = dir;
                 float natural = canRun ? runNatural : walkNatural;
-                float animSpeed = natural > .1f ? Mathf.Clamp(speed / natural, .7f, 1.6f) : 1;
+                float animSpeed = natural > .1f ? Mathf.Clamp(speed / natural, .5f, 2.5f) : 1;
                 Anim.Play(canRun ? "Running_A" : "Walking_A", true, animSpeed);
                 stepClock -= dt;
                 if (stepClock <= 0) { stepClock = canRun ? .24f : .36f; WorldKit.Sound(transform.position, "step", .08f); }

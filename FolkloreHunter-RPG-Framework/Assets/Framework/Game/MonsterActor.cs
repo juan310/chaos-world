@@ -25,6 +25,7 @@ namespace FH.Game
         Material eyesBase;
         GameObject ring;
         Vector3 patrolTarget;
+        float walkNatural = 1;
         float vertical, deathTime = -1, hurtFlash;
         readonly List<Hurtbox> hurtboxes = new List<Hurtbox>();
         GameSession session;
@@ -52,6 +53,7 @@ namespace FH.Game
             patrolTarget = Home;
             AttachWeapon();
             BuildHurtboxes();
+            walkNatural = Mathf.Max(.3f, Anim.NaturalSpeed("Walking_A", WorldKit.Find(Visual, "foot.l"), WorldKit.Find(Visual, "foot.r"), transform));
             foreach (var p in Parts.Broken) HidePartMesh(Def.parts.FirstOrDefault(x => x.id == p), false);
             ring = WorldKit.Cylinder("Attack warning", transform.position, .5f, .02f, WorldKit.Transparent("Telegraph ring", new Color(.95f, .18f, .08f, .35f)));
             ring.transform.SetParent(transform, true);
@@ -124,7 +126,7 @@ namespace FH.Game
                         break;
                     }
                 case MonsterMode.Stagger: Anim.Play("Hit_A", false, .8f, true); break;
-                case MonsterMode.Return: Anim.Play("Walking_A"); break;
+                case MonsterMode.Return: Anim.Play("Walking_A", true, Gait(Def.chaseSpeed)); break;
                 case MonsterMode.Dead: Die(); break;
             }
         }
@@ -169,7 +171,7 @@ namespace FH.Game
                 case MonsterMode.Patrol:
                     {
                         var d = patrolTarget - transform.position; d.y = 0;
-                        if (d.magnitude > .4f) { move = d.normalized; speed = Def.walkSpeed; Anim.Play("Walking_A", true, .9f); }
+                        if (d.magnitude > .4f) { move = d.normalized; speed = Def.walkSpeed; Anim.Play("Walking_A", true, Gait(Def.walkSpeed)); }
                         else Anim.Play("Idle");
                         break;
                     }
@@ -177,7 +179,7 @@ namespace FH.Game
                 case MonsterMode.Chase:
                     Face(to, dt);
                     float stop = Def.attacks.Min(a => a.range) * .8f;
-                    if (dist > stop) { move = to.normalized; speed = Def.chaseSpeed; Anim.Play("Walking_A", true, Def.chaseSpeed / 1.6f); }
+                    if (dist > stop) { move = to.normalized; speed = Def.chaseSpeed; Anim.Play("Walking_A", true, Gait(Def.chaseSpeed)); }
                     else Anim.Play(Anim.Has("Idle_Combat") ? "Idle_Combat" : "Idle");
                     break;
                 case MonsterMode.Telegraph:
@@ -204,6 +206,9 @@ namespace FH.Game
             cc.Move((move * speed * slow + Vector3.up * vertical) * dt);
             if (hurtFlash > 0) hurtFlash -= dt;
         }
+
+        /// <summary>Walk playback rate that matches ground speed to the clip's stride (no foot sliding).</summary>
+        float Gait(float speed) => Mathf.Clamp(speed * Brain.Status.SpeedMultiplier / walkNatural, .5f, 2.5f);
 
         void UpdateRing()
         {
