@@ -113,6 +113,20 @@ namespace FH.Game
             S.CameraRig.Snap();
         }
 
+        /// <summary>Walks up to the nearest loot sack, opens it with the interact key and takes everything.</summary>
+        IEnumerator LootNearest(float pause)
+        {
+            var bag = FindObjectsByType<LootBag>().OrderBy(b => Vector3.Distance(b.transform.position, S.Hunter.transform.position)).FirstOrDefault();
+            if (!bag) yield break;
+            var from = S.Hunter.transform.position - bag.transform.position; from.y = 0;
+            Put(bag.transform.position + (from.sqrMagnitude > .01f ? from.normalized : Vector3.back) * 1.1f, bag.transform.position);
+            yield return Hold(.35f);
+            InputRouter.Press(GameAction.Interact);
+            yield return Hold(.5f);
+            if (S.Ui.Top is LootScreen) yield return Click("Take all", pause);
+            while (S.Ui.Top != null) { S.Ui.Top.Back(); yield return null; }
+        }
+
         IEnumerator Talk(NpcActor npc)
         {
             Put(npc.transform.position + npc.transform.forward * 1.9f, npc.transform.position);
@@ -203,10 +217,10 @@ namespace FH.Game
                 }
                 Stop();
                 yield return Hold(1f);
-                var b2 = FindObjectsByType<LootBag>().OrderBy(b => Vector3.Distance(b.transform.position, S.Hunter.transform.position)).FirstOrDefault();
-                if (b2) { S.Hunter.Teleport(S.SafeGround(b2.transform.position + Vector3.back * 1.1f), 0); yield return Hold(.2f); InputRouter.Press(GameAction.Interact); yield return Hold(.6f); yield return Click("Take all", .2f); }
+                yield return LootNearest(.3f);
             }
             skip = 1;
+            for (int k = 0; k < 4 && FindObjectsByType<LootBag>().Length > 0 && S.Core.Inventory.Count("bone_shard") < 9; k++) yield return LootNearest(.3f);
             yield return Fade(() => Put(mira.transform.position + mira.transform.forward * 1.9f, mira.transform.position));
             InputRouter.Press(GameAction.Interact);
             yield return Hold(1.5f);
