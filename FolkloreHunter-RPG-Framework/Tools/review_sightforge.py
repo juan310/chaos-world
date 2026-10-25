@@ -68,6 +68,20 @@ for key, path in tracks.items():
             print('SIGHTFORGE_TRACK_NEGATIVE', checks, contra, flush=True)
     else:
         summary[key] = {'error': 'no track at ' + str(path)}
+# Port check: the framework's hunter renders against the approved 3D sample's own pose renders (read only), same clip
+# and frame. Not declared --same-capture, so absolute size is reported as not compared.
+sample = h / 'Documents/FolkloreHunter-3D-Sample-20261025/Captures/Poses'
+cmp = {}
+for state in ['idle', 'walk', 'attack']:
+    for k in (0, 4, 8, 12):
+        ref, cand = sample / ('hunter_%s_S_%02d.png' % (state, k)), poses / ('hunter_%s_S_%02d.png' % (state, k))
+        if not (ref.is_file() and cand.is_file()):
+            cmp['%s_%02d' % (state, k)] = {'error': 'missing ' + (str(ref) if not ref.is_file() else str(cand))}; continue
+        page, data = E.cmd_compare(SimpleNamespace(project=p, run='rpg-vs-sample-%s-%02d' % (state, k), reference=str(ref), candidate=str(cand),
+                                                   subject='Hunter %s frame %d: sample vs framework' % (state, k), same_capture=False))
+        cmp['%s_%02d' % (state, k)] = {'summary': data['summary'], 'findings': [f for f in data['findings'] if f['kind'] != 'not_completed'], 'page': page}
+        print('SIGHTFORGE_COMPARE', state, k, json.dumps(data['summary']), flush=True)
+summary['sampleComparison'] = cmp
 summary['scope'] = ('Sprite-oriented 2D review of 3D pose renders, plus temporal review of tracks recorded from the running 3D game '
                     '(x = world X, y = world Z, facing = rendered model forward quantised to S/E/N/W). '
                     'Does not certify 3D foot planting, collision or combat.')

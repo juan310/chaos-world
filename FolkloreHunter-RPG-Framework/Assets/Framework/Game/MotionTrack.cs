@@ -36,7 +36,7 @@ namespace FH.Game
             var sb = new StringBuilder(512);
             sb.Append("{\"t\":").Append(F(Time.time)).Append(",\"frame\":").Append(frame++)
               .Append(",\"map\":\"").Append(s.CurrentArea).Append('"')
-              .Append(",\"ui\":").Append(s.Ui.Top ? "\"" + s.Ui.Top.GetType().Name + "\"" : "null")
+              .Append(",\"ui\":").Append(s.Ui.Top != null ? "\"" + s.Ui.Top.GetType().Name + "\"" : "null")
               .Append(",\"camera\":[").Append(F(hero.x)).Append(',').Append(F(hero.z)).Append(',').Append(F(EquivalentOrtho)).Append("]")
               .Append(",\"actors\":[");
             bool first = true;
