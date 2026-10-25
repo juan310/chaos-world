@@ -137,6 +137,12 @@ namespace FH.Game
                 Gravity(dt);
                 return;
             }
+            if (knock.sqrMagnitude > 1e-4f)
+            {
+                var push = session.ConstrainMove(transform.position, transform.position + knock * dt) - transform.position; push.y = 0;
+                Body.Move(push);
+                knock = Vector3.MoveTowards(knock, Vector3.zero, KnockSpeed / KnockTime * dt);
+            }
             Stamina.Tick(dt);
             Magic = Mathf.Min(Stats[Stat.MaxMagic], Magic + dt * 1.5f);
             if (LockTarget && (!LockTarget.Alive || Vector3.Distance(LockTarget.transform.position, transform.position) > 22)) LockTarget = null;
@@ -189,6 +195,10 @@ namespace FH.Game
             vertical = Body.isGrounded ? -2 : Mathf.Max(-20, vertical - dt * 24);
             Body.Move(Vector3.up * vertical * dt);
         }
+
+        // Hit knockback: speed decays linearly to zero over KnockTime, covering KnockSpeed * KnockTime / 2 = 0.25 m.
+        const float KnockSpeed = 2.5f, KnockTime = .2f;
+        Vector3 knock;
 
         void Move(Vector3 velocity, float dt)
         {
@@ -417,7 +427,7 @@ namespace FH.Game
             }
             hurtUntil = Time.time + .42f;
             var away = transform.position - from; away.y = 0;
-            if (away.sqrMagnitude > .01f) Body.Move(away.normalized * .25f);
+            if (away.sqrMagnitude > .01f) knock = away.normalized * KnockSpeed;   // 0.25 m pushed over 0.2 s, not one frame
             Anim.Play("Hit_A", false, 1.3f, true, .05f);
         }
 
@@ -432,6 +442,7 @@ namespace FH.Game
 
         public void Teleport(Vector3 p, float yaw)
         {
+            knock = Vector3.zero;
             Body.enabled = false;
             transform.SetPositionAndRotation(p, Quaternion.Euler(0, yaw, 0));
             Body.enabled = true;
