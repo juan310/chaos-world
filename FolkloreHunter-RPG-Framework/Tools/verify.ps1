@@ -14,4 +14,4 @@ Get-Content "$cap\verification.txt" -ErrorAction SilentlyContinue
 '---- continue ----'
 Get-Content "$cap\verification-continue.txt" -ErrorAction SilentlyContinue
 '---- log errors ----'
-foreach ($l in 'verify-phase1','verify-phase2') { Get-Content "$p\Logs\$l.log" | Select-String -Pattern 'Exception|NullReference|FH_VERIFY' | Select-Object -First 12 | ForEach-Object { "$l: " + $_.Line } }
+foreach ($l in 'verify-phase1','verify-phase2') { Get-Content "$p\Logs\$l.log" | Select-String -Pattern 'Exception|NullReference|FH_VERIFY' | Select-Object -First 12 | ForEach-Object { "${l}: " + $_.Line } }
