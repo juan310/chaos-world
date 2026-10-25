@@ -428,6 +428,7 @@ namespace FH.Game
             // Combo: a press during recovery chains into the second strike. The monster is held off so its own
             // strike (which correctly interrupts the hunter) cannot break the sequence under test.
             m.Calm(4);
+            h.Stamina.Current = h.Stamina.Max;   // the earlier timing check spent stamina; a tired hunter correctly cannot chain
             t = 0;
             while (t < 4 && h.Attack.Running) { t += Time.unscaledDeltaTime; yield return null; }
             InputRouter.Press(GameAction.Attack);
