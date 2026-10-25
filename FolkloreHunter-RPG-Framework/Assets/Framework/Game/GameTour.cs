@@ -96,6 +96,16 @@ namespace FH.Game
             Stop();
         }
 
+        /// <summary>Walks straight at a person or object with the movement keys and stops within reach, facing it
+        /// (no on-camera repositioning: the SightForge track flagged the snaps this replaced).</summary>
+        IEnumerator Approach(Vector3 target, float reach, float maxSeconds = 6)
+        {
+            float t = 0;
+            while (t < maxSeconds && Vector3.Distance(Flat(S.Hunter.transform.position), Flat(target)) > reach) { Steer(target, false); t += 1f / Fps; yield return null; }
+            Stop();
+            yield return Hold(.15f);
+        }
+
         static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
 
         IEnumerator Fade(Action mid)
@@ -119,8 +129,7 @@ namespace FH.Game
         {
             var bag = FindObjectsByType<LootBag>().OrderBy(b => Vector3.Distance(b.transform.position, S.Hunter.transform.position)).FirstOrDefault();
             if (!bag) yield break;
-            var from = S.Hunter.transform.position - bag.transform.position; from.y = 0;
-            Put(bag.transform.position + (from.sqrMagnitude > .01f ? from.normalized : Vector3.back) * 1.1f, bag.transform.position);
+            yield return Approach(bag.transform.position, 1.1f);
             yield return Hold(.35f);
             InputRouter.Press(GameAction.Interact);
             yield return Hold(.5f);
@@ -130,7 +139,7 @@ namespace FH.Game
 
         IEnumerator Talk(NpcActor npc)
         {
-            Put(npc.transform.position + npc.transform.forward * 1.9f, npc.transform.position);
+            yield return Approach(npc.transform.position, 1.9f);
             yield return Hold(.6f);
             InputRouter.Press(GameAction.Interact);
             yield return Hold(1.4f);
@@ -146,8 +155,7 @@ namespace FH.Game
             var mira = S.World.Npcs.First(n => n.NpcId == "mira");
             yield return WalkTo(new Vector3(-17, 0, -21), 3.2f, true);  // leave the cottage toward Thornbury
             yield return Fade(() => Put(mira.transform.position + mira.transform.forward * 4.5f, mira.transform.position));
-            yield return WalkTo(mira.transform.position + mira.transform.forward * 3f, 1.5f);
-            Put(mira.transform.position + mira.transform.forward * 1.9f, mira.transform.position);
+            yield return Approach(mira.transform.position, 1.9f);
             yield return Hold(.3f);
             InputRouter.Press(GameAction.Interact);
             yield return Hold(2.6f);
