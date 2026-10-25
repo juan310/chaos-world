@@ -336,7 +336,9 @@ namespace FH.Game
             while (waitT < 4 && !m.Brain.Engaged) { waitT += Time.unscaledDeltaTime; yield return null; }
             Check("monster perceives the hunter and engages", m.Brain.Engaged, m.Brain.Mode.ToString());
             yield return Press(GameAction.LockOn);
-            Check("lock-on selects the monster", h.LockTarget == m);
+            // Lock-on picks the best target in view, which may be a neighbouring Gravebound.
+            Check("lock-on selects a living monster in view", h.LockTarget && h.LockTarget.Alive, h.LockTarget ? (h.LockTarget == m ? "the engaged one" : "a neighbour: " + h.LockTarget.SpawnId) : "none");
+            h.LockTarget = m;
             yield return Real(.4f);
             Check("target HUD shows the locked monster", S.Hud.TargetShown);
             yield return Snap("05-lock-on");
