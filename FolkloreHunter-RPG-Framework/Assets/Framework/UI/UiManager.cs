@@ -151,6 +151,7 @@ namespace FH.UI
             var all = screen.Root.GetComponentsInChildren<Button>().ToList();
             GameObject pick = null;
             if (preferIndex >= 0 && preferIndex < all.Count && all[preferIndex].interactable) pick = all[preferIndex].gameObject;
+            if (!pick) pick = buttons.FirstOrDefault(b => b.GetComponent<ButtonVisual>() && b.GetComponent<ButtonVisual>().Accent)?.gameObject;
             if (!pick && buttons.Count > 0) pick = buttons[0].gameObject;
             if (EventSystem.current) EventSystem.current.SetSelectedGameObject(pick);
         }
