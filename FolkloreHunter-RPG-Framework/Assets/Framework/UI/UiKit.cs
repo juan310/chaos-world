@@ -9,7 +9,7 @@ namespace FH.UI
     /// <summary>Reusable UI building blocks with one visual language: parchment text on dark oak panels.</summary>
     public static class UiKit
     {
-        public static readonly Color Panel = new Color(.07f, .085f, .075f, .93f);
+        public static readonly Color PanelBg = new Color(.07f, .085f, .075f, .93f);
         public static readonly Color PanelLight = new Color(.13f, .15f, .13f, .95f);
         public static readonly Color Border = new Color(.55f, .45f, .28f, 1);
         public static readonly Color Text = new Color(.93f, .91f, .84f);
@@ -87,7 +87,7 @@ namespace FH.UI
         {
             var r = Rect(name, parent);
             var img = r.gameObject.AddComponent<Image>();
-            img.sprite = Rounded; img.type = Image.Type.Sliced; img.color = color ?? Panel;
+            img.sprite = Rounded; img.type = Image.Type.Sliced; img.color = color ?? PanelBg;
             if (border)
             {
                 var o = r.gameObject.AddComponent<Outline>();
