@@ -380,7 +380,7 @@ namespace FH.Tests
             core.Clock.Advance(0.2);
             Assert.That(core.Spawns.ShouldBeAlive(sp));
             var night = core.Db.Spawns["sp_night_1"];
-            Assert.That(core.Spawns.ShouldBeAlive(night), Is.False, "starts at 07:00");
+            Assert.That(core.Spawns.ShouldBeAlive(night), Is.False, "starts in the morning");
             core.Clock.Advance((21 - core.Clock.Hour + 24) % 24);
             Assert.That(core.Clock.Hour, Is.EqualTo(21).Within(1e-6));
             Assert.That(core.Spawns.ShouldBeAlive(night), Is.True, "21:00");
@@ -396,7 +396,7 @@ namespace FH.Tests
             Assert.That(core.State.world.hours, Is.EqualTo(h));
             core.Clock.Advance(10);
             core.Clock.SleepUntilMorning();
-            Assert.That(core.Clock.Hour, Is.EqualTo(7).Within(1e-6));
+            Assert.That(core.Clock.Hour, Is.EqualTo(core.Db.Balance.dayStartHour).Within(1e-6));
             Assert.That(core.Clock.Day, Is.EqualTo(1));
         }
     }

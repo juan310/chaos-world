@@ -387,7 +387,7 @@ namespace FH.Game
             for (int i = 0; i < 320; i++)
             {
                 float x = Random.Range(-38, 38f), z = Random.Range(-34, 36f);
-                if (Mathf.Abs(z - RiverZ(x)) < 2.8f || Vector2.Distance(new Vector2(x, z), new Vector2(HousePos.x, HousePos.z)) < 4 || PathDistance(new Vector2(x, z)) < 1.3f || Vector2.Distance(new Vector2(x, z), new Vector2(TownPos.x, TownPos.z)) < 8) continue;
+                if (Mathf.Abs(z - RiverZ(x)) < 2.8f || Vector2.Distance(new Vector2(x, z), new Vector2(HousePos.x, HousePos.z)) < 8.5f || PathDistance(new Vector2(x, z)) < 1.3f || Vector2.Distance(new Vector2(x, z), new Vector2(TownPos.x, TownPos.z)) < 8) continue;
                 bool rock = z > 15 || i % 5 == 0;
                 string name = rock ? (i % 2 == 0 ? "rock_largeA" : "rock_smallB") : (i % 3 == 0 ? "plant_bush" : i % 3 == 1 ? "grass_large" : "flower_yellowA");
                 Nature(name, Ground(x, z), rock ? Random.Range(.35f, 1.25f) : Random.Range(.25f, .7f), Random.Range(0, 360), rock);

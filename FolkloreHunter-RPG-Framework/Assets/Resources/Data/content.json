@@ -4,7 +4,7 @@
     "staminaRegenDelay": 0.6, "exhaustedThreshold": 20,
     "baseInventorySlots": 24, "startGold": 75, "attributePointsPerLevel": 2, "skillPointsPerLevel": 1,
     "xpBase": 60, "xpGrowth": 1.45, "maxLevel": 30,
-    "deathGoldLossFraction": 0.1, "hoursPerRealMinute": 1.0, "dayStartHour": 7,
+    "deathGoldLossFraction": 0.1, "hoursPerRealMinute": 1.0, "dayStartHour": 8,
     "startArea": "home", "startWeapon": "hunter_blade", "startArmor": "padded_jerkin",
     "startItems": [ { "itemId": "potion_mooncap", "count": 3 } ],
     "startRecipes": [ "r_mooncap_tonic" ]

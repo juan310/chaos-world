@@ -742,7 +742,7 @@ namespace FH.Game
             Check("cottage door offers rest", Top is ConfirmScreen);
             Click("Sleep");
             yield return Frames(4);
-            Check("sleeping advances to the next morning", C.Clock.Day == day + 1 && C.Clock.Hour < 8, C.Clock.Label);
+            Check("sleeping advances to the next morning", C.Clock.Day == day + 1 && C.Clock.Hour <= C.Db.Balance.dayStartHour + .01, C.Clock.Label);
             Check("sleeping saved the game", File.Exists(S.Store.PathFor(S.Slot)));
             int gold = C.Wallet.Gold;
             yield return InteractWith(Find<EstateLedger>());

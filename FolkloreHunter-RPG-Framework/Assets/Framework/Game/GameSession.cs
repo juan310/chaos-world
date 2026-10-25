@@ -325,16 +325,20 @@ namespace FH.Game
         {
             if (!World.Sun) return;
             float h = (float)Core.Clock.Hour;
-            float day = Mathf.Clamp01(Mathf.Sin((h - 6) / 12f * Mathf.PI));
-            World.Sun.transform.rotation = Quaternion.Euler(Mathf.Lerp(-10, 55, day) + (h > 12 ? 0 : 0), -38 + (h - 12) * 8, 0);
-            World.Sun.intensity = Mathf.Lerp(.08f, 1.15f, Mathf.SmoothStep(0, 1, day * 1.6f));
-            World.Sun.color = Color.Lerp(new Color(.55f, .6f, .9f), new Color(1, .88f, .69f), day);
-            float amb = Mathf.Lerp(.28f, 1, Mathf.SmoothStep(0, 1, day * 1.5f));
+            // Full daylight from about 08:00 to 18:00, warm dawn and dusk ramps, dim blue night.
+            float day = Mathf.SmoothStep(0, 1, Mathf.Clamp01(Mathf.Min((h - 5f) / 3f, (21f - h) / 3f)));
+            float arc = Mathf.Clamp01((h - 5f) / 16f);
+            World.Sun.transform.rotation = Quaternion.Euler(Mathf.Lerp(8, 50, Mathf.Sin(arc * Mathf.PI)), -110 + arc * 150, 0);
+            World.Sun.intensity = Mathf.Lerp(.12f, 1.15f, day);
+            World.Sun.color = Color.Lerp(new Color(.55f, .62f, .95f), new Color(1, .88f, .69f), day);
+            float amb = Mathf.Lerp(.32f, 1, day);
+            bool below = World.IsInCrypt(Hunter.transform.position);
+            if (below) amb *= .45f;
             RenderSettings.ambientSkyColor = new Color(.62f, .69f, .70f) * amb;
             RenderSettings.ambientEquatorColor = new Color(.40f, .45f, .34f) * amb;
             RenderSettings.ambientGroundColor = new Color(.23f, .24f, .20f) * amb;
-            RenderSettings.fogColor = new Color(.63f, .70f, .62f) * Mathf.Lerp(.25f, 1, day);
-            foreach (var l in World.Lanterns) if (l) l.intensity = Mathf.Lerp(3.2f, 1.2f, day);
+            RenderSettings.fogColor = below ? new Color(.05f, .05f, .06f) : new Color(.63f, .70f, .62f) * Mathf.Lerp(.3f, 1, day);
+            foreach (var l in World.Lanterns) if (l) l.intensity = Mathf.Lerp(3.2f, .9f, day);
         }
 
         // ---------------- monsters ----------------
