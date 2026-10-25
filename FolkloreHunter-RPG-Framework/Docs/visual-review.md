@@ -32,7 +32,18 @@ idle carries no frame number, so a body gliding in its standing pose reads as a 
 dithering, position pops, pose flicker, and the expectation "while an actor moves, its picture keeps changing" (E1).
 `Tools/track_events.py` and `Tools/track_pops.py` list the frames behind any finding.
 
-TRACK_RESULTS_PLACEHOLDER
+| Track (frames) | Findings | Reading |
+|---|---|---|
+| Gameplay recording (~2,600-3,000 game frames, 5 areas, 9 actors) | **0** | clean after the fixes below; walk stride measured at 0.69 m per cycle |
+| Real Windows key input (1,938 frames) | 1 likely: jitter 4.2 px | one dodge frame during a 0.14 s start-up hitch (13 fps) dominates the 95th percentile of a short session; steady walking is smooth |
+| Verifier play-through (~6,000-8,600 frames) | 3 likely | scripted: the verifier repositions the hunter between test steps (idle "moves" of 0.3-0.5 m, a 2 m reposition during a load hitch), and a monster reset to its spawn after the death-and-recovery test |
+| Negative control (the real tour track with the hunter's walk frozen and facing reversed) | flagged | facing against travel + E1 "picture stuck while moving": the inspector detects both |
+
+What the tracks found in the game, before the fixes (all fixed, see the table below): a 0.25 m one-frame jump on every
+hit taken by the hunter; patrolling Gravebound walking sideways (never turning to their direction of travel); the
+hunter playing the run cycle in place during a fade (and, by the same cause, during dialogue started while walking);
+the recording itself snapping the hunter onto loot and people on camera; a 0.31 m physics push when the scripts
+placed the hunter inside the forge's quench trough.
 
 ## Port check against the approved sample (SightForge `compare`)
 The framework's hunter pose renders were compared with the 3D sample's own renders (`FolkloreHunter-3D-Sample-20261025/Captures/Poses`,
@@ -73,6 +84,9 @@ Not declared same-capture, so absolute size was not compared.
 | Warden helm-fragment sack hung in mid-air (the drop ray hit the falling helm piece) and placement above it put the hunter on the crypt roof | broken pieces ignore ground rays; crypt ground rays start under the ceiling |
 | Hunter jumped 0.25 m in one frame when hit (SightForge track: 30-60 units/s pops on every `hit_a` frame) | knockback is a 0.2 s decaying push through the movement constraints |
 | A leashed Gravebound could walk into scenery on its way home and never arrive (verifier leash check) | Return mode steps around obstacles and resets home when blocked with the hunter far away |
+| Patrolling and homeward Gravebound walked sideways or backwards (SightForge track: facing W while travelling N) | they turn toward where they go and walk along their facing |
+| Hunter ran in place during fades, and during dialogue started while walking (SightForge track) | a held world drops walk/run cycles to idle; pressing into a wall or fence also stands instead of running in place |
+| Gameplay recording snapped the hunter onto loot sacks and people (SightForge track E1 / pops) | the recording walks up to them with the movement keys |
 
 ## Known visual limitations (not fixed)
 - KayKit chibi strides are short, so honest (non-sliding) travel is 1.6 m/s walking and 2.4 m/s running.
