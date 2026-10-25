@@ -35,7 +35,8 @@ ported (with the FBX_SCALE_ALL characters, the scale-one cottage wrapper and the
   being set to stand in for several days of gifts before the courtship steps.
 - **Defects the verification itself uncovered and that were fixed in the game** (not in the tests): foot sliding,
   interact choosing a station over a person, invisible helm break on rigid meshes, inverted camera after travel,
-  unreadable buttons, title showing upgraded estate, loot sacks stacking at one kill site, pause refusing to save
+  unreadable buttons, title showing upgraded estate, loot sacks stacking at one kill site, loot that could drop
+  inside a crypt wall, pause refusing to save
   after leaving a fight, and a progression blocker where 4% of players could finish the first hunt without the
   Grave Dust the first forge recipe needs (now a guaranteed drop, with a regression test).
 - **Real input:** Windows key messages posted to the game window only (never to other windows on the shared

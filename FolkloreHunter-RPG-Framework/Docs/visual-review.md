@@ -45,6 +45,7 @@ The inspector's own front-view note says it does not measure foot sliding for fr
 | Interact chose Mira's mortar instead of Mira | mortar made set dressing; people preferred on ties |
 | Helm break had no visible effect | rigid bone-attached meshes supported (hidden + physical piece) |
 | Two loot sacks overlapping at one kill site | drops merge into one sack per site |
+| Part-break loot could land behind the monster inside a wall (Warden in the crypt) | all drops land at the monster's feet |
 
 ## Known visual limitations (not fixed)
 - KayKit chibi strides are short, so honest (non-sliding) travel is 1.6 m/s walking and 2.4 m/s running.
