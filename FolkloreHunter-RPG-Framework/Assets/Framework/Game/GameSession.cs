@@ -412,7 +412,7 @@ namespace FH.Game
             Core.State.Spawn(m.SpawnId).brokenParts.Add(part.id);
             Hud?.Notify(m.DisplayName + ": " + part.name + " broken!", NoticeKind.Progress);
             var drops = Core.Loot.Roll(part.breakLootTable, rng);
-            if (drops.Count > 0) DropLoot(m.HeadPosition, drops, part.name + " fragments");
+            if (drops.Count > 0) DropLoot(m.transform.position - m.transform.forward * .7f, drops, part.name + " fragments");
             Core.Events.RaisePartBroken(m.MonsterId, part.id);
             WorldKit.Sound(m.transform.position, "hit", .6f);
             CameraRig.Shake(.35f);

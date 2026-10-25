@@ -680,6 +680,7 @@ namespace FH.Game
             Place(S.World.CryptOrigin + new Vector3(0, 0, 4), boss.transform.position);
             float t = 0;
             while (t < 5 && !boss.Brain.Engaged) { t += Time.unscaledDeltaTime; yield return null; }
+            yield return Press(GameAction.LockOn);
             yield return Real(.6f);
             Check("boss HUD shows the Warden and its helm", S.Hud.TargetShown);
             yield return Snap("15-boss");
