@@ -63,6 +63,7 @@ namespace FH.Game
             EnterTitle();
             if (args.Contains("--verify-rpg")) gameObject.AddComponent<GameVerifier>();
             if (args.Contains("--tour-rpg")) gameObject.AddComponent<GameTour>();
+            if (args.Contains("--input-log")) gameObject.AddComponent<InputLogger>();
         }
 
         static string Arg(string[] args, string key)
