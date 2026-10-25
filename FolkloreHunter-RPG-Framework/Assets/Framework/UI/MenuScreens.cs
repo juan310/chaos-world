@@ -191,7 +191,7 @@ namespace FH.UI
             var col = UiKit.Column("Pause", Body, 10);
             col.Stretch();
             UiKit.Button(col, "Resume", () => Ui.Close(this));
-            bool fighting = S.Monsters.Any(m => m && m.Alive && m.Brain.Engaged);
+            bool fighting = S.InFight;
             UiKit.Button(col, "Save Game", () => Ui.Push(new SlotScreen(SlotMode.Save))).Enabled(!fighting, fighting ? "You cannot save in the middle of a fight." : null);
             UiKit.Button(col, "Load Game", () => Ui.Push(new SlotScreen(SlotMode.Load)));
             UiKit.Button(col, "Journal", () => { Ui.Close(this); Ui.Push(new JournalScreen(JournalTab.Hunts)); });

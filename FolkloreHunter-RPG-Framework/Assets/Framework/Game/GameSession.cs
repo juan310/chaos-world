@@ -276,7 +276,7 @@ namespace FH.Game
             spawnCheck -= dt;
             if (spawnCheck <= 0) { spawnCheck = 2; RefreshSpawns(false); }
             autosaveClock += dt;
-            if (autosaveClock > 300 && !Hunter.Dead && !Monsters.Any(m => m.Alive && m.Brain.Engaged)) { autosaveClock = 0; Save(); }
+            if (autosaveClock > 300 && !Hunter.Dead && !InFight) { autosaveClock = 0; Save(); }
         }
 
         void LateUpdate() => InputRouter.EndFrame();
@@ -383,6 +383,9 @@ namespace FH.Game
             actor.Initialize(this, def, st?.brokenParts);
             return actor;
         }
+
+        /// <summary>True while an engaged monster is close enough to matter (saving is refused mid-fight).</summary>
+        public bool InFight => Monsters.Any(m => m && m.Alive && m.Brain.Engaged && Vector3.Distance(m.transform.position, Hunter.transform.position) < 25);
 
         public MonsterActor SpawnForTest(string monsterId, Vector3 pos)
         {
