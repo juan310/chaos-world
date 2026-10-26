@@ -1,5 +1,23 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
+Build 0.8.0 (Katana, evasions, Training Range, Palamute-style hound, boss monsters, Monster Hunter pace): RESULTS_080
+Details, moves and limits: `WEAPONS.md` (top sections).
+
+| 0.8.0 item | Status | Evidence / notes |
+|---|---|---|
+| Training Range: archery targets 10–40 m, unkillable dummies, dodge hazards, dodge lane, travel from the ledger | Done | verifier range section; `Captures/Proving/r01-r10` |
+| Katana: spirit gauge and levels (glow), spirit combo to roundslash, foresight, iai stance and counters, lateral fade | Done | KatanaEvadeTests; verifier katana checks |
+| Evasions: roll, side slide, back-step, dive; perfect evade (stamina + slow motion) | Done | KatanaEvadeTests, perfect-evade tests; verifier dodge lane and hazards |
+| Bow animated like MH (left hand, draw to the cheek, nocked arrow, canted power shot, arc, piercer, steps) | Done | `Tools/hunter_weapons.py`; verifier bow clip checks; Claude Eyes on the frames |
+| Briarhound like the Palamute: combo, pounce, flank, evade wind-ups; ridden lope/dash/drift, attacks, sidestep | Done | HoundTacticsTests; verifier hound section |
+| Smarter hound: target choice, punishing openings, soft parts, steering, out of the hunter's lane; ridden auto-run and auto-sidestep | Done | HoundTacticsTests; verifier hound section (decision trace in the details) |
+| Boss monsters (hunt rules): tougher, area attacks with telegraphs, roars, phases, situational choice, combos | Done | HuntBossTests; verifier boss section; `Captures/Proving/b01-b05` |
+| Movement at MH pace: jog 3.6 / sprint 5.2 m/s on stride clips, attacks on the press, tighter camera | Done | verifier movement checks |
+| Foot slide at hunt pace (stock chibi run cycle) | Known limit | measured ~70 % of body speed; reported in verification.txt; a run cycle authored for these speeds is the fix |
+| Monster hurtboxes: parts with a height are capsules | Done | (a couched lance passed under the "legs" sphere) |
+| Claude Eyes on the hunter's clips and track (plus the hound's) | Done | `Tools/review_hunter_sightforge.py`, `Docs/sightforge-hunter-review.json` |
+| Bespoke roar/slam clips for the quadruped bosses, focus strikes, coatings, the hound in the valley | Missing | next steps |
+
 Build 0.7.0 (Lance and Bow): Core tests 79/79 (dotnet); Proving Grounds verifier 87/87; classic play-through 127/127 and relaunch/continue 16/16 on the same build.
 Details, moves and limits: `WEAPONS.md`.
 

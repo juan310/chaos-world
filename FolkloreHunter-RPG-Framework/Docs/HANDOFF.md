@@ -1,5 +1,11 @@
 # Handoff — Folklore Hunter: Rise of the Estate, RPG framework milestone
 
+**Update — build 0.8.0-katana-range:** Training Range, katana, evasions with a perfect evade, the Monster Hunter-style
+bow, the Briarhound as a smarter Palamute, boss monsters with area attacks and phases, and movement at Monster Hunter
+pace — all in the hunt combat (Proving Grounds and Training Range); the valley is unchanged. Everything, with results
+and limits: `WEAPONS.md`. Verification: `Tools\verify_proving.ps1`, `Tools\review_hound_sightforge.py`,
+`Tools\review_hunter_sightforge.py`, then `Tools\verify.ps1` for the classic game.
+
 **Update — build 0.7.0-lance-bow:** the Proving Grounds now offer the Lance and the Bow alongside the sword and
 shield (choose at the ledger). Moves, research notes, results and limits: `WEAPONS.md`.
 
