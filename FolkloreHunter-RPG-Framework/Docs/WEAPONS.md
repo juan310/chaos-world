@@ -88,6 +88,35 @@ with a three-hit attack on the rider's command ([Fextralife: Palamutes](https://
   leap and hops. Backup of the previous hound: `SourceArt/Backups/briarhound-before-palamute-20261026`.
 - Rules in `Assets/Framework/Core/HoundTactics.cs` (HoundTacticsTests).
 
+## Movement feel (why it was sluggish, and Monster Hunter Rise's pace)
+Measured in the player before the change: in the hunt combat the hunter **walked at 1.6 m/s with full stick and
+"ran" at 2.4 m/s on RT**, and only 1.4 m/s with a weapon out. The speeds were derived from the stock KayKit clips so the
+feet would not slide, but the chibi knight's run moves each foot only about 0.2 m per stride, so the honest speed was
+a brisk walk. On top of that every attack waited 70 ms (to see whether Y+B was coming) and the camera smoothed twice
+(about 0.2 s behind). In Rise full stick is a run, R a clearly faster dash with stamina, the weapon drawn a slower run,
+and attacks come out on the press ([Nintendo's Rise basics](https://www.nintendo.co.uk/News/2021/March/MONSTER-HUNTER-RISE-Guide-The-Basics-1945194.html)).
+Now, in the Proving Grounds and the Training Range (the valley's classic movement and its foot-planting checks are unchanged):
+- **Light stick walks; full stick jogs at 3.9 m/s; RT sprints at 5.6 m/s** (stamina). Weapon drawn: the jog at the
+  weapon's pace (sword ×0.85 = 3.3 m/s, katana ×0.8, bow ×0.75, lance ×0.6).
+- **New stride clips** `Hunt_Jog` and `Hunt_Sprint` (`Tools/hunter_weapons.py`, `stride_clip`): KayKit's run with each
+  leg and arm bone's swing enlarged about its own average pose (×1.45 / ×1.75), a forward lean (8° / 16°), and the hips
+  kept on the planted foot every frame. Played at the rate their measured stride needs (capped at 3.2×).
+- **Attacks start on the press.** If the other button follows within 70 ms while the move is still winding up, it
+  becomes the Y+B move instead (the bow keeps its window: tap or hold decides a quick shot or a draw).
+- Turning is quicker (22/s vs 15/s) and the camera follows tightly in the hunt combat.
+- The Briarhound's ridden gallop stays well above the hunter's sprint (7.4 vs 5.6 m/s).
+
+## Claude Eyes: what it caught, what was fixed
+The inspector now reviews the hunter too (`Tools/review_hunter_sightforge.py`): 20 clips with the weapon in hand
+(bow, katana, jog and sprint, evasions), rendered by the real player, plus the hunter's and the hound's movement tracks.
+- **Fixed:** the katana's overhead drove the tip about 0.4 m into the ground (katana now 80 %; it grazes the floor at
+  the end of the chop); the katana's spirit glow showed for a frame at level 0; the dive's get-up started from frames
+  lying sunk into the floor (the landing now starts past them); the review frames cut off the katana's reach.
+- **False positives explained:** "picture stuck while moving" on the hound (16 recorded frames per gallop stride each
+  covered more ground than the check's threshold: the track now records 32) and on the hunter (riding was labelled
+  as standing idle: now its own state); "loop does not close" on one-shot moves; ground-line and silhouette changes
+  on jumps, spins, rolls and getting up, which leave the ground or turn edge-on by design.
+
 ## Results (0.8.0)
 RESULTS_PLACEHOLDER
 
