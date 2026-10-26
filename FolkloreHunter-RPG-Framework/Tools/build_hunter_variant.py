@@ -310,7 +310,7 @@ if PROPS:
             src = basis(E[2], width)
             dst = basis(s3 @ Vector(R['tipDirLocal']), s3 @ Vector(R['widthDirLocal']))
             anchor_src = Vector((centre.x, centre.y, lo.z + gripf * ext[2]))
-            anchor_dst = slot @ Vector(R['gripLocal'])
+            anchor_dst = slot.translation.copy()       # the hand closes on the grip at the slot (the KayKit pommel sits behind it)
         rot = (dst @ src.transposed()).to_4x4()
         M = Matrix.Translation(anchor_dst) @ rot @ Matrix.Translation(-anchor_src)
         prop.parent = rig; prop.parent_type = 'BONE'; prop.parent_bone = bone
