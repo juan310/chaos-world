@@ -1,7 +1,7 @@
 # Proving Grounds check in the real player: injected Xbox pad states drive the hunt combat; isolated save folder;
 # a SightForge actor track of the session is written next to the results.
 $p = 'C:\Users\juana\Documents\FolkloreHunter-RPG-Framework'
-$exe = (Get-ChildItem "$p\Build-*\*.exe" | Where-Object { $_.Name -notmatch 'Crash' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+$exe = "$p\Build-Proving\FolkloreHunterProving.exe"
 $cap = "$p\Captures\Proving"; $saves = "$p\Captures\Proving-saves"
 Remove-Item $cap, $saves -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $cap, $saves | Out-Null

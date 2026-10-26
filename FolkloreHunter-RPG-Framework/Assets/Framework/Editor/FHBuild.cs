@@ -12,7 +12,7 @@ using UnityEngine;
 public static class FHBuild
 {
     public const string ScenePath = "Assets/Scenes/FolkloreHunterHunts.unity";
-    public const string Output = "Build-Hunts/FolkloreHunterHunts.exe";
+    public const string Output = "Build-Proving/FolkloreHunterProving.exe";
     const string Generated = "Assets/Generated/RPG";
 
     [MenuItem("Folklore Hunter/Generate scene")]
@@ -92,5 +92,5 @@ public static class FHBuild
         if (report.summary.result != BuildResult.Succeeded) throw new System.Exception("Player build failed");
     }
 
-    public static string Version => "0.5.0-reference-hunts";
+    public static string Version => "0.6.0-proving-grounds";
 }

@@ -1,6 +1,6 @@
 # Runs the in-player verification: phase 1 plays and saves, phase 2 is a fresh launch that continues the save.
 $p = 'C:\Users\juana\Documents\FolkloreHunter-RPG-Framework'
-$exe = "$p\Build-RPG\FolkloreHunterRPG.exe"
+$exe = "$p\Build-Proving\FolkloreHunterProving.exe"
 $cap = "$p\Captures\RPG"
 $saves = "$p\Captures\RPG-test-saves"
 Remove-Item $cap, $saves -Recurse -Force -ErrorAction SilentlyContinue

@@ -9,7 +9,7 @@ powershell -ExecutionPolicy Bypass -File "$p\Tools\record_tour.ps1" | Select-Str
 ffmpeg -y -loglevel error -i "$p\Folklore-Hunter-RPG-Framework-Gameplay.mp4" -vf "fps=1/3,scale=400:-1,tile=5x7" -frames:v 1 "$p\Captures\tour-contact-sheet.png"
 # Real Windows key messages to this game's window only.
 $s = "$p\Captures\RealInput-saves"; Remove-Item $s -Recurse -Force -ErrorAction SilentlyContinue
-$g = Start-Process "$p\Build-RPG\FolkloreHunterRPG.exe" -ArgumentList "--input-log --eyes-track `"$p\Captures\realinput_track.jsonl`" --save-dir `"$s`" -screen-width 1280 -screen-height 720 -screen-fullscreen 0 -logFile `"$p\Logs\realinput.log`"" -PassThru
+$g = Start-Process "$p\Build-Proving\FolkloreHunterProving.exe" -ArgumentList "--input-log --eyes-track `"$p\Captures\realinput_track.jsonl`" --save-dir `"$s`" -screen-width 1280 -screen-height 720 -screen-fullscreen 0 -logFile `"$p\Logs\realinput.log`"" -PassThru
 Start-Sleep 9
 powershell -ExecutionPolicy Bypass -File "$p\Tools\send_input.ps1" -ProcessId $g.Id -Script 'key DOWN 0.08; key UP 0.08; key ENTER 0.08; wait 0.8; key ENTER 0.08; wait 2; hold W 1.5; key SPACE 0.08; wait 0.6; key TAB 0.08; wait 0.3; key E 0.1; wait 0.5; key ESC 0.1; wait 0.4; key I 0.1; wait 1; key RIGHT 0.08; key ENTER 0.08; wait 0.8; key ESC 0.1; wait 0.5; key M 0.1; wait 1; key M 0.1; wait 0.5; key ESC 0.1; wait 0.8; key ESC 0.1; wait 0.5' | Out-Null
 Start-Sleep 1; Stop-Process -Id $g.Id
