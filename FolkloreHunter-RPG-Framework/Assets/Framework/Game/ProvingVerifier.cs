@@ -85,6 +85,7 @@ namespace FH.Game
         /// <summary>The camera behind something facing Unity yaw <paramref name="yaw"/> (the rig's yaw runs the other way).</summary>
         void LookAlong(float yaw) { S.CameraRig.Yaw = -yaw; S.CameraRig.Snap(); }
         static float Median(List<float> v) { if (v.Count == 0) return 0; var o = v.OrderBy(x => x).ToList(); return o[o.Count / 2]; }
+        static float Percentile(List<float> v, float p) { if (v.Count == 0) return 0; var o = v.OrderBy(x => x).ToList(); return o[Mathf.Clamp((int)(o.Count * p), 0, o.Count - 1)]; }
 
         /// <summary>Pose frames of every hound clip (and of the hunter riding a gallop) for the SightForge / Claude Eyes
         /// inspector: side view, orthographic, transparent background, 16 frames per clip, rendered by the real player.</summary>
@@ -379,7 +380,7 @@ namespace FH.Game
                 H.Stamina.Current = H.Stamina.Max;
                 Hold(button, new Vector2(0, 1));
                 yield return Wait(.5f);
-                var planted = new List<float>(); var body = new List<float>();
+                var planted = new List<float>(); var body = new List<float>(); var sweep = new List<float>();
                 Vector3 pl = footL.position, pr = footR.position, pb = H.transform.position; float t0 = Time.time; Vector3 start = H.transform.position;
                 for (float t = 0; t < 1.2f; t += Time.unscaledDeltaTime)
                 {
@@ -389,6 +390,9 @@ namespace FH.Game
                     // The slower foot is the one on the ground: how fast does it slide? (Height is no guide on this rig:
                     // the swinging foot's ankle often rides lower than the planted one.)
                     planted.Add(Mathf.Min(vl, vr));
+                    // Diagnostic: the lower foot's sweep relative to the hunter (what the clip itself does at this rate).
+                    var lowF = footL.position.y < footR.position.y ? footL : footR;
+                    sweep.Add(Vector3.Dot(Flat(lowF.position - H.transform.position), H.transform.forward));
                     body.Add(Vector3.Distance(Flat(H.transform.position), Flat(pb)) / dt);
                     pl = footL.position; pr = footR.position; pb = H.transform.position;
                 }
@@ -397,6 +401,9 @@ namespace FH.Game
                 Release(); yield return Wait(.3f);
                 Check(label + " at Monster Hunter pace (" + want + " m/s) with its stride clip", Mathf.Abs(speed - want) < want * .12f && playing.Contains(clip), speed.ToString("0.00") + " m/s, " + playing);
                 float slide = Median(planted), bodyV = Median(body);
+                var st = H.Anim.State(clip);
+                Note(label + ": clip " + clip + " playing at " + (st != null ? st.speed.ToString("0.00") : "?") + "x, cycle " + (st != null ? (st.length / Mathf.Max(.01f, st.speed)).ToString("0.00") : "?") + " s; lower foot ranges "
+                     + (sweep.Count > 0 ? sweep.Min().ToString("0.00") + " to " + sweep.Max().ToString("0.00") : "-") + " m along the facing; slower-foot speed P25 " + Percentile(planted, .25f).ToString("0.00") + ", median " + slide.ToString("0.00") + " m/s");
                 Check(label + ": the foot on the ground slides less than half as fast as the body (short chibi legs at a hunter's pace)", slide < bodyV * .5f, "planted foot " + slide.ToString("0.00") + " m/s vs body " + bodyV.ToString("0.00") + " m/s");
                 H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
             }

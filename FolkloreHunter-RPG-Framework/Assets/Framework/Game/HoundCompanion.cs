@@ -389,6 +389,7 @@ namespace FH.Game
 
             UpdateAction(dt);
             // A wind-up aimed at it cancels whatever it is doing (except the instant a strike lands): hop clear first.
+            if (Acting && InHuntersLane() && !Anim.Current.EndsWith("Hop")) { actionEnd = 0; strikeAt = -1; comboStep = -1; travelUntil = 0; }
             if (Acting && comboStep >= -1 && target && State == HoundState.Assist && Danger(target) && Time.time >= evadeReadyAt && !(strikeAt > 0 && strikeAt - Time.time < .06f) && !Anim.Current.EndsWith("Hop"))
             {
                 actionEnd = 0; strikeAt = -1; comboStep = -1; travelUntil = 0;
@@ -435,7 +436,7 @@ namespace FH.Game
             bool atFlank = Vector3.Distance(Flat(flank), Flat(transform.position)) < 1.4f * Size;
             bool danger = Danger(target);
             PincerAngle = HoundTactics.PincerAngle(target.transform.position.x, target.transform.position.z, h.x, h.z, transform.position.x, transform.position.z);
-            Action = HoundTactics.Choose(gap, reach, danger, now >= evadeReadyAt, now >= comboReadyAt, now >= pounceReadyAt, atFlank);
+            Action = HoundTactics.Choose(gap, open ? reach + 1.2f * Size : reach, danger, now >= evadeReadyAt, now >= comboReadyAt, now >= pounceReadyAt, atFlank);
             if (Action != HoundAction.Evade && ClearOfHuntersLane(dt)) return;
             switch (Action)
             {
@@ -487,8 +488,7 @@ namespace FH.Game
                         if (LastEvent != "circling to the flank") Circles++;
                         LastEvent = "circling to the flank";
                     }
-                    // A brisk lope round to the flank (a Palamute repositions quickly), a walk for the last metres.
-                    MoveToward(goal, .5f, gap > 7 || Vector3.Distance(me, fl) > 3 * Size, toM, dt, 0);
+                    MoveToward(goal, .5f, gap > 7, toM, dt, 0);
                     return;
                 }
             }
@@ -501,16 +501,25 @@ namespace FH.Game
 
         /// <summary>The hunter is attacking (a charge, a thrust, a shot) and the hound stands in front of them, in the
         /// way: it steps aside, to whichever side it is already on. True while it does.</summary>
-        bool ClearOfHuntersLane(float dt)
+        /// <summary>The hound stands in the path of the hunter's attack (a charge's whole lane, a swing's reach).</summary>
+        bool InHuntersLane() => LanePosition(out _, out _);
+
+        bool LanePosition(out float across, out Vector3 hf)
         {
             var hunter = S.Hunter;
-            if (inLane && Time.time - laneAt > .3f) inLane = false;
+            hf = Flat(hunter.transform.forward).normalized; across = 0;
             if (!hunter.Attack.Running) return false;
-            var hf = Flat(hunter.transform.forward).normalized;
             var rel = Flat(transform.position - hunter.transform.position);
-            float along = Vector3.Dot(rel, hf), across = Vector3.Dot(rel, Vector3.Cross(Vector3.up, hf));
+            float along = Vector3.Dot(rel, hf); across = Vector3.Dot(rel, Vector3.Cross(Vector3.up, hf));
             float lane = 1.4f * Size, length = (hunter.Attack.Def is HuntMoveDef hm && hm.travel > 0 ? 9 : 4) * Size;
-            if (along < 0 || along > length || Mathf.Abs(across) > lane) return false;
+            return along >= 0 && along <= length && Mathf.Abs(across) <= lane;
+        }
+
+        bool ClearOfHuntersLane(float dt)
+        {
+            if (inLane && Time.time - laneAt > .3f) inLane = false;
+            if (!LanePosition(out float across, out var hf)) return false;
+            float lane = 1.4f * Size;
             var side = Vector3.Cross(Vector3.up, hf) * (across >= 0 ? 1 : -1);
             MoveToward(transform.position + side * (lane + 1.2f * Size - Mathf.Abs(across) + .6f), .2f, true, -side, dt, GallopSpeed);
             if (!inLane) LaneClears++;
