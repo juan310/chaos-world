@@ -48,6 +48,38 @@ namespace FH.Game
             Current = st.name;
         }
 
+        readonly Dictionary<AnimationState, float> frozenSpeeds = new Dictionary<AnimationState, float>();
+        public bool Frozen { get; private set; }
+
+        /// <summary>Hitstop: stops every playing clip where it is, and resumes each at its own speed.</summary>
+        public void Freeze(bool on)
+        {
+            if (on == Frozen) return;
+            Frozen = on;
+            if (on) { frozenSpeeds.Clear(); foreach (AnimationState s in Anim) if (s.enabled) { frozenSpeeds[s] = s.speed; s.speed = 0; } }
+            else { foreach (var kv in frozenSpeeds) if (kv.Key) kv.Key.speed = kv.Value; frozenSpeeds.Clear(); }
+        }
+
+        /// <summary>Plays a one-shot backwards from its end (a fall played in reverse is a get-up).</summary>
+        public void PlayReverse(string name, float speed = 1, float fade = .1f)
+        {
+            var st = State(name);
+            if (st == null) return;
+            st.wrapMode = WrapMode.ClampForever; st.speed = -Mathf.Abs(speed); st.time = st.length;
+            Anim.CrossFade(st.name, fade);
+            Current = st.name;
+        }
+
+        /// <summary>Shows one frame of a clip and keeps it there (a charge-up holds the raised sword).</summary>
+        public void Hold(string name, float normalized, float fade = .1f)
+        {
+            var st = State(name);
+            if (st == null) return;
+            st.wrapMode = WrapMode.ClampForever; st.speed = 0; st.time = st.length * normalized;
+            if (Current != st.name) Anim.CrossFade(st.name, fade);
+            Current = st.name;
+        }
+
         /// <summary>Plays a one-shot so that its fastest motion (the strike) lands at <paramref name="impactAt"/> seconds.</summary>
         public void PlayStrike(string name, float impactAt, Transform tracked, float fade = .08f)
         {

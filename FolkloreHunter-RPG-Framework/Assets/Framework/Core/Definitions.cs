@@ -87,6 +87,7 @@ namespace FH.Core
         public string id, anim;
         public string hitBone;
         public float minRange, minAngle, maxAngle = 180, lungeSpeed;
+        public string reaction;          // Flinch, Knockback or Knockdown; empty = by damage
         public float telegraph = .55f, active = .2f, recovery = .7f;
         public float damage = 12, range = 2.2f, radius = .9f, cooldown = 1.6f, weight = 1, animSpeed = 1;
         public DamageType damageType = DamageType.Slash;
@@ -112,6 +113,7 @@ namespace FH.Core
     {
         public string id, name, model, family;
         public float bodyRadius;
+        public float flinchThreshold, stunThreshold;   // hunt combat: 0 = derived from max health
         public float height = 1.8f, maxHealth = 90, poise = 40, poiseRegen = 8, staggerTime = 1.1f;
         public float walkSpeed = 1.6f, chaseSpeed = 2.2f, turnSpeed = 7;
         public float perceptionRadius = 11, fieldOfView = 140, hearingRadius = 4, leashRadius = 18, loseInterestTime = 5;
@@ -362,5 +364,6 @@ namespace FH.Core
         public List<DialogueDef> dialogues = new List<DialogueDef>();
         public List<AreaDef> areas = new List<AreaDef>();
         public List<SpawnDef> spawns = new List<SpawnDef>();
+        public List<HuntMovesetDef> huntMovesets = new List<HuntMovesetDef>();
     }
 }

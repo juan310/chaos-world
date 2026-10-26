@@ -20,7 +20,8 @@ namespace FH.UI
         readonly List<(Text text, float until)> feed = new List<(Text, float)>();
         readonly Text[] hotbarCounts = new Text[4], hotbarNames = new Text[4];
         Image spellCooldown;
-        float flashUntil, areaUntil;
+        float flashUntil, areaUntil, hintClock;
+        Text controlsHint;
         public string LastFlash { get; private set; } = "";
         public string LastNotice { get; private set; } = "";
         public string PromptShown => promptBox && promptBox.gameObject.activeSelf ? promptText.text : "";
@@ -122,8 +123,8 @@ namespace FH.UI
             notices.Box(new Vector2(0, 0), new Vector2(24, 24), new Vector2(680, 300));
             notices.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.LowerLeft;
 
-            var help = UiKit.Label("Controls hint", root, "WASD move   Shift run   LMB attack   Space dodge   Q spell   Tab lock-on   E interact   1-4 items   I pack   J hunts   K hunter   M map   Esc menu", 15, UiKit.Muted, TextAnchor.LowerRight);
-            help.rectTransform.Box(new Vector2(1, 0), new Vector2(-24, 10), new Vector2(1100, 24));
+            controlsHint = UiKit.Label("Controls hint", root, "", 15, UiKit.Muted, TextAnchor.LowerRight);
+            controlsHint.rectTransform.Box(new Vector2(1, 0), new Vector2(-24, 10), new Vector2(1300, 24));
         }
 
         public void Rebind() { feed.ForEach(f => Object.Destroy(f.text.gameObject)); feed.Clear(); }
@@ -141,10 +142,23 @@ namespace FH.UI
 
         public void ShowArea(string name) { areaText.text = name.ToUpperInvariant(); areaUntil = Time.unscaledTime + 3; areaBox.gameObject.SetActive(true); }
 
+        /// <summary>One-line reminder for the device in use (keyboard or Xbox controller) and the combat style.</summary>
+        string ControlsHint()
+        {
+            bool pad = InputRouter.PadActive;
+            if (S.Proving)
+                return pad ? "Y light   B heavy (hold: charge)   Y+B shield bash   A roll   RB guard   RT sprint   X sheathe   R3 lock-on   LB item   D-pad item   Menu ledger"
+                           : "LMB light   RMB heavy (hold: charge)   both: shield bash   Space roll   Ctrl guard   Shift sprint   X sheathe   Tab lock-on   1-4 items   E ledger   Esc menu";
+            return pad ? "Left stick move   RT run   Y attack   A dodge   LT spell   R3 lock-on   X interact   LB item   View map   Menu"
+                       : "WASD move   Shift run   LMB attack   Space dodge   Q spell   Tab lock-on   E interact   1-4 items   I pack   J hunts   K hunter   M map   Esc menu";
+        }
+
         public void Tick(float dt)
         {
             if (!root.gameObject.activeSelf || S.Mode != SessionMode.Playing) return;
             var h = S.Hunter; var c = S.Core; var st = h.Stats;
+            hintClock -= dt;
+            if (hintClock <= 0) { hintClock = .5f; controlsHint.text = ControlsHint(); }
             nameText.text = c.State.player.name + "   <size=17><color=#c9c4b4>Level " + c.State.player.level + "</color></size>";
             health.Set(h.Health / Mathf.Max(1, st[Stat.MaxHealth]), dt);
             stamina.Set(h.Stamina.Current / Mathf.Max(1, h.Stamina.Max), dt);
@@ -171,7 +185,7 @@ namespace FH.UI
             var focus = S.Focus;
             bool showPrompt = focus && !ui.BlocksWorld;
             promptBox.gameObject.SetActive(showPrompt);
-            if (showPrompt) promptText.text = "<color=#f5d68c>E</color>   " + focus.Prompt(S);
+            if (showPrompt) promptText.text = "<color=#f5d68c>" + InputRouter.Label(GameAction.Interact, "E") + "</color>   " + focus.Prompt(S);
 
             flashText.gameObject.SetActive(Time.unscaledTime < flashUntil);
             if (Time.unscaledTime > areaUntil) areaBox.gameObject.SetActive(false);

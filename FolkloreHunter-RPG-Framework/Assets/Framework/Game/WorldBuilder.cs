@@ -64,6 +64,7 @@ namespace FH.Game
             Populate();
             HuntGrounds();
             Crypt();
+            ProvingGrounds();
             Library();
             return refs;
         }
@@ -485,6 +486,46 @@ namespace FH.Game
             var sc = chest.AddComponent<SupplyChest>(); sc.Id = "crypt_coffer"; sc.Gold = 40;
             sc.Contents.Add(new ItemAmount { itemId = "grave_iron", count = 1 });
             sc.Contents.Add(new ItemAmount { itemId = "potion_mooncap", count = 2 });
+        }
+
+        /// <summary>Proving Grounds: a walled sand ring far from the valley for testing combat and movement. Reached from
+        /// the title menu only; nothing done here is saved.</summary>
+        static void ProvingGrounds()
+        {
+            var o = refs.ProvingOrigin;
+            float r = refs.ProvingRadius;
+            var g = new GameObject("Proving Grounds - test arena").transform; g.SetParent(root); g.position = o;
+            var sand = M("Arena sand", new Color(.66f, .58f, .43f)); var stone = M("Arena stone", new Color(.42f, .40f, .37f));
+            var wood = M("Arena wood", new Color(.40f, .26f, .14f)); var cloth = M("Arena banner", new Color(.55f, .14f, .12f));
+            WorldKit.Box("Arena floor", o + new Vector3(0, -.25f, 0), new Vector3(r * 2 + 14, .5f, r * 2 + 14), sand, g, true);
+            WorldKit.Cylinder("Arena centre ring", o + new Vector3(0, .01f, 0), 4.2f, .02f, M("Arena ring", new Color(.55f, .48f, .35f)), g);
+            int segments = 36;
+            for (int i = 0; i < segments; i++)
+            {
+                float a = i * Mathf.PI * 2 / segments;
+                var p = o + new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a)) * (r + .6f);
+                var wall = WorldKit.Box("Arena wall", p + Vector3.up * .9f, new Vector3(4.8f, 1.8f, 1.1f), stone, g, true);
+                wall.transform.rotation = Quaternion.Euler(0, a * Mathf.Rad2Deg, 0);
+                if (i % 6 == 0)
+                {
+                    var post = WorldKit.Box("Arena banner post", p + Vector3.up * 2.4f - (p - o).normalized * .6f, new Vector3(.25f, 4.8f, .25f), wood, g, true);
+                    var flag = WorldKit.Box("Arena banner", post.transform.position + Vector3.up * 1.4f - (p - o).normalized * .2f, new Vector3(1.0f, 1.4f, .05f), cloth, g);
+                    flag.transform.rotation = Quaternion.LookRotation(o - p);
+                    var l = new GameObject("Arena torch").AddComponent<Light>(); l.transform.SetParent(g); l.transform.position = post.transform.position + Vector3.up * 2.6f;
+                    l.type = LightType.Point; l.color = new Color(1f, .7f, .4f); l.range = 14; l.intensity = 1.6f;
+                    WorldKit.Orb("Arena torch flame", l.transform.position, .18f, WorldKit.Glow(new Color(1f, .5f, .15f), 3), g);
+                }
+            }
+            // Cover to dodge around and to test the camera against walls.
+            foreach (var at in new[] { new Vector2(-12, 8), new Vector2(12, 8), new Vector2(0, -14) })
+                WorldKit.Box("Arena pillar", o + new Vector3(at.x, 2f, at.y), new Vector3(1.6f, 4f, 1.6f), stone, g, true);
+            // Ledger: spawn monsters, toggles, leave.
+            var desk = WorldKit.Box("Proving ledger desk", o + new Vector3(3.5f, .5f, -r + 5), new Vector3(1.4f, 1f, .7f), wood, g, true);
+            WorldKit.Box("Proving ledger book", desk.transform.position + Vector3.up * .55f, new Vector3(.6f, .08f, .45f), cloth, g);
+            var ledger = new GameObject("Proving ledger").AddComponent<ProvingLedger>();
+            ledger.transform.SetParent(g); ledger.transform.position = desk.transform.position + Vector3.up * .3f; ledger.Range = 2.2f;
+            Anchor("proving_spawn", o + new Vector3(0, .1f, -r + 7), 0);
+            Anchor("proving_target", o + new Vector3(0, .1f, 3), 180);
         }
 
         /// <summary>Materials created at runtime must exist in the build with their shader variants.</summary>

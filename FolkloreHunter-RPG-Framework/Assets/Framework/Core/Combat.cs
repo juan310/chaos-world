@@ -195,7 +195,7 @@ namespace FH.Core
         }
     }
 
-    public enum MonsterMode { Idle, Patrol, Alert, Chase, Telegraph, Attack, Recover, Stagger, Return, Dead }
+    public enum MonsterMode { Idle, Patrol, Alert, Chase, Telegraph, Attack, Recover, Stagger, Return, Dead, Downed }
 
     /// <summary>Engine-independent monster decision logic. The Unity actor feeds senses in and executes the intent.</summary>
     public class MonsterBrain
@@ -211,6 +211,8 @@ namespace FH.Core
         float cooldown, unseen;
         int attackIndex;
         public bool HitDelivered;      // current attack already landed
+        public float CooldownScale = 1;   // hunt combat: enraged monsters attack again sooner
+        float staggerFor = -1, downFor;
         public event Action<MonsterMode> ModeChanged;
 
         public MonsterBrain(MonsterDef def)
@@ -220,8 +222,8 @@ namespace FH.Core
         }
 
         public bool Alive => Mode != MonsterMode.Dead;
-        public bool Engaged => Mode == MonsterMode.Chase || Mode == MonsterMode.Telegraph || Mode == MonsterMode.Attack || Mode == MonsterMode.Recover || Mode == MonsterMode.Alert || Mode == MonsterMode.Stagger;
-        public bool Vulnerable => Mode == MonsterMode.Recover || Mode == MonsterMode.Stagger;
+        public bool Engaged => Mode == MonsterMode.Chase || Mode == MonsterMode.Telegraph || Mode == MonsterMode.Attack || Mode == MonsterMode.Recover || Mode == MonsterMode.Alert || Mode == MonsterMode.Stagger || Mode == MonsterMode.Downed;
+        public bool Vulnerable => Mode == MonsterMode.Recover || Mode == MonsterMode.Stagger || Mode == MonsterMode.Downed;
         public bool AttackActive => Mode == MonsterMode.Attack;
 
         void Set(MonsterMode m)
@@ -291,10 +293,13 @@ namespace FH.Core
                     if (ModeTime >= CurrentAttack.active) Set(MonsterMode.Recover);
                     break;
                 case MonsterMode.Recover:
-                    if (ModeTime >= CurrentAttack.recovery) { cooldown = CurrentAttack.cooldown; Set(MonsterMode.Chase); }
+                    if (ModeTime >= CurrentAttack.recovery) { cooldown = CurrentAttack.cooldown * CooldownScale; Set(MonsterMode.Chase); }
                     break;
                 case MonsterMode.Stagger:
-                    if (ModeTime >= Def.staggerTime) { cooldown = Math.Max(cooldown, .4f); Set(MonsterMode.Chase); }
+                    if (ModeTime >= (staggerFor > 0 ? staggerFor : Def.staggerTime)) { staggerFor = -1; cooldown = Math.Max(cooldown, .4f); Set(MonsterMode.Chase); }
+                    break;
+                case MonsterMode.Downed:
+                    if (ModeTime >= downFor) { cooldown = Math.Max(cooldown, .8f); Set(MonsterMode.Chase); }
                     break;
                 case MonsterMode.Return:
                     // Leash reset: heal and forget the player once home; can re-aggro only near home.
@@ -312,8 +317,25 @@ namespace FH.Core
             Health -= hit.Damage;
             if (Health <= 0) { Health = 0; Set(MonsterMode.Dead); return true; }
             if (Mode == MonsterMode.Idle || Mode == MonsterMode.Patrol || Mode == MonsterMode.Return) Set(MonsterMode.Alert);
-            if (Poise.Apply(hit.Poise) && Mode != MonsterMode.Stagger) Set(MonsterMode.Stagger);
+            if (Poise.Apply(hit.Poise) && Mode != MonsterMode.Stagger && Mode != MonsterMode.Downed) Set(MonsterMode.Stagger);
             return false;
+        }
+
+        /// <summary>Hunt combat: a short flinch that interrupts whatever the monster was doing (not while downed).</summary>
+        public void Flinch(float seconds = .6f)
+        {
+            if (!Alive || Mode == MonsterMode.Downed) return;
+            staggerFor = seconds;
+            if (Mode == MonsterMode.Stagger) { Mode = MonsterMode.Chase; }   // restart the stagger timer
+            Set(MonsterMode.Stagger);
+        }
+
+        /// <summary>Hunt combat: knocked off its feet for a few seconds; the opening the hunter works for.</summary>
+        public void Topple(float seconds)
+        {
+            if (!Alive) return;
+            downFor = seconds;
+            Set(MonsterMode.Downed);
         }
 
         public bool TakeStatusDamage(float dmg)

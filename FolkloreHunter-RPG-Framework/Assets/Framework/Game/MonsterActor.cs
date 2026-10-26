@@ -16,6 +16,13 @@ namespace FH.Game
         public Transform Visual;
         public AnimationDriver Anim { get; private set; }
         public bool Ready { get; private set; }
+        /// <summary>Monster Hunter rules (Proving Grounds until integrated): flinches, topples, enrage, hitstop.</summary>
+        public bool HuntRules;
+        /// <summary>Training target: stands and takes hits, never attacks.</summary>
+        public bool Passive;
+        public float HitstopUntil;
+        public MonsterReactions Reactions { get; private set; }
+        float getUpUntil;
         public Vector3 Home;
         public Vector3 AttackCenter {
             get {
@@ -33,7 +40,7 @@ namespace FH.Game
         CharacterController cc;
         Transform hand, chest, head;
         Renderer eyes;
-        Material eyesBase;
+        Material eyesBase, calmEyes;
         GameObject ring;
         Vector3 patrolTarget;
         float walkNatural = 1;
@@ -53,6 +60,7 @@ namespace FH.Game
             session = s; Def = def; MonsterId = def.id; InstanceKey = "m" + (++serial);
             Brain = new MonsterBrain(def);
             Parts = new PartTracker(def, brokenParts);
+            Reactions = new MonsterReactions(def);
             if (def.id == "mirejaw") Brain.AttackFilter = a => a.id != "venom_spray" || !(Parts.Broken.Contains("gland_l") && Parts.Broken.Contains("gland_r"));
             cc = GetComponent<CharacterController>();
             Anim = new AnimationDriver(Visual, def.model);
@@ -60,7 +68,7 @@ namespace FH.Game
             chest = WorldKit.Find(Visual, "chest");
             head = WorldKit.Find(Visual, "head");
             eyes = Visual.GetComponentsInChildren<Renderer>().FirstOrDefault(r => r.name.Contains("Eyes"));
-            if (eyes) eyesBase = eyes.sharedMaterial;
+            if (eyes) eyesBase = calmEyes = eyes.sharedMaterial;
             Home = transform.position;
             patrolTarget = Home;
             AttachWeapon();
@@ -122,8 +130,20 @@ namespace FH.Game
         /// <summary>Called after load, unpause, a menu closing, or the player respawning: no attack can start immediately.</summary>
         public void Calm(float seconds) { if (Ready) Brain.AddGrace(seconds); }
 
+        MonsterMode lastMode;
+
+        /// <summary>Training target: only stagger and topple timers run (no perception, no attacks, no movement).</summary>
+        void PassiveTick(float dt)
+        {
+            if (Brain.Mode == MonsterMode.Stagger || Brain.Mode == MonsterMode.Downed)
+                Brain.Tick(dt, new MonsterBrain.Senses { distanceToPlayer = 99, playerAlive = true });
+            else if (Brain.Mode != MonsterMode.Idle && Brain.Mode != MonsterMode.Dead) Brain.Tick(dt, new MonsterBrain.Senses { distanceToPlayer = 99, playerAlive = true, playerHidden = true });
+        }
+
         void OnMode(MonsterMode m)
         {
+            if (lastMode == MonsterMode.Downed && m != MonsterMode.Dead) { Anim.PlayReverse("Death_A", 1.3f); getUpUntil = Time.time + Anim.Length("Death_A") / 1.3f; }
+            lastMode = m;
             ring.SetActive(m == MonsterMode.Telegraph || m == MonsterMode.Attack);
             previousAttackCenter = AttackCenter;
             if (eyes) eyes.sharedMaterial = m == MonsterMode.Telegraph || m == MonsterMode.Attack ? WorldKit.Glow(new Color(1f, .15f, .05f), 4) : eyesBase;
@@ -140,6 +160,7 @@ namespace FH.Game
                         break;
                     }
                 case MonsterMode.Stagger: Anim.Play("Hit_A", false, .8f, true); break;
+                case MonsterMode.Downed: Anim.Play("Death_A", false, 1.1f, true, .06f); WorldKit.Sound(transform.position, "hit", .5f); break;
                 case MonsterMode.Return: returnBest = float.MaxValue; returnStall = 0; detourFor = 0; Anim.Play("Walking_A", true, Gait(Def.chaseSpeed)); break;
                 case MonsterMode.Dead: Die(); break;
             }
@@ -149,6 +170,17 @@ namespace FH.Game
         {
             if (!Ready || session == null) return;
             if (!session.Simulating) { if (Brain.Alive && Anim.Current.EndsWith("Walking_A")) Anim.Play("Idle"); return; }   // held world: no walking in place
+            // Hitstop: the monster freezes mid-motion for a moment when a heavy blow lands.
+            bool stopped = Time.time < HitstopUntil;
+            Anim.Freeze(stopped);
+            if (stopped) return;
+            if (Passive && Brain.Alive)
+            {
+                Brain.AddGrace(1);
+                if (Brain.Mode != MonsterMode.Stagger && Brain.Mode != MonsterMode.Downed && Time.time > getUpUntil) Anim.Play(Anim.Has("Idle_Combat") ? "Idle_Combat" : "Idle");
+                PassiveTick(Time.deltaTime);
+                return;
+            }
             Tick(Time.deltaTime);
         }
 
@@ -177,10 +209,16 @@ namespace FH.Game
             if (burn > 0 && Brain.TakeStatusDamage(burn)) { OnKilled(); return; }
             Brain.Tick(dt, senses);
             if (!Brain.Alive) { OnKilled(); return; }
+            if (Brain.Mode == MonsterMode.Downed || Time.time < getUpUntil)
+            {
+                vertical = cc.isGrounded ? -2 : Mathf.Max(-20, vertical - dt * 24);
+                cc.Move(Vector3.up * vertical * dt);
+                return;
+            }
 
             Vector3 move = Vector3.zero;
             float speed = 0;
-            float slow = Brain.Status.SpeedMultiplier;
+            float slow = Brain.Status.SpeedMultiplier * (HuntRules ? Reactions.SpeedMultiplier : 1);
             switch (Brain.Mode)
             {
                 case MonsterMode.Patrol:
@@ -285,13 +323,44 @@ namespace FH.Game
             if (!string.IsNullOrEmpty(statusId) && session.Core.Db.Statuses.TryGetValue(statusId, out var st)) Brain.Status.Add(st, statusBuildup);
             bool killed = Brain.TakeHit(hit);
             hurtFlash = .12f;
-            WorldKit.Burst(point, hit.WeakPoint ? new Color(1f, .8f, .3f) : new Color(.85f, .7f, .45f), hit.WeakPoint ? 14 : 8);
-            WorldKit.Sound(point, "hit", hit.WeakPoint ? .4f : .25f);
-            WorldKit.DamageNumber(point + Vector3.up * .3f, hit.Damage, hit.WeakPoint, hit.Critical);
+            // Hunt rules: soft hitzones (weak points, or parts taking 1.3x and more) show orange numbers, as in Monster Hunter.
+            float zone = part == null ? 1 : (partBroken && part.brokenDamageMultiplier > 0 ? part.brokenDamageMultiplier : part.damageMultiplier);
+            bool soft = hit.WeakPoint || (HuntRules && zone >= 1.3f);
+            WorldKit.Burst(point, soft ? new Color(1f, .8f, .3f) : new Color(.85f, .7f, .45f), soft ? 14 : 8);
+            WorldKit.Sound(point, "hit", soft ? .4f : .25f);
+            WorldKit.DamageNumber(point + Vector3.up * .3f, hit.Damage, soft, hit.Critical);
+            LastHitZone = zone;
+            if (HuntRules && !killed) HuntReact(hit);
             if (Brain.Mode != MonsterMode.Stagger && !killed && Brain.Mode != MonsterMode.Telegraph && Brain.Mode != MonsterMode.Attack)
                 Anim.Play("Hit_A", false, 1.4f, true, .05f);
             session.OnMonsterHit(this, hit, part);
             if (killed) OnKilled();
+        }
+
+        public float LastHitZone { get; private set; } = 1;
+        /// <summary>Stun dealt by the blow being resolved (set by the hunter's move just before the hit lands).</summary>
+        public float PendingStun;
+
+        void HuntReact(HitInfo hit)
+        {
+            bool wasEnraged = Reactions.Enraged;
+            var outcome = Reactions.Hit(hit.Damage, PendingStun, Brain.Health);
+            PendingStun = 0;
+            if (outcome == MonsterReactions.Outcome.Topple)
+            {
+                Brain.Topple(3.5f);
+                session.Hud?.Notify(DisplayName + " is down! Attack!", NoticeKind.Reward);
+                session.CameraRig.Shake(.3f);
+            }
+            else if (outcome == MonsterReactions.Outcome.Flinch) Brain.Flinch(.55f);
+            Brain.CooldownScale = Reactions.CooldownMultiplier;
+            if (Reactions.Enraged && !wasEnraged)
+            {
+                session.Hud?.Notify(DisplayName + " is enraged!", NoticeKind.Warning);
+                if (eyes) eyesBase = WorldKit.Glow(new Color(1f, .15f, .05f), 4);
+                if (eyes) eyes.sharedMaterial = eyesBase;
+            }
+            else if (!Reactions.Enraged && wasEnraged && eyes) { eyesBase = calmEyes; eyes.sharedMaterial = eyesBase; }
         }
 
         void BreakPart(MonsterPartDef part)

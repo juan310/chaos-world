@@ -29,6 +29,7 @@ namespace FH.Core
         public readonly Dictionary<string, DialogueDef> Dialogues = new Dictionary<string, DialogueDef>();
         public readonly Dictionary<string, AreaDef> Areas = new Dictionary<string, AreaDef>();
         public readonly Dictionary<string, SpawnDef> Spawns = new Dictionary<string, SpawnDef>();
+        public readonly Dictionary<string, HuntMovesetDef> HuntMovesets = new Dictionary<string, HuntMovesetDef>();
         public readonly List<string> Errors = new List<string>();
 
         public static GameDatabase FromJson(params string[] jsonFiles)
@@ -68,6 +69,7 @@ namespace FH.Core
             Put(Skills, p.skills, x => x.id, "skill");
             Put(Attributes, p.attributes, x => x.id, "attribute");
             Put(Vendors, p.vendors, x => x.id, "vendor");
+            Put(HuntMovesets, p.huntMovesets, x => x.id, "hunt moveset");
             Put(Dialogues, p.dialogues, x => x.id, "dialogue");
             Put(Areas, p.areas, x => x.id, "area");
             Put(Spawns, p.spawns, x => x.id, "spawn");
@@ -128,6 +130,20 @@ namespace FH.Core
                 Ref("item", "Weapon " + w.id, w.id, Items);
                 if (w.combo.Count == 0) Errors.Add("Weapon " + w.id + " has no attacks");
                 foreach (var a in w.combo) if (a.windup < 0 || a.active <= 0 || a.recovery < 0) Errors.Add("Weapon " + w.id + " attack " + a.id + " has invalid timing");
+            }
+            foreach (var set in HuntMovesets.Values)
+            {
+                var ids = new HashSet<string>(set.moves.Select(x => x.id));
+                foreach (var opener in new[] { set.light, set.heavy, set.lightHeavy, set.forwardLight, set.drawAttack, set.rollAttack, set.counter })
+                    if (!string.IsNullOrEmpty(opener) && !ids.Contains(opener)) Errors.Add("Hunt moveset " + set.id + " opener '" + opener + "' is not one of its moves");
+                foreach (var mv in set.moves)
+                {
+                    if (string.IsNullOrEmpty(mv.anim)) Errors.Add("Hunt move " + set.id + "." + mv.id + " has no animation");
+                    if (mv.windup < 0 || mv.active <= 0 || mv.recovery < 0) Errors.Add("Hunt move " + set.id + "." + mv.id + " has invalid timing");
+                    foreach (var next in new[] { mv.onLight, mv.onHeavy, mv.onLightHeavy })
+                        if (!string.IsNullOrEmpty(next) && !ids.Contains(next)) Errors.Add("Hunt move " + set.id + "." + mv.id + " routes to unknown move '" + next + "'");
+                }
+                if (set.chargeMultipliers.Count < 3) Errors.Add("Hunt moveset " + set.id + " needs three charge multipliers");
             }
             foreach (var m in Monsters.Values)
             {

@@ -44,7 +44,7 @@ namespace FH.UI
         public override string Title => "";
         public override bool Dim => false;
         public override bool ShowBackHint => false;
-        public override Vector2 Size => new Vector2(560, 640);
+        public override Vector2 Size => new Vector2(560, 700);
         float t;
 
         public override void Build()
@@ -61,6 +61,7 @@ namespace FH.UI
             UiKit.Button(col, "New Game", () => Ui.Push(new SlotScreen(SlotMode.New)));
             var load = UiKit.Button(col, "Load Game", () => Ui.Push(new SlotScreen(SlotMode.Load)));
             load.Enabled(recent > 0, recent > 0 ? null : "No saved games.");
+            UiKit.Button(col, "Proving Grounds  (combat test)", () => S.EnterProvingGrounds());
             UiKit.Button(col, "Settings", () => Ui.Push(new SettingsScreen()));
             UiKit.Button(col, "Controls", () => Ui.Push(new ControlsScreen()));
             UiKit.Button(col, "Quit", () => S.QuitGame(false));
@@ -191,6 +192,15 @@ namespace FH.UI
             var col = UiKit.Column("Pause", Body, 10);
             col.Stretch();
             UiKit.Button(col, "Resume", () => Ui.Close(this));
+            if (S.Proving)
+            {
+                UiKit.Button(col, "Proving ledger", () => { Ui.Close(this); Ui.Push(new ProvingScreen()); });
+                UiKit.Button(col, "Settings", () => Ui.Push(new SettingsScreen()));
+                UiKit.Button(col, "Controls", () => Ui.Push(new ControlsScreen()));
+                UiKit.Button(col, "Leave Proving Grounds", () => S.LeaveProvingGrounds());
+                UiKit.Paragraph(col, "Nothing in the Proving Grounds is saved.", 16, UiKit.Muted);
+                return;
+            }
             bool fighting = S.InFight;
             UiKit.Button(col, "Save Game", () => Ui.Push(new SlotScreen(SlotMode.Save))).Enabled(!fighting, fighting ? "You cannot save in the middle of a fight." : null);
             UiKit.Button(col, "Load Game", () => Ui.Push(new SlotScreen(SlotMode.Load)));
@@ -212,18 +222,19 @@ namespace FH.UI
             var col = UiKit.Column("Controls", Body, 8);
             col.Stretch();
             UiKit.Paragraph(col,
-                "<b>Move</b>  WASD / left stick        <b>Run</b>  Shift (uses stamina)\n" +
-                "<b>Attack</b>  Left mouse / X — press again in rhythm to chain a three-hit combo\n" +
-                "<b>Dodge</b>  Space / B — brief invulnerability; can cancel an attack's recovery\n" +
-                "<b>Spell</b>  Q / Y        <b>Change spell</b>  F\n" +
-                "<b>Lock-on</b>  Tab / middle mouse — the camera frames your target\n" +
-                "<b>Interact</b>  E / A        <b>Items</b>  1-4 (R drinks the first slot)\n" +
-                "<b>Camera</b>  Hold right mouse and drag; mouse wheel zooms\n" +
-                "<b>Pack</b>  I    <b>Hunts</b>  J    <b>Hunter</b>  K    <b>Map</b>  M    <b>Menu / back</b>  Esc / Start\n\n" +
-                "<color=#f5d68c>Hunting tips</color>\n" +
-                "Monsters raise their weapon and their eyes flare red before striking; a red ring marks where the blow lands.\n" +
-                "Step out of the ring or dodge through the swing, then punish the recovery.\n" +
-                "Aim high: helms crack under repeated blows and expose the skull, a weak point.", 21);
+                "<color=#f5d68c>Valley (classic combat)</color>   keyboard  /  Xbox controller\n" +
+                "<b>Move</b> WASD / left stick   <b>Run</b> Shift / RT   <b>Attack</b> Left mouse / Y (press in rhythm: 3-hit combo)\n" +
+                "<b>Dodge</b> Space / A   <b>Spell</b> Q / LT   <b>Change spell</b> F / D-pad down   <b>Lock-on</b> Tab, middle mouse / R3\n" +
+                "<b>Interact</b> E / X   <b>Items</b> 1-4, R / LB   <b>Camera</b> hold right mouse / right stick   <b>Zoom</b> wheel\n" +
+                "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n\n" +
+                "<color=#f5d68c>Proving Grounds (Monster Hunter-style)</color>   the mouse turns the camera\n" +
+                "<b>Light</b> Left mouse / Y  (diagonal, horizontal, overhead; forward + light lunges)\n" +
+                "<b>Heavy</b> Right mouse / B  (hold to charge: level 1 heavy chop, level 2 spinning slash)\n" +
+                "<b>Shield bash</b> both together / Y + B  (stuns toward a topple)   <b>Guard</b> Left Ctrl / RB  (perfect guard, then light: counter)\n" +
+                "<b>Roll</b> Space / A  (cancels a move late in its swing; light right after: roll slash)   <b>Sprint</b> Shift / RT (sheathes)\n" +
+                "<b>Sheathe</b> X key / X   <b>Use item</b> 1-4 / LB, choose with D-pad left/right   <b>Whistle</b> G / D-pad up\n\n" +
+                "<color=#f5d68c>Hunting tips</color>  Watch the raised weapon, red eyes and warning ring; roll through the blow, then punish.\n" +
+                "Orange numbers mean a soft hitzone. Shield bashes and overheads build stun: a toppled monster is wide open.", 19);
             UiKit.Button(col, "Back", () => Ui.Close(this));
         }
     }

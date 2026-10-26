@@ -53,6 +53,7 @@ namespace FH.UI
         readonly List<UiScreen> stack = new List<UiScreen>();
         CanvasScaler scaler;
         RectTransform hudLayer, screenLayer, overlayLayer;
+        public RectTransform HudLayer => hudLayer;
         Image fade;
         bool fading, titleOpen;
         float fadeAlpha;
@@ -166,6 +167,7 @@ namespace FH.UI
             if (fading) return;
             if (titleOpen && stack.Count == 0) return;
             Top?.Tick();
+            if (Top != null && PadNavigate()) return;
             if (InputRouter.MenuDown(GameAction.Pause))
             {
                 if (Top != null) Top.Back();
@@ -181,6 +183,29 @@ namespace FH.UI
                 else if (InputRouter.MenuDown(GameAction.Character)) OpenJournal(JournalTab.Hunter, j);
                 else if (InputRouter.MenuDown(GameAction.Map)) OpenJournal(JournalTab.Map, j);
             }
+        }
+
+        /// <summary>Xbox controller in menus: B goes back, the D-pad moves focus, A confirms. The left stick and A are
+        /// also seen by Unity's legacy joystick input; A is only sent here when that path did not already submit.</summary>
+        bool PadNavigate()
+        {
+            if (InputRouter.UseVirtual || !EventSystem.current) return false;
+            if (GamePad.Down(PadButton.B)) { Top.Back(); return true; }
+            var selected = EventSystem.current.currentSelectedGameObject;
+            if (!selected) return false;
+            var dir = GamePad.Down(PadButton.DPadUp) ? MoveDirection.Up : GamePad.Down(PadButton.DPadDown) ? MoveDirection.Down
+                : GamePad.Down(PadButton.DPadLeft) ? MoveDirection.Left : GamePad.Down(PadButton.DPadRight) ? MoveDirection.Right : MoveDirection.None;
+            if (dir != MoveDirection.None)
+            {
+                ExecuteEvents.Execute(selected, new AxisEventData(EventSystem.current) { moveDir = dir }, ExecuteEvents.moveHandler);
+                return true;
+            }
+            if (GamePad.Down(PadButton.A) && !Input.GetKeyDown(KeyCode.JoystickButton0))
+            {
+                ExecuteEvents.Execute(selected, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler);
+                return true;
+            }
+            return false;
         }
 
         void OpenJournal(JournalTab tab, JournalScreen open)

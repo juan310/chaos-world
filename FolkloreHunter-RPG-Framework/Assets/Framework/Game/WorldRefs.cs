@@ -18,6 +18,9 @@ namespace FH.Game
         public Vector3 CryptOrigin = new Vector3(200, 0, 0);
         public Vector2 CryptHalfSize = new Vector2(9, 15);
         public float CryptFloor => CryptOrigin.y;
+        /// <summary>Proving Grounds: a separate walled ring for testing combat and movement (never saved).</summary>
+        public Vector3 ProvingOrigin = new Vector3(-200, 0, 0);
+        public float ProvingRadius = 26;
         public Rect MapBounds = new Rect(-50, -50, 100, 100);
 
         public Transform Anchor(string id)
@@ -27,6 +30,7 @@ namespace FH.Game
             return a.transform;
         }
 
+        public bool IsInProving(Vector3 p) => Vector2.Distance(new Vector2(p.x, p.z), new Vector2(ProvingOrigin.x, ProvingOrigin.z)) < ProvingRadius + 6;
         public bool IsInCrypt(Vector3 p) => Mathf.Abs(p.x - CryptOrigin.x) < CryptHalfSize.x + 3 && Mathf.Abs(p.z - CryptOrigin.z) < CryptHalfSize.y + 3;
 
         public Vector3 SpawnPosition(SpawnDef sp)

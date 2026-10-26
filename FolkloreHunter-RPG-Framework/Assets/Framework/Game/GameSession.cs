@@ -30,6 +30,9 @@ namespace FH.Game
         public SessionMode Mode { get; private set; } = SessionMode.Title;
         public int Slot { get; private set; } = 1;
         public string CurrentArea { get; private set; } = "home";
+        /// <summary>In the Proving Grounds: the Monster Hunter-style moveset is on, nothing is saved, no rewards.</summary>
+        public bool Proving { get; private set; }
+        public ProvingGrounds ProvingRig { get; private set; }
         public bool Automated { get; private set; }
         public bool Simulating => Mode == SessionMode.Playing && (Ui == null || !Ui.BlocksWorld);
         public Interactable Focus { get; private set; }
@@ -221,7 +224,7 @@ namespace FH.Game
 
         public bool Save(int? slot = null)
         {
-            if (Mode == SessionMode.Title) return false;
+            if (Mode == SessionMode.Title || Proving) return false;   // the Proving Grounds never touch save slots
             if (slot.HasValue) Slot = slot.Value;
             CaptureState();
             try
@@ -240,7 +243,45 @@ namespace FH.Game
 
         public void QuitToTitle(bool save)
         {
+            if (Proving) { LeaveProvingGrounds(); return; }
             if (save) Save();
+            EnterTitle();
+        }
+
+        // ---------------- Proving Grounds ----------------
+        /// <summary>Starts a throwaway hunter in the walled test ring: hunt-style combat on, potions in the pack, nothing
+        /// written to any save slot, world monsters not spawned. Leaving returns to the title.</summary>
+        public void EnterProvingGrounds()
+        {
+            var state = GameCore.NewGameState(Db, "proving-" + DateTime.UtcNow.Ticks);
+            state.player.name = "Proving Hunter";
+            var spawn = World.Anchor("proving_spawn");
+            state.player.x = spawn.position.x; state.player.y = spawn.position.y; state.player.z = spawn.position.z; state.player.yaw = spawn.eulerAngles.y;
+            state.player.areaId = "proving";
+            Proving = true;
+            Slot = 0;
+            Begin(state, true);
+            foreach (var id in new[] { "potion_mooncap", "antidote" }) if (Db.Items.ContainsKey(id)) Core.Inventory.Add(id, 10, ItemSource.Start);
+            var bar = Core.State.player.hotbar;
+            while (bar.Count < 4) bar.Add("");
+            bar[0] = "potion_mooncap"; if (Db.Items.ContainsKey("antidote")) bar[1] = "antidote";
+            if (!Hunter.Hunt) Hunter.Hunt = Hunter.gameObject.AddComponent<HuntFighter>();
+            Hunter.Hunt.enabled = true;
+            Hunter.Hunt.Initialize(this, Hunter, Db.HuntMovesets["sword_shield"]);
+            InputRouter.MouseLook = true;
+            ProvingRig = gameObject.AddComponent<ProvingGrounds>();
+            ProvingRig.Begin(this);
+            CurrentArea = "proving";
+            Hud?.ShowArea("Proving Grounds");
+        }
+
+        public void LeaveProvingGrounds()
+        {
+            if (ProvingRig) { ProvingRig.End(); Destroy(ProvingRig); ProvingRig = null; }
+            if (Hunter.Hunt) Hunter.Hunt.enabled = false;
+            InputRouter.MouseLook = false;
+            Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+            Proving = false;
             EnterTitle();
         }
 
@@ -314,6 +355,7 @@ namespace FH.Game
         public string AreaAt(Vector3 p)
         {
             if (World.IsInCrypt(p)) return "crypt";
+            if (World.IsInProving(p)) return "proving";
             string best = "old_bridge"; float bestD = 999;
             foreach (var a in Db.Areas.Values.Where(a => a.kind != AreaKind.Dungeon))
             {
@@ -357,6 +399,7 @@ namespace FH.Game
 
         void RefreshSpawns(bool initial)
         {
+            if (Proving) return;   // only the monsters spawned from the proving ledger
             foreach (var sp in Db.Spawns.Values)
             {
                 var existing = Monsters.FirstOrDefault(m => m && m.SpawnId == sp.id);
@@ -388,6 +431,14 @@ namespace FH.Game
 
         /// <summary>True while an engaged monster is close enough to matter (saving is refused mid-fight).</summary>
         public bool InFight => Monsters.Any(m => m && m.Alive && m.Brain.Engaged && Vector3.Distance(m.transform.position, Hunter.transform.position) < 25);
+
+        public void DespawnMonster(MonsterActor m)
+        {
+            if (!m) return;
+            if (Hunter.LockTarget == m) Hunter.LockTarget = null;
+            Monsters.Remove(m);
+            Destroy(m.gameObject);
+        }
 
         public MonsterActor SpawnForTest(string monsterId, Vector3 pos)
         {
@@ -431,6 +482,13 @@ namespace FH.Game
         public void OnMonsterKilled(MonsterActor m)
         {
             var def = m.Def;
+            if (Proving)
+            {
+                Hud?.Notify(def.name + " defeated in the Proving Grounds.", NoticeKind.Progress);
+                if (Hunter.LockTarget == m) Hunter.LockTarget = null;
+                MonsterKilledEvent?.Invoke(m);
+                return;
+            }
             if (!m.SpawnId.StartsWith("test_")) Core.Spawns.MarkKilled(m.SpawnId);
             Core.Wallet.Earn(def.gold);
             Core.Progression.AddXp(def.xp);
@@ -486,6 +544,14 @@ namespace FH.Game
         // ---------------- player events ----------------
         public void OnPlayerDefeated()
         {
+            if (Proving)
+            {
+                var spawn = World.Anchor("proving_spawn");
+                Hunter.Revive(SafeGround(spawn.position), spawn.eulerAngles.y);
+                CameraRig.Snap(); Calm(2);
+                Hud?.Notify("Carted in the Proving Grounds. No penalty here.", NoticeKind.Warning);
+                return;
+            }
             int lost = Core.Wallet.LoseFraction(Db.Balance.deathGoldLossFraction);
             Core.State.player.deaths++;
             Core.Clock.Advance(6);
@@ -542,7 +608,7 @@ namespace FH.Game
         /// <summary>Overworld edges and the river (crossed only on the bridge) constrain player movement.</summary>
         public Vector3 ConstrainMove(Vector3 from, Vector3 to)
         {
-            if (World.IsInCrypt(from)) return to;
+            if (World.IsInCrypt(from) || World.IsInProving(from)) return to;
             to.x = Mathf.Clamp(to.x, -43, 43);
             to.z = Mathf.Clamp(to.z, -41, 41);
             if (Mathf.Abs(to.z - WorldBuilder.RiverZ(to.x)) < 1.4f && Mathf.Abs(to.x - 3) > 1.25f) return from;

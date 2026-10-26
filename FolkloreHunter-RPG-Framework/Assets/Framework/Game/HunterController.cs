@@ -30,6 +30,12 @@ namespace FH.Game
         public bool Invulnerable => Time.time >= invulnFrom && Time.time < invulnUntil;
         public float LastDodgeEvade { get; private set; } = -99;
         public Vector3 Velocity { get; private set; }
+        /// <summary>Monster Hunter-style moveset (Proving Grounds until integrated). Null or disabled: classic combat.</summary>
+        public HuntFighter Hunt;
+        public bool HuntStyle => Hunt && Hunt.enabled;
+        public float HitstopUntil;
+        /// <summary>Raised when the blade registers a hit: (monster, damage dealt).</summary>
+        public event System.Action<MonsterActor, HitInfo> BladeHit;
 
         GameSession session;
         Transform hand, footL, footR, sword;
@@ -126,12 +132,14 @@ namespace FH.Game
             var cam = session.CameraRig.Camera.transform;
             Vector3 fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized, right = Vector3.Cross(Vector3.up, fwd);
             Vector3 dir = Vector3.ClampMagnitude(fwd * mv.y + right * mv.x, 1);
+            if (HuntStyle) { Hunt.HandleInput(dir); Tick(dir, Hunt.Sprinting, Time.deltaTime); return; }
             if (InputRouter.Down(GameAction.Attack)) TryAttack();
             if (InputRouter.Down(GameAction.Dodge)) TryDodge(dir);
             if (InputRouter.Down(GameAction.Spell)) TryCast();
             if (InputRouter.Down(GameAction.CycleSpell)) CycleSpell();
             if (InputRouter.Down(GameAction.LockOn)) ToggleLock();
             for (int i = 0; i < 4; i++) if (InputRouter.Down(GameAction.Hotbar1 + i)) UseHotbar(i);
+            if (InputRouter.Down(GameAction.UseItem)) UseHotbar(0);
             Tick(dir, InputRouter.Held(GameAction.Run), Time.deltaTime);
         }
 
@@ -143,11 +151,15 @@ namespace FH.Game
                 Gravity(dt);
                 return;
             }
+            // Hitstop: on a registered blow the hunter freezes mid-swing for a few frames (weight, as in Monster Hunter).
+            bool stopped = Time.time < HitstopUntil;
+            Anim.Freeze(stopped);
+            if (stopped) { Gravity(dt); return; }
             if (knock.sqrMagnitude > 1e-4f)
             {
                 var push = session.ConstrainMove(transform.position, transform.position + knock * dt) - transform.position; push.y = 0;
                 Body.Move(push);
-                knock = Vector3.MoveTowards(knock, Vector3.zero, KnockSpeed / KnockTime * dt);
+                knock = Vector3.MoveTowards(knock, Vector3.zero, knockDecel * dt);
             }
             Stamina.Tick(dt);
             Magic = Mathf.Min(Stats[Stat.MaxMagic], Magic + dt * 1.5f);
@@ -171,7 +183,7 @@ namespace FH.Game
 
             if (castAt > 0 && Time.time >= castAt) { castAt = -1; Launch(); }
 
-            bool locked = Time.time < lockUntil || Time.time < hurtUntil || Attack.Committed;
+            bool locked = Time.time < lockUntil || Time.time < hurtUntil || Attack.Committed || (HuntStyle && Hunt.Locked);
             float speed = 0;
             Vector3 moveDir = Vector3.zero;
             if (Dodging) { moveDir = dodgeDir; speed = 7.2f; }
@@ -179,12 +191,13 @@ namespace FH.Game
             else if (!locked && dir.sqrMagnitude > .01f)
             {
                 bool canRun = run && !Stamina.Exhausted && Stamina.Current > 1;
-                speed = (canRun ? RunSpeed : WalkSpeed) * Stats[Stat.MoveSpeed];
+                speed = (canRun ? RunSpeed : WalkSpeed) * Stats[Stat.MoveSpeed] * (HuntStyle ? Hunt.SpeedScale : 1);
                 if (canRun) Stamina.Drain(RunCost, dt);
                 moveDir = dir;
                 // Pressing into a wall, fence or the river bank: stand instead of running in place (SightForge track).
                 blockedFor = actualSpeed < speed * .25f ? blockedFor + dt : 0;
                 if (blockedFor > .15f) Anim.Play("Idle");
+                else if (HuntStyle && Hunt.LocomotionClip(dir, canRun, out var clip, out var natural2)) { Anim.Play(clip, true, natural2 > .1f ? Mathf.Clamp(speed / natural2, .5f, 2.5f) : 1); }
                 else
                 {
                     float natural = canRun ? runNatural : walkNatural;
@@ -194,9 +207,11 @@ namespace FH.Game
                     if (stepClock <= 0) { stepClock = canRun ? .24f : .36f; WorldKit.Sound(transform.position, "step", .08f); }
                 }
             }
-            else if (!locked && !Attack.Running && !Dodging && castAt < 0) Anim.Play(Anim.Current.Contains("Hit") && Time.time < hurtUntil + .2f ? Anim.Current : "Idle");
+            else if (!locked && !Attack.Running && !Dodging && castAt < 0 && !(HuntStyle && Hunt.OwnsIdlePose)) Anim.Play(Anim.Current.Contains("Hit") && Time.time < hurtUntil + .2f ? Anim.Current : "Idle");
 
-            if (moveDir.sqrMagnitude > .01f && !Attack.Committed && !(LockTarget && Attack.Running))
+            if (HuntStyle && Hunt.FacesTarget(out var faceDir))
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceDir), 1 - Mathf.Exp(-dt * 12));
+            else if (moveDir.sqrMagnitude > .01f && !Attack.Committed && !(LockTarget && Attack.Running) && !(HuntStyle && Dodging && Hunt.KeepFacing))
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 1 - Mathf.Exp(-dt * 15));
             Move(moveDir * speed, dt);
             Gravity(dt);
@@ -211,6 +226,17 @@ namespace FH.Game
         // Hit knockback: speed decays linearly to zero over KnockTime, covering KnockSpeed * KnockTime / 2 = 0.25 m.
         const float KnockSpeed = 2.5f, KnockTime = .2f;
         Vector3 knock;
+        float knockDecel = KnockSpeed / KnockTime;
+
+        /// <summary>A shove that decays to rest over <paramref name="seconds"/> (guard pushback, knockback).</summary>
+        public void Push(Vector3 velocity, float seconds) { knock = velocity; knockDecel = velocity.magnitude / Mathf.Max(.05f, seconds); }
+        public void LockFor(float seconds) => lockUntil = Mathf.Max(lockUntil, Time.time + seconds);
+        public void HurtFor(float seconds) => hurtUntil = Time.time + seconds;
+        public bool Hurt => Time.time < hurtUntil;
+        public void InvulnerableFor(float seconds) { invulnFrom = Time.time; invulnUntil = Mathf.Max(invulnUntil, Time.time + seconds); }
+        public void CancelActions() { Attack.Cancel(); attackBuffered = false; comboIndex = 0; castAt = -1; }
+        public Transform Hand => hand;
+        public Transform SwordTransform => sword;
         float actualSpeed, blockedFor;
 
         void Move(Vector3 velocity, float dt)
@@ -246,6 +272,40 @@ namespace FH.Game
         {
             if (comboIndex + 1 >= weapon.combo.Count) return;
             if (Begin(weapon.combo[comboIndex + 1])) comboIndex++;
+        }
+
+        /// <summary>Hunt moveset: starts a move on the shared deterministic timeline (moves cost no stamina, as in MH).</summary>
+        public bool StartMove(AttackDef a)
+        {
+            if (Dead) return false;
+            if (a.staminaCost > 0 && !Stamina.TrySpend(a.staminaCost)) return false;
+            castAt = -1;
+            Attack.Start(a);
+            prevTipValid = false;
+            Anim.PlayStrike(a.anim, a.windup + a.active * .5f, hand);
+            return true;
+        }
+
+        /// <summary>Hunt roll: in the stick direction; locked on it keeps facing the target and uses the matching
+        /// directional roll (left, right, back). Cancels a move once the move allows it (checked by the caller).</summary>
+        public bool Roll(Vector3 dir, bool keepFacing)
+        {
+            if (Dead || Dodging) return false;
+            if (!Stamina.TrySpend(25)) { session.Hud?.Flash("Too tired to roll."); return false; }
+            CancelActions(); knock = Vector3.zero;
+            dodgeDir = dir.sqrMagnitude > .1f ? dir.normalized : (keepFacing ? -transform.forward : transform.forward);
+            string clip = "Dodge_Forward";
+            if (keepFacing)
+            {
+                float side = Vector3.Dot(dodgeDir, transform.right), front = Vector3.Dot(dodgeDir, transform.forward);
+                clip = Mathf.Abs(side) > Mathf.Abs(front) ? (side > 0 ? "Dodge_Right" : "Dodge_Left") : front < 0 ? "Dodge_Backward" : "Dodge_Forward";
+            }
+            else transform.rotation = Quaternion.LookRotation(dodgeDir);
+            dodgeUntil = Time.time + .42f;
+            invulnFrom = Time.time + .03f;
+            invulnUntil = invulnFrom + Stats[Stat.DodgeWindow];
+            Anim.Play(clip, false, 1.35f, true, .05f);
+            return true;
         }
 
         bool Begin(AttackDef a)
@@ -306,7 +366,10 @@ namespace FH.Game
                 Vector3 point = ClosestOnSegment(box.transform.position, BladeBase, BladeTip);
                 var atk = Attack.Def;
                 bool crit = Random.value * 100 < Stats[Stat.CritChance];
-                monster.ReceiveHit(box, point, (part, broken) => DamageMath.PlayerHit(weapon, atk, Stats, monster.Def, part, broken, crit));
+                HitInfo dealt = default;
+                if (monster.HuntRules && atk is HuntMoveDef hm) monster.PendingStun = hm.koDamage;
+                monster.ReceiveHit(box, point, (part, broken) => dealt = DamageMath.PlayerHit(weapon, atk, Stats, monster.Def, part, broken, crit));
+                BladeHit?.Invoke(monster, dealt);
                 SwingsLanded++;
                 HitLog.Add((Attack.SwingId, monster.InstanceKey));
                 if (HitLog.Count > 200) HitLog.RemoveAt(0);
@@ -399,8 +462,8 @@ namespace FH.Game
             Magic = Mathf.Min(Stats[Stat.MaxMagic], Magic + item.restoreMagic);
             Stamina.Current = Mathf.Min(Stamina.Max, Stamina.Current + item.restoreStamina);
             Attack.Cancel();
-            lockUntil = Time.time + .55f;
-            Anim.Play("Interact", false, 1.6f, true);
+            if (HuntStyle) { lockUntil = Time.time + 1f; Anim.Play("Use_Item", false, 1.2f, true); }   // drinking roots you, as in MH
+            else { lockUntil = Time.time + .55f; Anim.Play("Interact", false, 1.6f, true); }
             WorldKit.Burst(transform.position + Vector3.up, new Color(.4f, .9f, .4f));
             WorldKit.Sound(transform.position, "chime", .2f);
         }
@@ -432,6 +495,7 @@ namespace FH.Game
                 return;
             }
             if (Time.time < hurtUntil - .2f) return;
+            if (HuntStyle && Hunt.TryGuard(attack, from)) return;
             var core = session.Core;
             float dmg = DamageMath.MonsterHit(attack, Stats[Stat.Defense], core.Stats.PlayerResistances());
             Health -= dmg;
@@ -445,8 +509,10 @@ namespace FH.Game
                 Anim.Play("Death_A", false, 1, true, .05f);
                 return;
             }
-            hurtUntil = Time.time + .42f;
+            GamePad.Rumble(.7f, .45f, .25f);
             var away = transform.position - from; away.y = 0;
+            if (HuntStyle) { Hunt.React(Reactions.For(attack, dmg), away.sqrMagnitude > .01f ? away.normalized : -transform.forward); return; }
+            hurtUntil = Time.time + .42f;
             if (away.sqrMagnitude > .01f) knock = away.normalized * KnockSpeed;   // 0.25 m pushed over 0.2 s, not one frame
             Anim.Play("Hit_A", false, 1.3f, true, .05f);
         }
