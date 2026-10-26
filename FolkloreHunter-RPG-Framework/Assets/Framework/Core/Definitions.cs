@@ -136,6 +136,10 @@ namespace FH.Core
         public List<MonsterAttackDef> attacks = new List<MonsterAttackDef>();
         public List<MonsterPartDef> parts = new List<MonsterPartDef>();
         public string lootTable, weaponVisual;
+        /// <summary>0.9: the model used when <see cref="model"/> is not in the build (the KayKit skeleton the new one replaced).</summary>
+        public string fallbackModel;
+        /// <summary>The model holds its own weapons (made with it from the concept art): no KayKit sword is added.</summary>
+        public bool ownWeapons;
         public int xp, gold;
         public bool boss;
         public string assetStatus = "ready";           // "ready" or a description of the missing dependency

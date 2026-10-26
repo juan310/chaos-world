@@ -45,7 +45,7 @@ namespace FH.Game
             { ("gravebound", "Gravebound"), ("grave_warden", "Grave Warden"), ("thornback", "Thornback"), ("mirejaw", "Mirejaw") };
 
         /// <summary>A monster can be spawned when its data and its 3D model are both present in this build.</summary>
-        public static bool Available(GameSession s, string id) => s.Db.Monsters.TryGetValue(id, out var def) && Resources.Load<GameObject>("Models/" + def.model);
+        public static bool Available(GameSession s, string id) => s.Db.Monsters.TryGetValue(id, out var def) && CharacterFactory.Exists(CharacterFactory.MonsterModel(def));
 
         public void Begin(GameSession s)
         {

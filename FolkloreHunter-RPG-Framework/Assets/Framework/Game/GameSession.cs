@@ -435,11 +435,20 @@ namespace FH.Game
             World.Sun.color = Color.Lerp(new Color(.55f, .62f, .95f), new Color(1, .88f, .69f), day);
             float amb = Mathf.Lerp(.32f, 1, day);
             bool below = World.IsInCrypt(Hunter.transform.position);
-            if (below) amb = .75f;
-            RenderSettings.ambientSkyColor = new Color(.62f, .69f, .70f) * amb;
-            RenderSettings.ambientEquatorColor = new Color(.40f, .45f, .34f) * amb;
-            RenderSettings.ambientGroundColor = new Color(.23f, .24f, .20f) * amb;
-            RenderSettings.fogColor = below ? new Color(.05f, .05f, .06f) : new Color(.63f, .70f, .62f) * Mathf.Lerp(.3f, 1, day);
+            if (below)
+            {
+                // The Warden's crypt: dark stone lit by its braziers (warm, low ambient), as in the lair pictures.
+                RenderSettings.ambientSkyColor = new Color(.30f, .27f, .27f);
+                RenderSettings.ambientEquatorColor = new Color(.24f, .19f, .16f);
+                RenderSettings.ambientGroundColor = new Color(.12f, .09f, .07f);
+            }
+            else
+            {
+                RenderSettings.ambientSkyColor = new Color(.62f, .69f, .70f) * amb;
+                RenderSettings.ambientEquatorColor = new Color(.40f, .45f, .34f) * amb;
+                RenderSettings.ambientGroundColor = new Color(.23f, .24f, .20f) * amb;
+            }
+            RenderSettings.fogColor = below ? new Color(.07f, .055f, .05f) : new Color(.63f, .70f, .62f) * Mathf.Lerp(.3f, 1, day);
             foreach (var l in World.Lanterns) if (l) l.intensity = Mathf.Lerp(3.2f, .9f, day);
         }
 
@@ -476,7 +485,7 @@ namespace FH.Game
             go.transform.rotation = Quaternion.Euler(0, rng.Range(0, 359), 0);
             var actor = go.AddComponent<MonsterActor>();
             actor.SpawnId = sp.id; actor.AreaId = sp.areaId; actor.PatrolRadius = sp.patrolRadius;
-            actor.Visual = CharacterFactory.Create(def.model, go.transform, def.height);
+            actor.Visual = CharacterFactory.Create(CharacterFactory.MonsterModel(def), go.transform, def.height);
             var st = Core.State.world.spawns.FirstOrDefault(x => x.spawnId == sp.id);
             actor.Initialize(this, def, st?.brokenParts);
             return actor;

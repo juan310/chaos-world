@@ -9,6 +9,8 @@ namespace FH.Game
     public class MonsterActor : MonoBehaviour
     {
         public string MonsterId, SpawnId, AreaId;
+        /// <summary>The model shown (the monster's own, or the older one when the new one is not in the build).</summary>
+        public string Model { get; private set; }
         public float PatrolRadius = 3;
         public MonsterDef Def { get; private set; }
         public MonsterBrain Brain { get; private set; }
@@ -73,7 +75,8 @@ namespace FH.Game
             Reactions = new MonsterReactions(def);
             if (def.id == "mirejaw") Brain.AttackFilter = a => a.id != "venom_spray" || !(Parts.Broken.Contains("gland_l") && Parts.Broken.Contains("gland_r"));
             cc = GetComponent<CharacterController>();
-            Anim = new AnimationDriver(Visual, def.model);
+            Model = CharacterFactory.MonsterModel(def);
+            Anim = new AnimationDriver(Visual, Model);
             hand = WorldKit.Find(Visual, "handslot.r");
             chest = WorldKit.Find(Visual, "chest");
             head = WorldKit.Find(Visual, "head");
@@ -97,6 +100,7 @@ namespace FH.Game
         void AttachWeapon()
         {
             if (string.IsNullOrEmpty(Def.weaponVisual) || !hand || WorldKit.Find(hand, Def.weaponVisual + " (held)")) return;
+            if (Def.ownWeapons && Model == Def.model) return;     // the concept model holds its own sword, shield or staff
             var template = Resources.Load<GameObject>("Models/Hunter");
             var src = template ? WorldKit.Find(template.transform, Def.weaponVisual) : null;
             if (!src) return;

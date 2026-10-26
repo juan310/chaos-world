@@ -452,38 +452,17 @@ namespace FH.Game
 
         static void Crypt()
         {
+            // 0.9: the hallway, the great door and the round lair from the supplied pictures (WardenLair).
             var o = refs.CryptOrigin;
-            var g = new GameObject("Warden's Crypt - instanced dungeon").transform; g.SetParent(root); g.position = o;
-            var stone = M("Crypt stone", new Color(.30f, .30f, .28f)); var dark = M("Crypt floor", new Color(.22f, .21f, .19f));
-            float hx = refs.CryptHalfSize.x, hz = refs.CryptHalfSize.y;
-            WorldKit.Box("Crypt floor", o + new Vector3(0, -.25f, 0), new Vector3(hx * 2 + 1, .5f, hz * 2 + 1), dark, g, true);
-            WorldKit.Box("Crypt ceiling", o + new Vector3(0, 5.3f, 0), new Vector3(hx * 2 + 1, .5f, hz * 2 + 1), stone, g, true);
-            WorldKit.Box("Crypt wall north", o + new Vector3(0, 2.5f, hz + .3f), new Vector3(hx * 2 + 1, 5.5f, .6f), stone, g, true);
-            WorldKit.Box("Crypt wall south", o + new Vector3(0, 2.5f, -hz - .3f), new Vector3(hx * 2 + 1, 5.5f, .6f), stone, g, true);
-            WorldKit.Box("Crypt wall west", o + new Vector3(-hx - .3f, 2.5f, 0), new Vector3(.6f, 5.5f, hz * 2 + 1), stone, g, true);
-            WorldKit.Box("Crypt wall east", o + new Vector3(hx + .3f, 2.5f, 0), new Vector3(.6f, 5.5f, hz * 2 + 1), stone, g, true);
-            for (int i = 0; i < 5; i++)
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    WorldKit.Box("Crypt pillar", o + new Vector3(s * 5.2f, 2.5f, -10 + i * 5), new Vector3(.8f, 5f, .8f), stone, g, true);
-                    if (i % 2 == 0) WorldKit.Box("Sarcophagus", o + new Vector3(s * 7.4f, .45f, -8 + i * 4.5f), new Vector3(1.1f, .9f, 2.2f), stone, g, true);
-                }
-            WorldKit.Box("Warden's dais", o + new Vector3(0, .15f, 11), new Vector3(7, .3f, 5), stone, g, true);
-            for (int i = 0; i < 6; i++)
-            {
-                var tp = o + new Vector3(i % 2 == 0 ? -hx + .5f : hx - .5f, 2.6f, -12 + (i / 2) * 11);
-                WorldKit.Orb("Torch flame", tp, .14f, WorldKit.Glow(new Color(1f, .5f, .15f), 3), g);
-                WorldKit.Box("Torch bracket", tp + Vector3.down * .3f, new Vector3(.1f, .5f, .1f), M("Iron", new Color(.25f, .25f, .27f)), g);
-                var l = new GameObject("Torch light").AddComponent<Light>(); l.transform.SetParent(g); l.transform.position = tp;
-                l.type = LightType.Point; l.color = new Color(1f, .6f, .28f); l.range = 12; l.intensity = 2.6f;
-            }
-            Anchor("crypt_inside", o + new Vector3(0, .1f, -12), 0);
-            var exit = new GameObject("Crypt exit stairs").AddComponent<AreaDoor>(); exit.transform.SetParent(g); exit.transform.position = o + new Vector3(0, .1f, -14);
+            WardenLair.Build(root, refs);
+            var g = root.Find("Warden's Crypt - instanced dungeon");
+            Anchor("crypt_inside", o + new Vector3(0, WardenLair.HallFloor + .1f, WardenLair.HallStart + 2.6f), 0);
+            var exit = new GameObject("Crypt exit stairs").AddComponent<AreaDoor>(); exit.transform.SetParent(g); exit.transform.position = o + new Vector3(0, WardenLair.HallFloor + .1f, WardenLair.HallStart + 1.3f);
             exit.TargetArea = "ashen_fields"; exit.Label = "Climb back to the graveyard"; exit.Id = "crypt_exit"; exit.Range = 2.4f;
             exit.Destination = refs.Anchor("crypt_outside");
-            WorldKit.Box("Stair step", o + new Vector3(0, .2f, -14.3f), new Vector3(2.4f, .4f, .8f), stone, g, true);
             foreach (var d in Object.FindObjectsByType<AreaDoor>()) if (d.TargetArea == "crypt") d.Destination = refs.Anchor("crypt_inside");
-            var chest = WorldKit.Box("Warden's coffer", o + new Vector3(5.5f, .35f, 12.5f), new Vector3(1f, .6f, .6f), M("Chest wood", new Color(.38f, .20f, .065f)), g, true);
+            var chest = WorldKit.Box("Warden's coffer", o + new Vector3(6.4f, .35f, 14.6f), new Vector3(1f, .6f, .6f), M("Chest wood", new Color(.38f, .20f, .065f)), g, true);
+            chest.transform.rotation = Quaternion.Euler(0, -30, 0);
             var sc = chest.AddComponent<SupplyChest>(); sc.Id = "crypt_coffer"; sc.Gold = 40;
             sc.Contents.Add(new ItemAmount { itemId = "grave_iron", count = 1 });
             sc.Contents.Add(new ItemAmount { itemId = "potion_mooncap", count = 2 });

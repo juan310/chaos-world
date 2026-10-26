@@ -16,7 +16,7 @@ namespace FH.Game
         public Transform Cottage;
         public List<Transform> CottageParts = new List<Transform>();
         public Vector3 CryptOrigin = new Vector3(200, 0, 0);
-        public Vector2 CryptHalfSize = new Vector2(9, 15);
+        public Vector2 CryptHalfSize = new Vector2(16, 30);   // the Warden's hallway (south) and round lair (north), see WardenLair
         public float CryptFloor => CryptOrigin.y;
         /// <summary>Proving Grounds: a separate walled ring for testing combat and movement (never saved).</summary>
         public Vector3 ProvingOrigin = new Vector3(-200, 0, 0);
