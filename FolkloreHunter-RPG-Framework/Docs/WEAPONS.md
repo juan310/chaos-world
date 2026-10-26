@@ -23,6 +23,14 @@ the Proving Grounds it is never saved and gives no rewards. A walled yard 56 × 
 | A, lance drawn | Hop (unchanged) | |
 | A, bow drawn | Charging sidestep (now with its own step clips) | |
 
+**Perfect evade** (any evasion above, and the katana's Foresight step): when a blow meets the evasion's
+invulnerability within **0.12 s** of pressing A (dodged at the last moment), the hunter gets **+20 stamina** (enough
+to end exhaustion) and time slows to **30 % for 0.6 s**, easing back to normal; "Perfect evade!" flashes and the pad
+gives a light buzz. A dodge that started earlier still evades through its i-frames, without the bonus. The pause
+menu still freezes time and the slow motion resumes when it closes. (Monster Hunter Wilds rewards a well-timed
+dodge with stamina, its Discerning Dodge; the slow motion is this game's own addition.) The overlay counts perfect
+evades and shows SLOW MOTION while it runs.
+
 ## Katana (two-handed) — Monster Hunter's Long Sword
 | Input (Xbox / keyboard+mouse) | Move | Notes |
 |---|---|---|
@@ -53,8 +61,8 @@ RESULTS_PLACEHOLDER
 ## Limits (0.8.0, honest)
 - The katana uses KayKit's two-handed sword clips (chop, slice, stab, spin, spinning) for its moves; only the iai stance
   pose is new. No Spirit Helm Breaker, Focus Strike or Spirit Charge yet; the Red level does not lengthen the blade.
-- Evasions have no "perfect evade" bonus (MH's Discerning Dodge), and the dive has no separate animation (the KayKit
-  jump with a quick stand-up).
+- The dive has no separate animation (the KayKit jump with a quick stand-up). The perfect evade works in the hunt
+  combat (Proving Grounds and Training Range); the classic valley combat is unchanged.
 - The bow's string is a static mesh line; it does not bend as the hand draws.
 - The Training Range hazards are fixed timers, not monsters; they test i-frames, guards and counters, not reading
   a monster's tells.

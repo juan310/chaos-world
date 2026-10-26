@@ -231,6 +231,7 @@ namespace FH.UI
                 "<color=#f5d68c>Proving Grounds and Training Range (Monster Hunter-style)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
                 "<b>All weapons</b>  Evade Space, A: roll; weapon out, stick to the side: side slide, stick back: back-step (both keep facing);\n" +
                 "    sprinting away from a monster: dive (long, very safe, then a moment to get up)   Sprint Shift, RT (sheathes)   Sheathe X\n" +
+                "    Evade at the last moment (the blow lands right as you press): perfect evade, time slows and stamina comes back\n" +
                 "    Items 1-4, LB (D-pad picks)   Whistle G, D-pad up\n" +
                 "<b>Sword and shield</b>  Light LMB, Y (slash, slash, overhead; forward: lunge)   Heavy RMB, B (hold: charge, level 2 spins)\n" +
                 "    Y+B shield bash (stun)   Guard Ctrl, RB (perfect guard, then light: counter)   light right after a roll: roll slash\n" +
