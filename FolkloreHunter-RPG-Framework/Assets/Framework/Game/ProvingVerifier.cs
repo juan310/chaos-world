@@ -37,7 +37,7 @@ namespace FH.Game
                 try { if (!run.MoveNext()) break; current = run.Current; }
                 catch (Exception e) { Check("no exception during verification", false, e.ToString()); break; }
                 yield return current;
-                if (Time.realtimeSinceStartup - started > 300) { Check("verification finished in time", false, "timed out"); break; }
+                if (Time.realtimeSinceStartup - started > 420) { Check("verification finished in time", false, "timed out"); break; }
             }
             GamePad.Inject(null);
             File.WriteAllText(Path.Combine(root, "verification.txt"), string.Join("\n", lines) + "\nFAILURES " + failures + "\nVersion " + Application.version + "  ·  " + DateTime.Now.ToString("u"));
@@ -410,6 +410,270 @@ namespace FH.Game
             yield return Frames(3);
         }
 
+        // ---------------- Training Range: evasions, bow clips and archery, katana, hazards, dummies ----------------
+        void Place(string anchor, float yaw, Vector3 offset = default)
+        {
+            var a = S.World.Anchor(anchor);
+            H.Teleport(S.SafeGround(a.position + offset), yaw);
+            S.CameraRig.Yaw = yaw; S.CameraRig.Pitch = 20; S.CameraRig.Snap();
+        }
+
+        /// <summary>Evade with the stick held the same frame as A (as a player flicks the stick and presses).</summary>
+        IEnumerator Evade(Vector2 stick, PadButton extra = PadButton.None)
+        {
+            Pad(PadButton.A | extra, stick); yield return Frames(2);
+            Pad(extra, Vector2.zero); yield return Frames(1);
+            yield return Until(() => !H.Dodging, 1.2f);
+        }
+
+        RangeHazard Hazard(string name) => RangeHazard.All.FirstOrDefault(h => h && h.name == name);
+
+        /// <summary>Points the camera (and so the crosshair) at a world point from where the camera actually is.</summary>
+        IEnumerator AimAt(Vector3 point)
+        {
+            for (int i = 0; i < 40; i++)
+            {
+                var d = (point - S.CameraRig.Camera.transform.position).normalized;
+                S.CameraRig.Yaw = Mathf.Atan2(-d.x, d.z) * Mathf.Rad2Deg; S.CameraRig.Pitch = Mathf.Asin(-d.y) * Mathf.Rad2Deg;
+                yield return null;
+            }
+        }
+
+        IEnumerator RangeChecks()
+        {
+            S.ProvingRig.SetWeapon("sword_shield");
+            yield return Frames(2);
+            S.SwitchTestArea(true);
+            yield return Wait(1.6f);
+            Check("the ledger takes the hunter to the Training Range (still unsaved test rules)", S.InRange && S.Proving && S.AreaAt(H.transform.position) == "range" && S.World.IsInRange(H.transform.position), S.AreaAt(H.transform.position));
+            var dummies = S.ProvingRig.Dummies.Where(d => d && d.Alive).ToList();
+            Check("the range has four archery targets, three hazards and two passive dummies", RangeTarget.All.Count == 4 && RangeHazard.All.Count == 3 && dummies.Count == 2 && dummies.All(d => d.Passive),
+                  RangeTarget.All.Count + " targets, " + RangeHazard.All.Count + " hazards, " + dummies.Count + " dummies");
+            yield return Snap("r01-training-range");
+
+            // Evasions with the sword and shield drawn, on the measured dodge lane (facing north, the camera behind).
+            Place("range_lane", 0);
+            Hold(PadButton.RB); yield return Wait(.2f); Release(); yield return Wait(.3f);
+            var evades = new List<string>();
+            foreach (var (stick, want, label) in new[] { (new Vector2(1, 0), EvadeKind.SideSlide, "right"), (new Vector2(-1, 0), EvadeKind.SideSlide, "left"), (new Vector2(0, -1), EvadeKind.Backstep, "back") })
+            {
+                H.Stamina.Current = H.Stamina.Max;
+                Vector3 p0 = H.transform.position, f0 = H.transform.forward; int before = F.Evades;
+                bool sawClip = false, sawFrames = false;
+                Pad(PadButton.A, stick); yield return Frames(2);
+                sawClip = H.Anim.Current.Contains(want == EvadeKind.SideSlide ? (stick.x > 0 ? "Dodge_Right" : "Dodge_Left") : "Dodge_Backward");
+                Pad(PadButton.None); yield return Frames(1);
+                while (H.Dodging) { sawFrames |= H.Invulnerable; yield return null; }
+                Vector3 d = H.transform.position - p0; d.y = 0;
+                float along = want == EvadeKind.SideSlide ? Vector3.Dot(d, Vector3.right * Mathf.Sign(stick.x)) : Vector3.Dot(d, Vector3.back);
+                float turned = Vector3.Angle(f0, H.transform.forward);
+                evades.Add(label + " " + along.ToString("0.00") + " m");
+                Check("weapon out, stick " + label + " + A: " + (want == EvadeKind.SideSlide ? "side slide" : "back-step") + " that keeps facing forward",
+                      F.Evades == before + 1 && F.LastEvade == want && sawClip && turned < 8 && along > (want == EvadeKind.Backstep ? 1.2f : 1.7f) && along < 3f && sawFrames,
+                      F.LastEvade + ", " + along.ToString("0.00") + " m, turned " + turned.ToString("0") + ", clip " + H.Anim.Current + ", i-frames " + sawFrames);
+                yield return Wait(.25f);
+            }
+            {
+                H.Stamina.Current = H.Stamina.Max;
+                Vector3 p0 = H.transform.position;
+                yield return Evade(new Vector2(0, 1));
+                float dist = Vector3.Distance(Flat(p0), Flat(H.transform.position));
+                Check("stick forward + A: the full roll (about 3 m)", F.LastEvade == EvadeKind.Roll && dist > 2.4f && dist < 3.6f, F.LastEvade + ", " + dist.ToString("0.00") + " m");
+                evades.Add("roll " + dist.ToString("0.00") + " m");
+            }
+            yield return Snap("r02-dodge-lane");
+            // Dive: sprinting away from a monster close by.
+            var small = dummies.FirstOrDefault(x => x.MonsterId == "gravebound") ?? dummies[0];
+            H.Teleport(S.SafeGround(small.transform.position - Vector3.forward * 3.5f), 180);
+            S.CameraRig.Yaw = 180; S.CameraRig.Snap();
+            H.Stamina.Current = H.Stamina.Max;
+            Pad(PadButton.RT, new Vector2(0, 1));       // run south, away from the dummy (the camera looks south)
+            yield return Wait(1.0f);
+            bool sprint = F.Sprinting && F.Sheathed;
+            Vector3 dv0 = H.transform.position;
+            Pad(PadButton.RT | PadButton.A, new Vector2(0, 1)); yield return Frames(2);
+            Pad(PadButton.None); yield return Frames(1);
+            float diveIframes = 0;
+            while (H.Dodging) { if (H.Invulnerable) diveIframes += Time.deltaTime; yield return null; }
+            float dive = Vector3.Distance(Flat(dv0), Flat(H.transform.position));
+            bool landing = F.Recovering;
+            yield return Snap("r03-dive-landing");
+            Check("sprinting away from a monster, A dives: long (over 3.8 m) with a long invulnerable window, then a landing", sprint && F.LastEvade == EvadeKind.Dive && dive > 3.8f && diveIframes > .4f && landing,
+                  "sprinting " + sprint + ", " + F.LastEvade + ", " + dive.ToString("0.00") + " m, i-frames " + diveIframes.ToString("0.00") + " s, landing " + landing);
+            yield return Until(() => !F.Recovering, 1);
+            Note("evasions: " + string.Join(", ", evades) + ", dive " + dive.ToString("0.00") + " m");
+
+            // Hazards: standing in a slam pad is a hit; rolling through the blow evades it (the i-frames).
+            var quick = Hazard("Quick slam pad");
+            H.Health = H.Stats[Stat.MaxHealth];
+            H.Teleport(S.SafeGround(quick.transform.position), 0); S.CameraRig.Yaw = 0; S.CameraRig.Snap();
+            int struck = quick.Struck, evaded = quick.Evaded; float hp = H.Health;
+            yield return Until(() => quick.Struck > struck, quick.Period + .5f);
+            Check("a slam pad strikes the hunter standing in it (a flinch, health lost)", quick.Struck == struck + 1 && H.Health < hp, (hp - H.Health).ToString("0.0") + " damage");
+            yield return UntilNeutral();
+            H.Teleport(S.SafeGround(quick.transform.position), 0);
+            yield return Until(() => quick.UntilBlow < .1f, quick.Period + .5f);
+            hp = H.Health;
+            yield return Tap(PadButton.A, 2);
+            yield return Wait(.4f);
+            Check("rolling through the slam evades it (no damage, \"Evaded!\")", quick.Evaded == evaded + 1 && H.Health >= hp - .01f, quick.Evaded - evaded + " evaded, " + (hp - H.Health).ToString("0.0") + " damage");
+            yield return UntilNeutral();
+            var log = Hazard("Sweeping log");
+            int logBlows = log.Blows;
+            yield return Until(() => log.Blows > logBlows, log.Period + .5f);
+            Check("the sweeping log telegraphs and sweeps its lane on a timer", log.Blows > logBlows);
+
+            // Bow: held in the left hand, drawn to the cheek with an arrow nocked; archery targets.
+            S.ProvingRig.SetWeapon("bow");
+            yield return Frames(3);
+            var bowT = WorldKit.Find(H.Visual, "Hunt_Bow");
+            Check("the bow rides on the back when sheathed", F.Sheathed && bowT.parent.name == "chest", bowT.parent.name);
+            Place("range_archery", 0);
+            yield return Frames(3);
+            yield return Tap(PadButton.Y);                 // from sheathed: the draw shot
+            yield return Wait(1.3f);
+            Hold(PadButton.Y);
+            yield return Until(() => F.Drawing, .5f);
+            yield return Wait(.5f);
+            var nockR = R("Hunt_NockedArrow");
+            Check("drawing: the bow in the left hand, the Bow_Draw clip, an arrow nocked", F.Drawing && bowT.parent.name.Contains(".l") && H.Anim.Current.Contains("Bow_Draw") && nockR && nockR.enabled,
+                  bowT.parent.name + ", " + H.Anim.Current + ", nocked " + (nockR && nockR.enabled));
+            yield return Snap("r04-bow-draw-range");
+            Release();
+            yield return Until(() => F.Current != null, .5f);
+            Check("the release plays the bow's shot clip", H.Anim.Current.Contains("Bow_Shoot"), H.Anim.Current);
+            yield return Wait(1.2f);
+            Pad(PadButton.A, new Vector2(1, 0)); yield return Frames(2);
+            string stepClip = H.Anim.Current;
+            Pad(PadButton.None); yield return Until(() => !H.Dodging, 1);
+            Check("the charging sidestep plays the bow's own step clip", F.LastEvade == EvadeKind.Sidestep && stepClip.Contains("Bow_Step_R"), F.LastEvade + ", " + stepClip);
+            yield return Wait(1.0f);
+            foreach (var dist in new[] { 10f, 30f })
+            {
+                var target = RangeTarget.All.First(t => Mathf.Approximately(t.Distance, dist));
+                Place("range_archery", 0);
+                yield return Frames(2);
+                Hold(PadButton.RB);
+                yield return Wait(.2f);
+                yield return AimAt(target.Face.position + Vector3.up * (dist > 20 ? .35f : .1f));
+                int hits = target.Hits;
+                Hold(PadButton.RB | PadButton.Y); yield return Wait(1.0f);   // a full draw
+                Hold(PadButton.RB); yield return Wait(.9f);
+                Release(); yield return Wait(.3f);
+                Check("aimed full-draw shot hits the " + dist + " m target", target.Hits > hits, target.Hits - hits + " hits, gold " + target.Golds);
+                if (dist == 30) yield return Snap("r05-archery-30m");
+            }
+
+            // Katana: spirit gauge, spirit combo to the roundslash level-up, foresight and iai counters on the hazards.
+            S.ProvingRig.SetWeapon("katana");
+            yield return Frames(3);
+            var kat = WorldKit.Find(H.Visual, "Hunt_Katana");
+            Check("the ledger puts the two-handed katana on the back (spirit gauge empty)", F.Class == WeaponClass.Katana && F.Sheathed && kat.parent.name == "chest" && R("Hunt_Katana").enabled
+                  && !H.SwordTransform.GetComponent<Renderer>().enabled && !R("Round_Shield").enabled && F.Spirit.Value == 0 && F.SpiritLevel == 0, kat.parent.name);
+            var dm = small; dm.Brain.Health = dm.Def.maxHealth;
+            Face(dm, 2.2f);
+            yield return Tap(PadButton.Y);
+            yield return Until(() => F.Current != null, .5f);
+            Check("Y from sheathed: draw slash, the katana in both hands", CurrentId == "draw_slash" && kat.parent.name != "chest", CurrentId + ", " + kat.parent.name);
+            yield return Snap("r06-katana-draw");
+            yield return UntilNeutral();
+            // Fill the gauge with normal slashes (the spirit route costs about 60).
+            var seenK = new List<string>();
+            for (float t = 0; t < 9 && F.Spirit.Value < 70; t += Time.unscaledDeltaTime)
+            {
+                if (F.Current != null && seenK.LastOrDefault() != CurrentId) seenK.Add(CurrentId);
+                if (F.Current == null || HuntRoutes.CanChain(F.Current, H.Attack.Normalized)) { string b = CurrentId; yield return Tap(F.Current != null && F.Current.id == "overhead" ? PadButton.B : PadButton.Y, 2); yield return Until(() => CurrentId != b, .6f); continue; }
+                yield return null;
+            }
+            Check("katana slashes fill the spirit gauge", F.Spirit.Value >= 60, F.Spirit.Value.ToString("0") + " after " + string.Join(">", seenK.Take(8)));
+            yield return UntilNeutral();
+            // RB x4: Spirit Blade I, II, III, Spirit Roundslash; the landed roundslash raises the level.
+            dm.Brain.Health = dm.Def.maxHealth;
+            Face(dm, 2.2f); yield return Frames(2);
+            var spiritSeen = new List<string>();
+            int rbPresses = 0;
+            yield return Tap(PadButton.RB, 2); rbPresses++;
+            for (float t = 0; t < 5 && F.SpiritLevel == 0; t += Time.unscaledDeltaTime)
+            {
+                if (F.Current != null && spiritSeen.LastOrDefault() != CurrentId) spiritSeen.Add(CurrentId);
+                if (rbPresses < 4 && F.Current != null && HuntRoutes.CanChain(F.Current, H.Attack.Normalized)) { string b = CurrentId; yield return Tap(PadButton.RB, 2); rbPresses++; yield return Until(() => CurrentId != b, .6f); continue; }
+                yield return null;
+            }
+            yield return Wait(.3f);
+            var glow = R("Hunt_KatanaGlow");
+            Check("RB, RB, RB, RB: Spirit Blade I, II, III, then the Spirit Roundslash", spiritSeen.Take(4).SequenceEqual(new[] { "spirit_1", "spirit_2", "spirit_3", "roundslash" }), string.Join(">", spiritSeen));
+            Check("the landed roundslash raises the spirit level and the edge glows", F.SpiritLevel == 1 && glow && glow.enabled, "level " + F.SpiritLevel + ", glow " + (glow && glow.enabled));
+            yield return Snap("r07-spirit-level");
+            yield return UntilNeutral();
+            // Foresight Slash: RB+B just before the slow slam lands: step back through it, then the counter.
+            var slow = Hazard("Slow slam pad");
+            H.Teleport(S.SafeGround(slow.transform.position), 180); S.CameraRig.Yaw = 180; S.CameraRig.Snap();
+            F.Spirit.Spend(Time.time, 100);
+            int fc = F.ForesightCounters, slowEv = slow.Evaded;
+            yield return Until(() => slow.UntilBlow < .12f && slow.UntilBlow > .04f, slow.Period + .5f);
+            yield return Tap(PadButton.RB | PadButton.B, 2);
+            yield return Until(() => F.Current != null, 1f);
+            string fs = CurrentId;
+            yield return Snap("r08-foresight-counter");
+            Check("RB+B as the slam lands: Foresight step, the blow passes through, Foresight Counter, gauge full", F.ForesightCounters == fc + 1 && fs == "foresight_counter" && slow.Evaded == slowEv + 1 && F.Spirit.Value > 90,
+                  fs + ", counters " + (F.ForesightCounters - fc) + ", evaded " + (slow.Evaded - slowEv) + ", gauge " + F.Spirit.Value.ToString("0"));
+            yield return UntilNeutral();
+            H.Teleport(S.SafeGround(slow.transform.position + Vector3.forward * 5), 180);   // off the pad: no blow coming
+            yield return Wait(.3f);
+            yield return Tap(PadButton.RB | PadButton.B, 2);
+            yield return Until(() => F.Current != null, 1f);
+            Check("RB+B with no blow coming: the plain Foresight Slash", CurrentId == "foresight_slash", CurrentId);
+            yield return UntilNeutral();
+            // Iai stance: RB+A; Y: Iai Slash (the gauge refills itself after it lands).
+            dm.Brain.Health = dm.Def.maxHealth;
+            Face(dm, 2.2f); yield return Frames(2);
+            yield return Tap(PadButton.RB | PadButton.A, 2);
+            yield return Frames(3);
+            bool stance = F.IaiStance && H.Anim.Current.Contains("Katana_Iai"), noDodge = !H.Dodging;
+            yield return Snap("r09-iai-stance");
+            Check("RB+A: the iai stance (no roll)", stance && noDodge, H.Anim.Current);
+            int landedK = H.SwingsLanded;
+            yield return Tap(PadButton.Y, 2);
+            yield return Until(() => F.Current != null, .5f);
+            string iai = CurrentId;
+            yield return Wait(.5f);
+            Check("Y in the stance: Iai Slash; once it lands the spirit gauge refills by itself", iai == "iai_slash" && H.SwingsLanded > landedK && F.Spirit.IaiActive(Time.time), iai + ", hits " + (H.SwingsLanded - landedK) + ", iai " + F.Spirit.IaiActive(Time.time));
+            yield return UntilNeutral();
+            // Iai Spirit Slash: in the stance, RB as the slam comes: the blow is caught in the windup and countered.
+            H.Teleport(S.SafeGround(slow.transform.position), 180); S.CameraRig.Yaw = 180; S.CameraRig.Snap();
+            yield return Until(() => slow.UntilBlow < 1.6f && slow.UntilBlow > 1.2f, slow.Period + .5f);
+            yield return Tap(PadButton.RB | PadButton.A, 2);
+            yield return Until(() => slow.UntilBlow < .2f, 2.5f);
+            int sc = F.SpiritCounters, lvl = F.SpiritLevel; hp = H.Health;
+            yield return Tap(PadButton.RB, 2);
+            yield return Until(() => F.SpiritCounters > sc, .6f);
+            string isl = CurrentId;
+            yield return Snap("r10-iai-spirit-counter");
+            Check("RB in the stance as the slam lands: Iai Spirit Slash counters it (no damage, level up)", F.SpiritCounters == sc + 1 && isl == "iai_spirit" && F.SpiritLevel == Mathf.Min(3, lvl + 1) && H.Health >= hp - .01f,
+                  isl + ", counters " + (F.SpiritCounters - sc) + ", level " + lvl + " -> " + F.SpiritLevel + ", damage " + (hp - H.Health).ToString("0.0"));
+            yield return UntilNeutral();
+            // Lateral Fade Slash: Y+B with the stick to the side.
+            Place("range_lane", 0);
+            yield return Frames(2);
+            Vector3 l0 = H.transform.position;
+            Pad(PadButton.Y | PadButton.B, new Vector2(1, 0)); yield return Frames(2); Pad(PadButton.None); yield return Wait(.5f);
+            float lat = Vector3.Dot(Flat(H.transform.position - l0), Vector3.right);
+            Check("Y+B with the stick to the side: Lateral Fade Slash slides about 2.5 m sideways", F.LastMove == "Lateral Fade Slash" && lat > 1.6f, F.LastEvent + ", " + lat.ToString("0.00") + " m");
+            yield return UntilNeutral();
+
+            // Dummies never fall.
+            dm.Brain.Health = dm.Def.maxHealth * .2f;
+            yield return Frames(3);
+            Check("a training dummy is healed before it can fall", dm.Alive && dm.Brain.Health >= dm.Def.maxHealth * .99f, dm.Brain.Health.ToString("0"));
+            Note("range: targets " + string.Join(", ", RangeTarget.All.OrderBy(t => t.Distance).Select(t => t.Distance + " m " + t.Hits)) + "; hazards " + string.Join(", ", RangeHazard.All.Select(h => h.name + " " + h.Blows + " blows, " + h.Evaded + " evaded, " + h.Struck + " struck")));
+
+            S.ProvingRig.SetWeapon("sword_shield");
+            yield return Frames(2);
+            S.SwitchTestArea(false);
+            yield return Wait(1.6f);
+            Check("back to the Proving Grounds from the ledger (Gravebound at the centre again)", !S.InRange && S.World.IsInProving(H.transform.position) && S.ProvingRig.Spawned.Any(x => x && x.MonsterId == "gravebound"));
+        }
+
         HuntMovesetDef Set() => F.Set;
 
         // ---------------- run ----------------
@@ -678,6 +942,7 @@ namespace FH.Game
 
             yield return LanceChecks();
             yield return BowChecks();
+            yield return RangeChecks();
 
             // Menus on the pad: Menu opens pause, B backs out.
             yield return Tap(PadButton.Start);
@@ -691,7 +956,8 @@ namespace FH.Game
             Check("leaving returns to the title with classic controls", S.Mode == SessionMode.Title && !H.HuntStyle && !InputRouter.MouseLook && Cursor.lockState == CursorLockMode.None);
             Check("the Proving Grounds wrote no save files", SaveFiles() == savesBefore, savesBefore + " -> " + SaveFiles());
             var lanceR = WorldKit.Find(H.Visual, "Hunt_Lance").GetComponent<Renderer>(); var bowR = WorldKit.Find(H.Visual, "Hunt_Bow").GetComponent<Renderer>();
-            Check("back on the title the hunter holds sword and shield again (no lance or bow)", H.SwordTransform.GetComponent<Renderer>().enabled && !lanceR.enabled && !bowR.enabled && H.SwordTransform.parent.name != "chest", H.SwordTransform.parent.name);
+            var katR = WorldKit.Find(H.Visual, "Hunt_Katana").GetComponent<Renderer>();
+            Check("back on the title the hunter holds sword and shield again (no lance, bow or katana)", H.SwordTransform.GetComponent<Renderer>().enabled && !lanceR.enabled && !bowR.enabled && !katR.enabled && H.SwordTransform.parent.name != "chest", H.SwordTransform.parent.name);
         }
     }
 }

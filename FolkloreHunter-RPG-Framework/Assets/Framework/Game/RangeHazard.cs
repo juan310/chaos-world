@@ -17,6 +17,9 @@ namespace FH.Game
         public float Damage = 8;
         public Transform Striker, Warning;
         public static bool Enabled = true;
+        public static readonly System.Collections.Generic.List<RangeHazard> All = new System.Collections.Generic.List<RangeHazard>();
+        void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        void OnDisable() => All.Remove(this);
 
         public int Blows { get; private set; }
         public int Evaded { get; private set; }

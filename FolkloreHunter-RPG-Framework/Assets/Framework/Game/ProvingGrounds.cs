@@ -74,7 +74,7 @@ namespace FH.Game
             Dummies.Clear();
             if (!S.InRange) { Spawn("gravebound", true); return; }
             foreach (var t in RangeTarget.All) t.ResetCount();
-            foreach (var h in FindObjectsByType<RangeHazard>(FindObjectsSortMode.None)) h.ResetCount();
+            foreach (var h in RangeHazard.All) h.ResetCount();
             foreach (var (id, anchor) in new[] { ("thornback", "range_dummy_large"), ("gravebound", "range_dummy_small") })
             {
                 var a = S.World.Anchor(anchor);
@@ -239,7 +239,7 @@ namespace FH.Game
                 sb.Append("Targets ");
                 foreach (var t in RangeTarget.All.OrderBy(x => x.Distance)) sb.Append(t.Distance.ToString("0")).Append(" m: ").Append(t.Hits).Append(" (gold ").Append(t.Golds).Append(")  ");
                 sb.Append("  Hazards ").Append(RangeHazard.Enabled ? "on" : "off");
-                foreach (var hz in FindObjectsByType<RangeHazard>(FindObjectsSortMode.None)) sb.Append("  ").Append(hz.name.Replace(" pad", "")).Append(": evaded ").Append(hz.Evaded).Append(", struck ").Append(hz.Struck);
+                foreach (var hz in RangeHazard.All) sb.Append("  ").Append(hz.name.Replace(" pad", "")).Append(": evaded ").Append(hz.Evaded).Append(", struck ").Append(hz.Struck);
                 sb.Append('\n');
             }
             var ls = GamePad.LeftStick; var rs = GamePad.RightStick;

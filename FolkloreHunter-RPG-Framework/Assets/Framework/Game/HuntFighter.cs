@@ -114,7 +114,7 @@ namespace FH.Game
             CancelStates();
             bow = set.Class == WeaponClass.Bow ? new BowCharge(set) : null;
             Spirit = set.Class == WeaponClass.Katana ? new SpiritGauge() : null;
-            shownGlow = -1;
+            shownGlow = -99;     // Equip just switched every katana renderer on: the glow is re-decided next frame
             dodges.Reset();
             foreach (var kv in loadouts)
                 foreach (var p in kv.Value)
@@ -538,6 +538,7 @@ namespace FH.Game
 
         void UpdateIai(Vector3 dir, float now)
         {
+            if (now <= iaiStart) return;     // the press that opened the stance is not also its follow-up
             if (dir.sqrMagnitude > .05f) H.transform.rotation = Quaternion.Slerp(H.transform.rotation, Quaternion.LookRotation(dir), 1 - Mathf.Exp(-Time.deltaTime * 3));
             if (InputRouter.Down(GameAction.Attack)) { IaiStance = false; Execute(Set.Move(Set.iaiSlash), dir); return; }
             if (InputRouter.Down(GameAction.Guard)) { IaiStance = false; Execute(Set.Move(Set.iaiSpiritSlash), dir); return; }
