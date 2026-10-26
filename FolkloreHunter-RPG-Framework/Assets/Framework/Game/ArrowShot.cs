@@ -90,8 +90,8 @@ namespace FH.Game
                 Destroy(gameObject);
                 return;
             }
-            bool ground = !shot.pierce && Physics.Linecast(from, transform.position, out var hitInfo, Layers.WorldMask, QueryTriggerInteraction.Ignore);
-            if (ground)
+            RaycastHit hitInfo = default;
+            if (!shot.pierce && Physics.Linecast(from, transform.position, out hitInfo, Layers.WorldMask, QueryTriggerInteraction.Ignore))
             {
                 transform.position = hitInfo.point;
                 if (shot.arc) WorldKit.Burst(hitInfo.point + Vector3.up * .1f, new Color(.85f, .75f, .55f), 4);
