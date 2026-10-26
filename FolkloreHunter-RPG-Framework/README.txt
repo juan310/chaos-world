@@ -1,6 +1,21 @@
-FOLKLORE HUNTER: RISE OF THE ESTATE - RPG FRAMEWORK BUILD 0.7.0 (PROVING GROUNDS: LANCE AND BOW)
+FOLKLORE HUNTER: RISE OF THE ESTATE - RPG FRAMEWORK BUILD 0.8.0 (KATANA, EVASIONS, TRAINING RANGE, PALAMUTE-STYLE HOUND)
 Isolated Unity 6 (6000.6.7f1) project built from the approved 3D sample. The sample, its two review
 builds, the 2D project and Astralwilds are untouched.
+
+NEW IN 0.8.0 - details: Docs\WEAPONS.md (top sections)
+ - Training Range (title menu, or the ledger's travel button): archery targets at 10/20/30/40 m, unkillable training
+   dummies, dodge hazards (two slam pads, a sweeping log) and a dodge lane marked every metre. Never saved.
+ - Katana (two-handed, Monster Hunter's long sword): spirit gauge, Spirit Blade combo to the Spirit Roundslash
+   (levels white/yellow/red, the edge glows), Foresight Slash (RB+B), iai stance (RB+A: Iai Slash, Iai Spirit Slash).
+ - Evasions: roll, side slide and back-step (keep facing), dive when sprinting away; a perfect evade (dodged at the
+   last moment) slows time briefly and gives back 20 stamina.
+ - Bow animated like Monster Hunter's archer: held in the left hand, drawn to the cheek, nocked arrow, canted power
+   shot, upward arc shot, Dragon Piercer, step clips.
+ - The Briarhound fights and rides like the Palamute and thinks: bite/slash/spin combo, pounce, flanks across the
+   monster, hops clear of wind-ups, punishes openings, cuts soft parts, steers round obstacles, keeps out of your
+   attacks; ridden: lope, RT dash, RB drift, Y attacks, A sidestep, runs to a locked target, sidesteps wind-ups.
+ - Movement at Monster Hunter pace in the hunt combat (jog 3.6 m/s, sprint 5.2 m/s, was 1.6 / 2.4), attacks on the
+   press, quicker turning, tighter camera. Claude Eyes now reviews the hunter's clips as well as the hound's.
 
 NEW IN 0.7.0 - details: Docs\WEAPONS.md
 Two more Monster Hunter-style weapons in the Proving Grounds, picked at the ledger (Weapon):
