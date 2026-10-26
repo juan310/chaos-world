@@ -126,8 +126,9 @@ namespace FH.Game
             }
 
             // Attacks: Y and B pressed together (within 70 ms) are the shield bash.
-            if (InputRouter.Down(GameAction.Attack)) pendingLight = now;
-            if (InputRouter.Down(GameAction.HeavyAttack)) pendingHeavy = now;
+            // The first press opens the 70 ms window; mashing must not keep pushing it back.
+            if (InputRouter.Down(GameAction.Attack) && pendingLight < 0) pendingLight = now;
+            if (InputRouter.Down(GameAction.HeavyAttack) && pendingHeavy < 0) pendingHeavy = now;
             if (pendingLight >= 0 && pendingHeavy >= 0) { Queue(HuntInput.LightHeavy); pendingLight = pendingHeavy = -1; }
             else if (pendingLight >= 0 && now - pendingLight >= SimultaneousWindow)
             {

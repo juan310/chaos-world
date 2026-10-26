@@ -153,7 +153,7 @@ namespace FH.Game
             Check("late in the swing the roll cancels it", H.Dodging, CurrentId);
             yield return Until(() => !H.Dodging, 1);
             yield return Tap(PadButton.Y, 2);
-            yield return Frames(4);
+            yield return Until(() => F.Current != null, .4f);
             Check("Y right after a roll is the roll slash", CurrentId == "roll_slash", CurrentId);
             yield return UntilNeutral();
 
@@ -214,7 +214,7 @@ namespace FH.Game
                 yield return Until(() => F.LastEvent == "perfect guard" || F.LastEvent == "guarded" || F.LastReaction != HitReaction.None && H.Hurt, 1.5f);
                 perfect = F.LastEvent == "perfect guard";
                 Release();
-                if (perfect) { yield return Tap(PadButton.Y, 2); yield return Frames(4); }
+                if (perfect) { yield return Tap(PadButton.Y, 2); yield return Until(() => F.Current != null, .4f); }
                 else yield return Wait(.8f);
             }
             Check("raising the guard just before the blow is a perfect guard", perfect, F.LastEvent);
@@ -238,9 +238,9 @@ namespace FH.Game
             // Monster reactions: flinch from damage, topple from stun, enrage below half health.
             S.ProvingRig.ClearMonsters();
             m = Target();
-            Face(m, 1.7f);
+            Face(m, 1.3f);
             int flinches = m.Reactions.Flinches;
-            for (int i = 0; i < 4 && m.Reactions.Flinches == flinches; i++) { yield return Tap(PadButton.Y); yield return UntilNeutral(); m.Brain.Health = m.Def.maxHealth; Face(m, 1.7f); }
+            for (int i = 0; i < 4 && m.Reactions.Flinches == flinches; i++) { yield return Tap(PadButton.Y); yield return UntilNeutral(); m.Brain.Health = m.Def.maxHealth; Face(m, 1.3f); }
             Check("enough damage makes the monster flinch", m.Reactions.Flinches > flinches, m.Reactions.Flinches.ToString());
             bool downed = false;
             for (int i = 0; i < 4 && !downed; i++)
@@ -253,7 +253,7 @@ namespace FH.Game
             yield return Snap("p07-topple");
             yield return Until(() => m.Brain.Mode != MonsterMode.Downed, 5);
             m.Brain.Health = m.Def.maxHealth * .45f;
-            Face(m, 1.7f);
+            Face(m, 1.3f);
             yield return Tap(PadButton.Y);
             yield return UntilNeutral();
             Check("below half health the monster enrages (attacks sooner)", m.Reactions.Enraged && m.Brain.CooldownScale < 1, m.Brain.Health.ToString("0"));
