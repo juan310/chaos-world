@@ -169,6 +169,43 @@ namespace FH.Game
             float bestPincer = 0;
             for (float t = 0; t < 5; t += Time.unscaledDeltaTime) { bestPincer = Mathf.Max(bestPincer, hound.PincerAngle); if (bestPincer > 110) break; yield return null; }
             Check("between combos the hound takes the flank across the monster from the hunter", bestPincer > 110, "pincer angle " + bestPincer.ToString("0") + " degrees");
+            // Openings: when the monster is toppled right after a combo, the hound goes straight back in (no 2.4 s pause).
+            m = Fresh(m);
+            yield return Until(() => hound.Sequence.Count > 0 && hound.Sequence[hound.Sequence.Count - 1] == "Spin" && !hound.Acting, 8);
+            int pun0 = hound.Punishes, sq0 = hound.Sequence.Count;
+            m.Brain.Topple(3.5f);                       // fixture: the monster is knocked down, as a topple from stun does
+            float toppledAt = Time.time;
+            yield return Until(() => hound.Sequence.Count > sq0, 3);
+            float react = Time.time - toppledAt;
+            Check("a toppled monster is punished at once (the hound skips its pause between combos)", hound.Punishes > pun0 && react < 1.2f, "next strike after " + react.ToString("0.00") + " s (pause " + HoundTactics.ComboCooldown + " s), " + hound.LastEvent);
+            yield return Wait(3.2f);
+            Check("the hound cuts the softest part in reach, not just the nearest", hound.WorthChosen >= hound.WorthNearest && hound.WorthChosen > 0,
+                  "worth chosen " + hound.WorthChosen.ToString("0.0") + " vs nearest " + hound.WorthNearest.ToString("0.0") + ", last part " + hound.LastPartStruck);
+            // Target choice: with no lock, it joins whichever monster the hunter is hitting.
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            var other = S.ProvingRig.Spawn("gravebound");
+            other.Passive = true; other.Brain.Health = other.Def.maxHealth;
+            other.transform.position = S.SafeGround(m.transform.position + Vector3.right * 9);
+            yield return Frames(3);
+            Face(other, 1.8f); yield return Frames(2);
+            F.SetSheathed(false);
+            for (int i = 0; i < 3 && hound.Target != other; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.5f); }
+            yield return Until(() => hound.Target == other, 2);
+            Check("with no lock, the hound joins the monster the hunter is hitting", hound.Target == other, (hound.Target ? hound.Target.DisplayName : "none") + " (" + hound.TargetReason + ")");
+            yield return UntilNeutral();
+            S.ProvingRig.Spawned.Remove(other); S.DespawnMonster(other);
+            yield return Wait(.5f);
+            // Steering: sent round the stone pillar to reach the hunter, without teleporting.
+            var o = S.World.ProvingOrigin;
+            H.Teleport(S.SafeGround(o + new Vector3(0, 0, -9)), 180); S.CameraRig.Yaw = 180; S.CameraRig.Snap();
+            hound.PlaceAt(S.SafeGround(o + new Vector3(0, 0, -19.5f)), 0);
+            int det0 = hound.Detours, warp0 = hound.Warps;
+            var heel = H.transform.position - (H.transform.forward * 2.6f - H.transform.right * 1.8f) * HoundCompanion.Size;
+            yield return Until(() => Vector3.Distance(Flat(hound.transform.position), Flat(heel)) < 2.5f, 8);
+            float arrived = Vector3.Distance(Flat(hound.transform.position), Flat(heel));
+            Check("the hound steers round a pillar to the hunter (no teleport)", arrived < 2.5f && hound.Detours > det0 && hound.Warps == warp0,
+                  arrived.ToString("0.0") + " m from heel, detours " + (hound.Detours - det0) + ", warps " + (hound.Warps - warp0));
+            yield return Snap("p10f-hound-detour");
             // Pounce: from mid range it leaps in and strikes.
             m = Fresh(m);
             var away = Flat(hound.transform.position - m.transform.position).normalized; if (away.sqrMagnitude < .01f) away = m.transform.right;
@@ -222,6 +259,32 @@ namespace FH.Game
             float hopDist = Vector3.Distance(Flat(h0), Flat(hound.transform.position));
             Check("riding, A sidesteps the hound (rider protected, facing kept)", hound.RideHops == hop0 + 1 && hopDist > 1.6f && inv && Mathf.Abs(Mathf.DeltaAngle(f0, hound.transform.eulerAngles.y)) < 10,
                   hopDist.ToString("0.00") + " m, rider invulnerable " + inv);
+            // Locked on from the saddle with the stick let go: the hound runs the rider to the monster and stops at striking range.
+            m = Fresh(m);
+            var off = Flat(hound.transform.position - m.transform.position).normalized; if (off.sqrMagnitude < .01f) off = Vector3.back;
+            hound.PlaceAt(S.SafeGround(m.transform.position + off * (m.Def.bodyRadius + 12)), Quaternion.LookRotation(Vector3.Cross(Vector3.up, off)).eulerAngles.y);
+            S.CameraRig.Yaw = Quaternion.LookRotation(-off).eulerAngles.y; S.CameraRig.Snap();
+            yield return Frames(3);
+            yield return Tap(PadButton.RightStick);
+            bool locked = H.LockTarget == m, ran = false;
+            for (float t = 0; t < 6; t += Time.unscaledDeltaTime) { ran |= hound.AutoRunning; if (ran && !hound.AutoRunning) break; yield return null; }
+            float standOff = Vector3.Distance(Flat(hound.transform.position), Flat(m.transform.position)) - m.Def.bodyRadius;
+            Check("riding, lock on and let go of the stick: the hound runs to the monster and stops in striking range", locked && ran && standOff < HoundTactics.AutoRunStandOff * HoundCompanion.Size + 1 && standOff > 1,
+                  "locked " + locked + ", ran " + ran + ", stopped " + standOff.ToString("0.0") + " m off its body");
+            // A wind-up aimed at the rider: the hound sidesteps by itself and the rider stays on.
+            S.ProvingRig.Invulnerable = true;
+            m.Passive = false; m.Calm(0);
+            int ae0 = hound.AutoEvades;
+            for (float t = 0; t < 14 && hound.AutoEvades == ae0 && H.Riding; t += Time.unscaledDeltaTime) yield return null;
+            yield return Wait(.6f);
+            Check("riding, a monster's wind-up makes the hound sidestep on its own; the rider stays on", hound.AutoEvades > ae0 && H.Riding, "auto sidesteps " + (hound.AutoEvades - ae0) + ", riding " + H.Riding + ", " + hound.LastEvent);
+            m.Passive = true; m.Calm(3); S.ProvingRig.Invulnerable = false; H.Health = H.Stats[Stat.MaxHealth];
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            if (!H.Riding)
+            {
+                H.Teleport(S.SafeGround(hound.transform.position + hound.transform.right * 1.4f * HoundCompanion.Size), hound.transform.eulerAngles.y);
+                F.SetSheathed(true); yield return Frames(3); yield return Tap(PadButton.X); yield return Frames(3);
+            }
             // Dash on a straight, then the same turn dashing and drifting: the drift turns much tighter and leans in.
             hound.PlaceAt(S.SafeGround(S.World.ProvingOrigin + new Vector3(0, 0, -24)), 90);
             S.CameraRig.Yaw = 90; S.CameraRig.Snap();
@@ -247,7 +310,8 @@ namespace FH.Game
             Check("riding costs the hunter no stamina", H.Stamina.Current >= stamina0 - .5f, stamina0.ToString("0") + " -> " + H.Stamina.Current.ToString("0"));
             yield return Tap(PadButton.X);
             yield return Wait(.4f);
-            Note("hound: strikes landed " + hound.Bites + ", pounces " + hound.Pounces + ", evades " + hound.Evades + ", ridden attacks " + hound.RideAttacks + ", sidesteps " + hound.RideHops);
+            Note("hound: strikes landed " + hound.Bites + ", pounces " + hound.Pounces + ", evades " + hound.Evades + ", punishes " + hound.Punishes + ", detours " + hound.Detours + ", warps " + hound.Warps
+                 + ", ridden attacks " + hound.RideAttacks + ", sidesteps " + hound.RideHops + " (+" + hound.AutoEvades + " on its own), last part " + hound.LastPartStruck);
         }
 
         // ---------------- lance ----------------
@@ -379,6 +443,8 @@ namespace FH.Game
             m = Fresh(Target());
             Face(m, 3.5f);
             yield return Frames(3);
+            int lane0 = S.Hound ? S.Hound.LaneClears : 0;
+            if (S.Hound) S.Hound.PlaceAt(S.SafeGround(H.transform.position + H.transform.forward * 1.6f + H.transform.right * .5f), H.transform.eulerAngles.y);   // in the way of the charge
             H.Stamina.Current = H.Stamina.Max; landed = H.SwingsLanded;
             Hold(PadButton.RB); yield return Frames(3);
             yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
@@ -386,6 +452,7 @@ namespace FH.Game
             yield return Wait(1.6f);
             yield return Snap("p14-lance-dash");
             Check("charging through a monster strikes it more than once on one pass", H.SwingsLanded - landed >= 2, (H.SwingsLanded - landed) + " hits in 1.6 s, " + Vector3.Distance(H.transform.position, m.transform.position).ToString("0.0") + " m from it");
+            if (S.Hound) Check("the Briarhound, standing in the charge's path, steps out of the hunter's way", S.Hound.LaneClears > lane0, S.Hound.LastEvent);
             yield return Tap(PadButton.Y);
             yield return Until(() => CurrentId == "dash_finisher", .6f);
             Check("Y during the charge: finishing thrust", CurrentId == "dash_finisher", CurrentId);

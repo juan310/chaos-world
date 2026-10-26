@@ -4,7 +4,9 @@ namespace FH.Core
 {
     // The Briarhound fights and rides like Monster Hunter Rise's Palamute: a three-hit blade combo, a pounce to close
     // distance, a flanking (pincer) position across the monster from the hunter, hopping clear of a monster's wind-up;
-    // ridden, it lopes, dashes, drifts through sharp turns, attacks on the rider's command and sidesteps. Engine-independent.
+    // ridden, it lopes, dashes, drifts through sharp turns, attacks on the rider's command and sidesteps. Its judgement:
+    // which monster to fight, when the monster is open, which part to cut, steering round obstacles; ridden it runs to a
+    // locked target on its own and sidesteps a wind-up aimed at it. Engine-independent.
 
     public enum HoundAction { Follow, Approach, Attack, Pounce, Evade, Reposition }
 
@@ -68,6 +70,38 @@ namespace FH.Core
 
         /// <summary>The next strike of a combo started at index 0, or -1 when the combo is over.</summary>
         public static int NextStrike(int current) => current + 1 < Combo.Length ? current + 1 : -1;
+
+        // ---------------- judgement: what to fight, when to commit, where to cut, how to get there ----------------
+        /// <summary>Which monster the hound fights: the hunter's lock first; then whichever is about to hit the hunter
+        /// (much more so when the hunter is down); then the one the hunter has been hitting; nearer the hunter is better.</summary>
+        public static float TargetScore(bool lockedByHunter, bool threatensHunter, bool hitByHunterRecently, float distanceToHunter, bool hunterDown)
+            => (lockedByHunter ? 100 : 0) + (threatensHunter ? (hunterDown ? 45 : 20) : 0) + (hitByHunterRecently ? 8 : 0) - distanceToHunter * .5f;
+
+        /// <summary>A monster recovering from a swing, staggered or toppled is open: the hound commits at once.</summary>
+        public static bool IsOpening(MonsterMode mode) => mode == MonsterMode.Recover || mode == MonsterMode.Stagger || mode == MonsterMode.Downed;
+
+        /// <summary>Rest after a combo: short while the monster is open or the hunter is down (go all in), else the normal pause.</summary>
+        public static float CooldownAfterCombo(MonsterMode mode, bool hunterDown) => hunterDown ? .4f : IsOpening(mode) ? .6f : ComboCooldown;
+
+        /// <summary>How much a body part is worth cutting: its hitzone, weak points half again, a breakable part not yet broken a bit more.</summary>
+        public static float PartScore(float damageMultiplier, bool weakPoint, bool breakableUnbroken) => damageMultiplier * (weakPoint ? 1.5f : 1) + (breakableUnbroken ? .3f : 0);
+
+        /// <summary>Steering around obstacles: headings (degrees off the wanted direction) tried in order, the side it went
+        /// last first so it does not dither between two gaps.</summary>
+        public static float[] SteerAngles(int sideBias) => sideBias >= 0 ? new[] { 0f, 35, -35, 70, -70, 110, -110 } : new[] { 0f, -35, 35, -70, 70, -110, 110 };
+
+        /// <summary>The first free heading from <see cref="SteerAngles"/>, or null when every way is blocked.</summary>
+        public static float? Steer(Func<float, bool> blocked, int sideBias)
+        {
+            foreach (var a in SteerAngles(sideBias)) if (!blocked(a)) return a;
+            return null;
+        }
+
+        /// <summary>Ridden: a wind-up aimed where the hound stands makes it sidestep on its own (rider protected).</summary>
+        public static bool AutoEvadeRidden(bool danger, bool hopReady, bool acting, bool riderSteeringAway) => danger && hopReady && !acting && !riderSteeringAway;
+
+        /// <summary>Ridden with a lock and the stick let go: the hound runs to the target on its own and stops this far off its body.</summary>
+        public const float AutoRunStandOff = 3.2f;
 
         // ---------------- ridden ----------------
         /// <summary>Ridden speeds as fractions of the gallop: walk under half stick, lope at full stick, dash on RT.</summary>
