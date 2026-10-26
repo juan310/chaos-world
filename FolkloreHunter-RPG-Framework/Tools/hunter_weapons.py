@@ -404,3 +404,56 @@ def place_bow(rig, bow, nocked):
     nocked.parent = rig; nocked.parent_type = 'BONE'; nocked.parent_bone = 'handslot.r'
     P.update(); nocked.matrix_world = N
     P.use(None); P.update()
+
+
+# ---------------- locomotion with a hunter's stride (Monster Hunter pace) ----------------
+def _qpow(q, k):
+    """The rotation q scaled to k times its angle (about the same axis)."""
+    q = q.normalized()
+    if q.w < 0: q = -q
+    ang = 2 * math.acos(max(-1.0, min(1.0, q.w)))
+    if ang < 1e-6: return Quaternion()
+    return Quaternion(Vector((q.x, q.y, q.z)).normalized(), ang * k)
+
+
+def stride_clip(rig, name, base, k_leg, k_arm, lean):
+    """A run with a longer stride: every frame of `base`, each leg and arm bone swings `k` times as far about its own
+    average pose over the cycle (posture kept, swing enlarged), the spine leans forward `lean` degrees, and the hips are
+    lowered or raised so the lowest ankle stays exactly where the base clip put it (the planted foot keeps the ground)."""
+    P = Poser(rig)
+    b = bpy.data.actions[base]; f0, f1 = b.frame_range; n = int(round(f1 - f0))
+    legs = [x for x in ('upperleg.l', 'lowerleg.l', 'upperleg.r', 'lowerleg.r') if x in P.pb]
+    feet = [x for x in ('foot.l', 'foot.r') if x in P.pb]
+    arms = [x for x in ('upperarm.l', 'lowerarm.l', 'upperarm.r', 'lowerarm.r') if x in P.pb]
+    gain = {x: k_leg for x in legs}; gain.update({x: (1 + k_leg) / 2 for x in feet}); gain.update({x: k_arm for x in arms})
+    snaps = [P.snapshot(b, f0 + i) for i in range(n + 1)]
+    mean = {}
+    for nm in gain:
+        ref = snaps[0][nm][1]; acc = Quaternion((0, 0, 0, 0))
+        for sn in snaps:
+            q = sn[nm][1]
+            if q.dot(ref) < 0: q = -q
+            acc = Quaternion((acc.w + q.w, acc.x + q.x, acc.y + q.y, acc.z + q.z))
+        mean[nm] = acc.normalized()
+    keys = []
+    for i in range(n + 1):
+        def fn(P, i=i):
+            P.update(); low0 = min(P.pb[f].head.z for f in feet)
+            for nm, k in gain.items():
+                m = mean[nm]; q = snaps[i][nm][1]
+                if q.dot(m) < 0: q = -q
+                P.pb[nm].rotation_quaternion = m @ _qpow(m.inverted() @ q, k)
+            P.update()
+            if lean: P.turn('spine', (1, 0, 0), lean)
+            low1 = min(P.pb[f].head.z for f in feet)
+            hp = P.pb['hips']; hp.matrix = Matrix.Translation((0, 0, low0 - low1)) @ hp.matrix; P.update()
+        keys.append((i / P.fps, base, i / n, fn))
+    return P.clip(name, keys, loop=True)
+
+
+def locomotion_clips(rig):
+    """Hunt_Jog (full stick) and Hunt_Sprint (RT) from KayKit's Running_A, with the stride a hunter needs to cover
+    ground at Monster Hunter pace without the feet sliding (the chibi stock run moves each foot only about 0.2 m)."""
+    return [stride_clip(rig, 'Hunt_Jog', 'Running_A', 1.45, 1.3, 8),
+            stride_clip(rig, 'Hunt_Sprint', 'Running_A', 1.75, 1.6, 16)]
+
