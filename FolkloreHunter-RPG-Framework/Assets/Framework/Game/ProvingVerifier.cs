@@ -247,7 +247,9 @@ namespace FH.Game
                 Face(m, id == "grave_warden" ? 6 : 4.5f); yield return Frames(4);
                 var props = m.Visual.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith(m.Model + "_") && !r.name.EndsWith("_Body")).Select(r => r.name.Substring(m.Model.Length + 1)).ToList();
                 bool fresh = m.Model == m.Def.model;
-                Check(m.Def.name + ": the model from the skeleton sheet, holding its own weapons", fresh && props.Count > 0, m.Model + (fresh ? "" : " (older model: the new one is not in this build)") + "; weapons " + string.Join("/", props));
+                if (fresh) Check(m.Def.name + ": the model from the skeleton sheet, holding its own weapons", props.Count > 0, m.Model + "; weapons " + string.Join("/", props));
+                else Note(m.Def.name + ": its new model is not in this build (art paused); shown with the older " + m.Model + " model and its sword");
+                Check(m.Def.name + " spawns and stands ready with its model and clips", m.Alive && m.Anim.Has("Idle") && m.Anim.Has("1H_Melee_Attack_Chop"), m.Model);
                 yield return Snap("s01-" + id);
                 if (id == "gravebound_mage")
                 {
