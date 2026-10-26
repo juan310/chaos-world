@@ -140,8 +140,9 @@ Now, in the Proving Grounds and the Training Range (the valley's classic movemen
 ## Claude Eyes: what it caught, what was fixed
 The inspector now reviews the hunter too (`Tools/review_hunter_sightforge.py`): 20 clips with the weapon in hand
 (bow, katana, jog and sprint, evasions), rendered by the real player, plus the hunter's and the hound's movement tracks.
-- **Fixed:** the katana's overhead drove the tip about 0.4 m into the ground (katana now 80 %; it grazes the floor at
-  the end of the chop); the katana's spirit glow showed for a frame at level 0; the dive's get-up started from frames
+- **Fixed:** the katana's overhead drove the tip about 0.4 m into the ground. At 80 % scale it was still 0.27 m under
+  the soles, so a drawn katana is now tilted up about the grip after the pose just enough that its tip rests on the
+  floor (`HuntFighter.KeepBladeOffGround`; the player measures the tip at 0.00 m over the ground through the chop); the katana's spirit glow showed for a frame at level 0; the dive's get-up started from frames
   lying sunk into the floor (the landing now starts past them); the review frames cut off the katana's reach.
 - **False positives explained:** "picture stuck while moving" on the hound (16 recorded frames per gallop stride each
   covered more ground than the check's threshold: the track now records 32) and on the hunter (riding was labelled
@@ -149,7 +150,21 @@ The inspector now reviews the hunter too (`Tools/review_hunter_sightforge.py`): 
   on jumps, spins, rolls and getting up, which leave the ground or turn edge-on by design.
 
 ## Results (0.8.0)
-RESULTS_PLACEHOLDER
+Final runs on the Windows build (commits 4d8eaf1 and 43ccbdc):
+- **Proving Grounds, in the player with the real controls:** 159 checks, 0 failures (43ccbdc). The run before it
+  (4d8eaf1) had 158 checks with 1 failure: the lance charge struck the Gravebound once instead of twice. See Limits.
+- **Classic regressions:** phase 1 128 checks, 0 failures; phase 2 16 checks, 0 failures.
+- **Core rules (NUnit, in the container):** 100 / 100, including HuntBossTests (6) and HoundTacticsTests (7).
+- **Boss checks (all pass):** the Warden is a boss (750 vs 300 health and 5 area attacks); the roar telegraphs and
+  makes the hunter cover their ears; the ground slam's shockwave strikes the hunter 5 m away; a roll through the wave
+  front evades it (0 hits, 1 evaded); three eruptions, one under the hunter, are avoided by moving; the leap smash
+  jumps 8.2 m and lands 0.8 m from where the hunter stood; it enrages (phase 2) and turns desperate (phase 3), roaring
+  each time; the cataclysm's three waves all strike; a potion drunk in front of the Thornback draws its charge;
+  Mirejaw's tail spin strikes a hunter behind it; the Briarhound hops clear of a slam.
+- **Claude Eyes:** hunter 0 confirmed findings in 20 clips (25 "likely", most expected on jumps, spins, rolls and
+  one-shots); hound 0 confirmed, and its negative control (a deliberately broken clip) is still detected. Open
+  "likely" findings, not fixed: the jog and sprint bob about 0.1 m against the ground line in the side view; single
+  frames in the bow's arc shot, the katana slice and the sprint differ in size from their neighbours.
 
 ## Limits (0.8.0, honest)
 - The katana uses KayKit's two-handed sword clips (chop, slice, stab, spin, spinning) for its moves; only the iai stance
@@ -157,6 +172,13 @@ RESULTS_PLACEHOLDER
 - The dive has no separate animation (the KayKit jump with a quick stand-up). The perfect evade works in the hunt
   combat (Proving Grounds and Training Range); the classic valley combat is unchanged.
 - The bow's string is a static mesh line; it does not bend as the hand draws.
+- Foot slide at hunt pace: the planted foot moves at about 70 % of body speed while jogging or sprinting (the chibi
+  legs are short). The check fails if it gets worse; a real fix needs an authored run cycle.
+- The bosses' moves reuse each monster's existing clips at boss timing, plus motion (leap arcs, spins); there are no
+  bespoke roar or slam animations yet.
+- The lance charge against a man-sized monster (the Gravebound): when the charge glances off its side, the lance
+  points past it and the pass strikes once rather than repeatedly. This happened in 1 of the last 5 runs. A toppled
+  monster is struck lying down (checked).
 - The Training Range hazards are fixed timers, not monsters; they test i-frames, guards and counters, not reading
   a monster's tells.
 

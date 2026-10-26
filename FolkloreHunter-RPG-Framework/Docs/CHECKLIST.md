@@ -1,6 +1,6 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
-Build 0.8.0 (Katana, evasions, Training Range, Palamute-style hound, boss monsters, Monster Hunter pace): RESULTS_080
+Build 0.8.0 (Katana, evasions, Training Range, Palamute-style hound, boss monsters, Monster Hunter pace): proving 159/159, classic 128/128 and 16/16, core 100/100, Claude Eyes 0 confirmed (hunter and hound)
 Details, moves and limits: `WEAPONS.md` (top sections).
 
 | 0.8.0 item | Status | Evidence / notes |
@@ -15,6 +15,8 @@ Details, moves and limits: `WEAPONS.md` (top sections).
 | Movement at MH pace: jog 3.6 / sprint 5.2 m/s on stride clips, attacks on the press, tighter camera | Done | verifier movement checks |
 | Foot slide at hunt pace (stock chibi run cycle) | Known limit | measured ~70 % of body speed; reported in verification.txt; a run cycle authored for these speeds is the fix |
 | Monster hurtboxes: parts with a height are capsules | Done | (a couched lance passed under the "legs" sphere) |
+| Katana tip out of the ground (Claude Eyes found it 0.27 m under the soles in the overhead chop) | Done | `HuntFighter.KeepBladeOffGround`; verifier measures the tip at 0.00 m over the ground |
+| Lance charge glancing off a man-sized monster strikes once | Known limit | 1 failure in the last 5 runs; a toppled monster is struck (checked) |
 | Claude Eyes on the hunter's clips and track (plus the hound's) | Done | `Tools/review_hunter_sightforge.py`, `Docs/sightforge-hunter-review.json` |
 | Bespoke roar/slam clips for the quadruped bosses, focus strikes, coatings, the hound in the valley | Missing | next steps |
 
