@@ -389,6 +389,8 @@ namespace FH.Game
                   w.Def.maxHealth.ToString("0") + " vs " + valley.maxHealth.ToString("0") + " health, " + string.Join("/", w.Def.attacks.Select(a => a.id)));
             w.Passive = false;
             S.ProvingRig.Invulnerable = true;            // health refilled; blows still land (counted by the areas)
+            // The Briarhound sits these out: its bites flinch the boss, and a flinch cancels a wind-up (by design).
+            if (S.Hound) { S.Hound.PlaceAt(S.SafeGround(S.World.ProvingOrigin + new Vector3(-30, 0, -20)), 0); S.Hound.enabled = false; }
             F.SetSheathed(true);
             // Roar: ears covered, no damage.
             Face(w, 5); yield return Frames(2);
@@ -401,8 +403,6 @@ namespace FH.Game
             yield return UntilNeutral(3);
             // Shockwave: the ring's front reaches a hunter 5 m away...
             Face(w, 5); yield return Frames(2);
-            if (S.Hound) S.Hound.PlaceAt(S.SafeGround(w.transform.position + w.transform.right * 4f), w.transform.eulerAngles.y);
-            int houndBefore = S.Hound ? S.Hound.BlowsTaken + S.Hound.Evades : 0;
             yield return Force(w, "ground_slam");
             var slam = NewArea("ground_slam");
             yield return Until(() => slam == null || slam.Fired, 2);
@@ -410,7 +410,6 @@ namespace FH.Game
             yield return Snap("b02-shockwave");
             yield return Wait(.6f);
             Check("ground slam: the shockwave ring travels out and strikes the hunter 5 m away", slam && slam.HunterHits > 0, slam ? slam.HunterHits + " hits" : "no area");
-            if (S.Hound) Check("the Briarhound near the slam is caught by it or hops clear", S.Hound.BlowsTaken + S.Hound.Evades > houndBefore, S.Hound.LastEvent);
             yield return UntilNeutral(4);
             // ... and a roll through the wave front evades it.
             Face(w, 5); yield return Frames(2);
@@ -468,13 +467,28 @@ namespace FH.Game
             yield return Wait(1.2f);
             Check("the cataclysm sends three shockwaves in a row", cata && cata.HunterHits >= 2, cata ? cata.HunterHits + " waves struck" : "no area");
             yield return UntilNeutral(4);
+            // The Briarhound beside the Warden when it slams: it hops clear, or the wave knocks it back a step.
+            if (S.Hound)
+            {
+                yield return UntilNeutral(4);
+                w.Brain.Health = w.Def.maxHealth; Face(w, 6); yield return Frames(2);
+                S.Hound.enabled = true;
+                S.Hound.PlaceAt(S.SafeGround(w.transform.position + w.transform.right * 3.5f), w.transform.eulerAngles.y);
+                int houndBefore = S.Hound.BlowsTaken + S.Hound.Evades;
+                yield return Force(w, "ground_slam");
+                var hs = NewArea("ground_slam");
+                yield return Until(() => hs == null || hs.Fired, 2);
+                yield return Wait(1f);
+                Check("the Briarhound beside the slam hops clear of it or is knocked back a step", S.Hound.BlowsTaken + S.Hound.Evades > houndBefore || (hs && hs.HoundHits > 0), S.Hound.LastEvent);
+                yield return UntilNeutral(4);
+            }
             // Thornback: a potion at mid range draws a charge.
             S.ProvingRig.ClearMonsters(); yield return Frames(2);
             var t = S.ProvingRig.Spawn("thornback", true); t.Passive = false;
             F.SetSheathed(true);
             S.ProvingRig.Invulnerable = false; H.Health = H.Stats[Stat.MaxHealth] * .6f;   // hurt, so the potion is drunk
-            Face(t, 7f); yield return Wait(.8f);
-            yield return Until(() => t.Brain.Mode == MonsterMode.Chase, 4);
+            yield return Until(() => t.Brain.Mode == MonsterMode.Chase && t.Brain.Grace <= 0, 6);
+            Face(t, 8f); yield return Frames(2);         // at range, the moment it is free to attack
             yield return Tap(PadButton.LB, 2);           // drink the potion in the selected slot
             yield return Until(() => t.Brain.Mode == MonsterMode.Telegraph, 4);
             var answer = t.Brain.CurrentAttack;
@@ -496,6 +510,7 @@ namespace FH.Game
             S.ProvingRig.ClearMonsters();
             S.ProvingRig.Invulnerable = false; H.Health = H.Stats[Stat.MaxHealth];
             F.SetSheathed(true);
+            if (S.Hound) S.Hound.enabled = true;
             yield return Frames(3);
         }
 
@@ -640,6 +655,7 @@ namespace FH.Game
             yield return Until(() => F.Current != null, .4f);
             Check("RB+Y: guard thrust from behind the shield", CurrentId == "guard_thrust", CurrentId);
             yield return UntilNeutral();
+            Face(warden, 3.6f); yield return Frames(2);    // room to close in (from 2 m the Warden's body stops the dash at once)
             Vector3 g0 = H.transform.position;
             Pad(PadButton.RB, new Vector2(0, 1)); yield return Frames(4);
             yield return Combo(PadButton.RB, PadButton.Y, 3, new Vector2(0, 1));

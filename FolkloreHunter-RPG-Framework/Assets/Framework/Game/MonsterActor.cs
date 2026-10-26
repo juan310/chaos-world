@@ -123,10 +123,20 @@ namespace FH.Game
                 go.transform.localRotation = Quaternion.identity;
                 var ls = bone.lossyScale;
                 go.transform.localScale = new Vector3(1 / Mathf.Max(1e-4f, ls.x), 1 / Mathf.Max(1e-4f, ls.y), 1 / Mathf.Max(1e-4f, ls.z));
-                var col = go.AddComponent<SphereCollider>();
-                col.isTrigger = true;
-                col.radius = group.Max(p => p.radius) * scale;
-                if (group.Any(p => p.height > 0)) col.center = Vector3.zero;
+                // Parts with a height are capsules along the bone (a ribcage, the legs hanging from the hips): as spheres
+                // a low blow (a couched lance) could pass under the "legs" ball at the hips.
+                float height = group.Max(p => p.height) * scale, radius = group.Max(p => p.radius) * scale;
+                if (height > radius * 2)
+                {
+                    var cap = go.AddComponent<CapsuleCollider>();
+                    cap.isTrigger = true; cap.radius = radius; cap.height = height; cap.direction = 1; cap.center = Vector3.zero;
+                }
+                else
+                {
+                    var col = go.AddComponent<SphereCollider>();
+                    col.isTrigger = true;
+                    col.radius = radius;
+                }
                 var hb = go.AddComponent<Hurtbox>();
                 hb.Owner = this; hb.Bone = group.Key; hb.Parts = group.Select(p => p.id).ToList();
                 hurtboxes.Add(hb);
