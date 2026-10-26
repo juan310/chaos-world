@@ -58,8 +58,8 @@ namespace FH.Game
             Anim = new AnimationDriver(Visual, Model);
             Saddle = WorldKit.Find(Visual, "saddle");
             pawL = WorldKit.Find(Visual, "fore_paw.l"); pawR = WorldKit.Find(Visual, "fore_paw.r");
-            float walkNatural = Anim.NaturalSpeed("Walk", pawL, pawR, transform);
-            float gallopNatural = Anim.NaturalSpeed("Gallop", pawL, pawR, transform);
+            float walkNatural = Anim.NaturalSpeed("Walk", pawL, pawR, transform, true);
+            float gallopNatural = Anim.NaturalSpeed("Gallop", pawL, pawR, transform, true);
             if (walkNatural > .3f) WalkSpeed = Mathf.Clamp(walkNatural, 1.6f, 3.2f);
             if (gallopNatural > 1f) GallopSpeed = Mathf.Clamp(gallopNatural, 5.5f, 9f);
             Debug.Log("FH_HOUND walk " + WalkSpeed.ToString("0.00") + " m/s (natural " + walkNatural.ToString("0.00") + "), gallop " + GallopSpeed.ToString("0.00") + " m/s (natural " + gallopNatural.ToString("0.00") + ")");

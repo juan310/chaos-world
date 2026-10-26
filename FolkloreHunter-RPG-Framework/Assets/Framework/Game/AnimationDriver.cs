@@ -122,13 +122,13 @@ namespace FH.Game
         }
 
         /// <summary>Ground speed implied by a locomotion clip, measured from foot travel in character space.</summary>
-        public float NaturalSpeed(string name, Transform footL, Transform footR, Transform space)
+        public float NaturalSpeed(string name, Transform footL, Transform footR, Transform space, bool plantedFeet = false)
         {
             if (strideCache.TryGetValue(name, out var cached)) return cached;
             var st = State(name);
             if (st == null || footL == null || footR == null) return 0;
             var saved = SavePose();
-            const int N = 48;
+            int N = plantedFeet ? 48 : 32;   // the default keeps the original 33 samples exactly
             var z = new float[2, N + 1]; var y = new float[2, N + 1];
             st.enabled = true; st.weight = 1;
             for (int i = 0; i <= N; i++)
@@ -143,8 +143,8 @@ namespace FH.Game
             }
             st.enabled = false;
             RestorePose(saved);
-            // Planted feet (within 2 cm of their lowest point) sweep backwards at the ground speed the clip was authored
-            // for; that is exact for IK-planted clips whatever share of the cycle a foot is down (a gallop's is short).
+            // plantedFeet (IK-planted clips such as the Briarhound's): planted feet (within 2 cm of their lowest point) sweep
+            // backwards at the ground speed the clip was authored for, whatever share of the cycle a foot is down.
             float sum = 0; int n = 0, dt = 0;
             float stride = 0;
             for (int f = 0; f < 2; f++)
@@ -155,8 +155,8 @@ namespace FH.Game
                 for (int i = 0; i < N; i++)
                     if (y[f, i] < low + .02f && y[f, i + 1] < low + .02f && z[f, i + 1] < z[f, i]) { sum += z[f, i] - z[f, i + 1]; dt++; n++; }
             }
-            // Fallback for clips without a clean planted phase: each foot sweeps its stride over about half the cycle.
-            float speed = n >= 6 ? sum / (dt * st.length / N) : stride / (st.length * .5f);
+            // Default (the hunter's and the monsters' clips, unchanged): each foot sweeps its stride over about half the cycle.
+            float speed = plantedFeet && n >= 6 ? sum / (dt * st.length / N) : stride / (st.length * .5f);
             strideCache[name] = speed;
             return speed;
         }
