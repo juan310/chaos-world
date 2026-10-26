@@ -1,5 +1,8 @@
 # Handoff — Folklore Hunter: Rise of the Estate, RPG framework milestone
 
+**Update — build 0.7.0-lance-bow:** the Proving Grounds now offer the Lance and the Bow alongside the sword and
+shield (choose at the ledger). Moves, research notes, results and limits: `WEAPONS.md`.
+
 **Update — build 0.6.0-proving-grounds:** Proving Grounds test ring, hunt-style combat, Xbox controller and the
 Briarhound mount; player `Build-Proving\FolkloreHunterProving.exe`, shortcut "Folklore Hunter RPG - Proving Grounds
 Build". Everything new is in `PROVING-GROUNDS.md` (results, controls, how the Briarhound was made, limits).

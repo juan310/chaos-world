@@ -1,5 +1,16 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
+Build 0.7.0 (Lance and Bow): Core tests 79/79 (dotnet); Proving Grounds verifier PROVING_RESULT; classic play-through CLASSIC_RESULT.
+Details, moves and limits: `WEAPONS.md`.
+
+| 0.7.0 item | Status | Evidence / notes |
+|---|---|---|
+| Lance: mid/high thrust strings, wide sweep, tower-shield guard, guard thrust, guard dash, counter stance and Retribution Thrust, payback thrust, dash attack and finishing thrust, chained hops | Done | `huntMovesets.lance`; WeaponClassTests; verifier lance section; `Captures/Proving/p11-p14` |
+| Bow: charge levels (hold, chained shots, charging sidestep), power shot, arc shot (stun), Dragon Piercer (pierce), aim mode with crosshair | Done | `huntMovesets.bow`; BowCharge tests; verifier bow section; `p15-p18` |
+| Weapon models: bow, lance, quiver, arrows (original), tower shield (KayKit CC0) and derived clips | Done | `Tools/hunter_weapons.py`, `Captures/HunterExport` |
+| Weapon choice at the Proving Grounds ledger | Done | verifier: each weapon's pieces shown, others hidden; classic loadout restored on leaving |
+| Coatings, tracer arrows, focus strikes, sharpness, more lances/bows and upgrades | Missing | next steps |
+
 Build 0.6.0 (Proving Grounds, hunt combat, Xbox controller, the Briarhound mount): Core tests 69/69 (dotnet);
 Proving Grounds verifier 52/52 in the real player with injected Xbox pad input; classic play-through 127/127 and relaunch/continue 16/16 on the same build;
 Claude Eyes on the Briarhound 0 confirmed findings. Details and limits: `PROVING-GROUNDS.md`.
