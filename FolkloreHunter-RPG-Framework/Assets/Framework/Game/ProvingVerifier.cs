@@ -70,7 +70,7 @@ namespace FH.Game
             var o = m.transform.position + m.transform.forward * distance;
             var d = m.transform.position - o; d.y = 0;
             H.Teleport(S.SafeGround(o), Quaternion.LookRotation(d).eulerAngles.y);
-            S.CameraRig.Yaw = H.transform.eulerAngles.y; S.CameraRig.Snap();
+            LookAlong(H.transform.eulerAngles.y);
         }
 
         MonsterActor Target()
@@ -82,6 +82,8 @@ namespace FH.Game
         }
 
         static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
+        /// <summary>The camera behind something facing Unity yaw <paramref name="yaw"/> (the rig's yaw runs the other way).</summary>
+        void LookAlong(float yaw) { S.CameraRig.Yaw = -yaw; S.CameraRig.Snap(); }
         static float Median(List<float> v) { if (v.Count == 0) return 0; var o = v.OrderBy(x => x).ToList(); return o[o.Count / 2]; }
 
         /// <summary>Pose frames of every hound clip (and of the hunter riding a gallop) for the SightForge / Claude Eyes
@@ -139,14 +141,14 @@ namespace FH.Game
             var hide = new List<(GameObject go, int layer)>();
             foreach (var x in H.Visual.GetComponentsInChildren<Transform>(true)) { hide.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; }
             var go = new GameObject("Hunter review camera"); var cam = go.AddComponent<Camera>();
-            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear; cam.orthographic = true; cam.orthographicSize = 1.9f;
-            var rt = new RenderTexture(512, 400, 24); cam.targetTexture = rt;
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear; cam.orthographic = true; cam.orthographicSize = 2.4f;
+            var rt = new RenderTexture(640, 480, 24); cam.targetTexture = rt;     // wide enough for the katana's full reach
             var anim = H.Anim;
             var sets = new[]
             {
                 ("bow", new[] { ("Bow_Draw", "bow_draw"), ("Bow_Shoot", "bow_shoot"), ("Bow_Power_Shoot", "bow_power"), ("Bow_Arc_Shoot", "bow_arc"), ("Bow_Piercer", "bow_piercer"), ("Bow_Step_R", "bow_step"), ("Bow_Aim_Walk", "walk") }),
                 ("katana", new[] { ("2H_Melee_Attack_Chop", "katana_overhead"), ("2H_Melee_Attack_Slice", "katana_slice"), ("2H_Melee_Attack_Stab", "katana_thrust"), ("2H_Melee_Attack_Spin", "katana_roundslash"), ("2H_Melee_Attack_Spinning", "katana_spirit3"), ("Katana_Iai", "katana_iai") }),
-                ("sword_shield", new[] { ("Dodge_Right", "slide"), ("Dodge_Backward", "backstep"), ("Dodge_Forward", "roll"), ("Jump_Full_Short", "dive"), ("Lie_StandUp", "dive_landing") }),
+                ("sword_shield", new[] { ("Hunt_Jog", "run"), ("Hunt_Sprint", "sprint"), ("Dodge_Right", "slide"), ("Dodge_Backward", "backstep"), ("Dodge_Forward", "roll"), ("Jump_Full_Short", "dive"), ("Lie_StandUp", "dive_landing") }),
             };
             int written = 0;
             foreach (var (weapon, clips) in sets)
@@ -170,7 +172,7 @@ namespace FH.Game
             anim.Current = ""; anim.Play("Idle");
             H.enabled = true;
             S.ProvingRig.SetWeapon("sword_shield");
-            Check("hunter pose frames rendered for Claude Eyes (bow, katana, evasions)", written == 18 * 16, written + " frames");
+            Check("hunter pose frames rendered for Claude Eyes (bow, katana, jog and sprint, evasions)", written == 20 * 16, written + " frames");
         }
 
         static IEnumerator Render(Camera cam, RenderTexture rt, string path)
@@ -203,6 +205,7 @@ namespace FH.Game
             m = Fresh(m); m.Passive = true;
             int seq0 = hound.Sequence.Count, hits0 = hound.Bites;
             yield return Until(() => SeqIndex(hound.Sequence.Skip(seq0).ToList(), "Bite", "Slash_R", "Spin") >= 0, 10);
+            yield return Wait(.6f);                      // the spin strikes 0.42 s after it starts
             var seq = hound.Sequence.Skip(seq0).ToList();
             Check("the hound fights in a combo: bite, return slash, spinning slash", SeqIndex(seq, "Bite", "Slash_R", "Spin") >= 0 && hound.Bites - hits0 >= 3,
                   string.Join(">", seq.Take(6)) + ", " + (hound.Bites - hits0) + " hits: " + string.Join("; ", hound.StrikeLog.Skip(Math.Max(0, hound.StrikeLog.Count - 4))));
@@ -254,6 +257,7 @@ namespace FH.Game
             Check("locked on to the training Gravebound again for the next hound checks", H.LockTarget == m);
             // Pounce: from mid range it leaps in and strikes.
             m = Fresh(m);
+            yield return Until(() => hound.PounceReady, 7);   // the earlier pounce's cooldown
             var away = Flat(hound.transform.position - m.transform.position).normalized; if (away.sqrMagnitude < .01f) away = m.transform.right;
             hound.PlaceAt(S.SafeGround(m.transform.position + away * (m.Def.bodyRadius + 6.5f)), Quaternion.LookRotation(-away).eulerAngles.y);
             int p0 = hound.Pounces, b0 = hound.Bites; float gap0 = Vector3.Distance(Flat(hound.transform.position), Flat(m.transform.position));
@@ -291,7 +295,7 @@ namespace FH.Game
             yield return Frames(3);
             Check("mounted again next to the monster", H.Riding, hound.LastEvent);
             hound.PlaceAt(hound.transform.position, Quaternion.LookRotation(Flat(m.transform.position - hound.transform.position)).eulerAngles.y);
-            S.CameraRig.Yaw = hound.transform.eulerAngles.y; S.CameraRig.Snap();
+            LookAlong(hound.transform.eulerAngles.y);
             int r0 = hound.RideAttacks, rb0 = hound.Bites, rs0 = hound.Sequence.Count;
             for (int i = 0; i < 3; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.38f); }
             yield return Until(() => !hound.Acting, 2);
@@ -309,7 +313,7 @@ namespace FH.Game
             m = Fresh(m);
             var off = Flat(hound.transform.position - m.transform.position).normalized; if (off.sqrMagnitude < .01f) off = Vector3.back;
             hound.PlaceAt(S.SafeGround(m.transform.position + off * (m.Def.bodyRadius + 12)), Quaternion.LookRotation(Vector3.Cross(Vector3.up, off)).eulerAngles.y);
-            S.CameraRig.Yaw = Quaternion.LookRotation(-off).eulerAngles.y; S.CameraRig.Snap();
+            LookAlong(Quaternion.LookRotation(-off).eulerAngles.y);
             yield return Frames(3);
             yield return Tap(PadButton.RightStick);
             bool locked = H.LockTarget == m, ran = false;
@@ -333,16 +337,16 @@ namespace FH.Game
             }
             // Dash on a straight, then the same turn dashing and drifting: the drift turns much tighter and leans in.
             hound.PlaceAt(S.SafeGround(S.World.ProvingOrigin + new Vector3(0, 0, -24)), 90);
-            S.CameraRig.Yaw = 90; S.CameraRig.Snap();
+            LookAlong(90);
             float stamina0 = H.Stamina.Current;
             Hold(PadButton.RT, new Vector2(0, 1)); yield return Wait(.8f);
             float y0 = hound.transform.eulerAngles.y;
-            Hold(PadButton.RT, new Vector2(-1, 0)); yield return Wait(.35f);
+            Hold(PadButton.RT, new Vector2(-.7f, -.7f)); yield return Wait(.2f);
             float dashTurn = Mathf.Abs(Mathf.DeltaAngle(y0, hound.transform.eulerAngles.y));
             Hold(PadButton.RT, new Vector2(0, 1)); yield return Wait(.8f);
             float y1 = hound.transform.eulerAngles.y, lean = 0; bool drifted = false;
-            Hold(PadButton.RT | PadButton.RB, new Vector2(-1, 0));
-            for (float t = 0; t < .35f; t += Time.unscaledDeltaTime)
+            Hold(PadButton.RT | PadButton.RB, new Vector2(-.7f, -.7f));
+            for (float t = 0; t < .2f; t += Time.unscaledDeltaTime)
             {
                 drifted |= hound.Drifting;
                 lean = Mathf.Max(lean, Mathf.Abs(Mathf.DeltaAngle(0, hound.Visual.localEulerAngles.z)));
@@ -352,12 +356,68 @@ namespace FH.Game
             yield return Snap("p10e-drift");
             Release(); yield return Wait(.6f);
             Check("riding, RB while dashing drifts: a much tighter turn, leaning into it", drifted && driftTurn > dashTurn * 1.5f && lean > 6,
-                  "in 0.35 s: dash turn " + dashTurn.ToString("0") + ", drift turn " + driftTurn.ToString("0") + " degrees, lean " + lean.ToString("0"));
+                  "in 0.2 s toward 135 degrees: dash turn " + dashTurn.ToString("0") + ", drift turn " + driftTurn.ToString("0") + " degrees, lean " + lean.ToString("0"));
             Check("riding costs the hunter no stamina", H.Stamina.Current >= stamina0 - .5f, stamina0.ToString("0") + " -> " + H.Stamina.Current.ToString("0"));
             yield return Tap(PadButton.X);
             yield return Wait(.4f);
             Note("hound: strikes landed " + hound.Bites + ", pounces " + hound.Pounces + ", evades " + hound.Evades + ", punishes " + hound.Punishes + ", detours " + hound.Detours + ", warps " + hound.Warps
                  + ", ridden attacks " + hound.RideAttacks + ", sidesteps " + hound.RideHops + " (+" + hound.AutoEvades + " on its own), last part " + hound.LastPartStruck);
+        }
+
+        // ---------------- movement feel (Monster Hunter pace) ----------------
+        IEnumerator MovementChecks()
+        {
+            S.ProvingRig.SetWeapon("sword_shield");
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            var o = S.World.ProvingOrigin + new Vector3(-20, 0, -20);
+            H.Teleport(S.SafeGround(o), 45); LookAlong(45);
+            yield return Frames(3);
+            var footL = WorldKit.Find(H.Visual, "foot.l"); var footR = WorldKit.Find(H.Visual, "foot.r");
+            foreach (var (label, button, want, clip) in new[] { ("full stick jogs", PadButton.None, HunterController.JogSpeed, "Hunt_Jog"), ("RT sprints", PadButton.RT, HunterController.SprintSpeed, "Hunt_Sprint") })
+            {
+                H.Stamina.Current = H.Stamina.Max;
+                Hold(button, new Vector2(0, 1));
+                yield return Wait(.5f);
+                var planted = new List<float>(); var body = new List<float>();
+                Vector3 pl = footL.position, pr = footR.position, pb = H.transform.position; float t0 = Time.time; Vector3 start = H.transform.position;
+                for (float t = 0; t < 1.2f; t += Time.unscaledDeltaTime)
+                {
+                    yield return null;
+                    float dt = Time.deltaTime; if (dt <= 0) continue;
+                    float vl = Vector3.Distance(Flat(footL.position), Flat(pl)) / dt, vr = Vector3.Distance(Flat(footR.position), Flat(pr)) / dt;
+                    // The lower foot is the one on the ground: how fast does it slide?
+                    planted.Add(footL.position.y < footR.position.y ? vl : vr);
+                    body.Add(Vector3.Distance(Flat(H.transform.position), Flat(pb)) / dt);
+                    pl = footL.position; pr = footR.position; pb = H.transform.position;
+                }
+                float speed = Vector3.Distance(Flat(start), Flat(H.transform.position)) / Mathf.Max(.01f, Time.time - t0);
+                string playing = H.Anim.Current;
+                Release(); yield return Wait(.3f);
+                Check(label + " at Monster Hunter pace (" + want + " m/s) with its stride clip", Mathf.Abs(speed - want) < want * .12f && playing.Contains(clip), speed.ToString("0.00") + " m/s, " + playing);
+                float slide = Median(planted), bodyV = Median(body);
+                Check(label + ": the foot on the ground stays put (no skating)", slide < bodyV * .45f, "planted foot " + slide.ToString("0.00") + " m/s vs body " + bodyV.ToString("0.00") + " m/s");
+                H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
+            }
+            // Drawn weapon: a slower jog, not the old shuffle.
+            F.SetSheathed(false); yield return Frames(2);
+            Vector3 d0 = H.transform.position;
+            Hold(PadButton.None, new Vector2(0, 1)); yield return Wait(1f); Release();
+            float drawn = Vector3.Distance(Flat(d0), Flat(H.transform.position)) / 1f;
+            Check("weapon drawn, full stick still jogs (about 85 % pace for the sword)", drawn > HunterController.JogSpeed * .7f, drawn.ToString("0.00") + " m/s");
+            yield return Wait(.3f);
+            // Attacks start on the press: no 70 ms wait to see whether the other button follows.
+            var m = Fresh(Target()); Face(m, 1.8f); yield return Frames(3);
+            GamePad.Inject(PadButton.Y); yield return null; yield return null;
+            string onPress = CurrentId;
+            GamePad.Inject(PadButton.None); yield return UntilNeutral();
+            Check("Y starts the attack on the press (within two frames)", onPress != "-", onPress);
+            // ... and B just after Y (inside 70 ms) still makes the Y+B move.
+            Face(m, 1.8f); yield return Frames(3);
+            GamePad.Inject(PadButton.Y); yield return null;
+            GamePad.Inject(PadButton.Y | PadButton.B); yield return Frames(2);
+            GamePad.Inject(PadButton.None); yield return Until(() => CurrentId == "shield_bash", .3f);
+            Check("Y then B a moment later still becomes Y+B (shield bash)", CurrentId == "shield_bash", CurrentId + ", " + F.LastEvent);
+            yield return UntilNeutral();
         }
 
         // ---------------- lance ----------------
@@ -633,7 +693,7 @@ namespace FH.Game
         {
             var a = S.World.Anchor(anchor);
             H.Teleport(S.SafeGround(a.position + offset), yaw);
-            S.CameraRig.Yaw = yaw; S.CameraRig.Pitch = 20; S.CameraRig.Snap();
+            S.CameraRig.Pitch = 20; LookAlong(yaw);
         }
 
         /// <summary>Evade with the stick held the same frame as A (as a player flicks the stick and presses).</summary>
@@ -1164,7 +1224,7 @@ namespace FH.Game
                 Note("rider hips to saddle bone: " + gapMin.ToString("0.000") + "-" + gapMax.ToString("0.000") + " m through the gallop");
                 Check("the rider stays seated through the gallop (hips within 5 cm of a fixed seat)", seatGaps.Count > 0 && gapMax - gapMin < .05f && gapMax < .45f, gapMin.ToString("0.00") + "-" + gapMax.ToString("0.00"));
                 yield return Snap("p09-gallop");
-                Check("RT gallops: much faster than the hunter can run (1.7x or more)", top > H.RunSpeed * 1.7f && hound.Anim.Current.Contains("Gallop"), top.ToString("0.0") + " m/s vs run " + H.RunSpeed.ToString("0.0"));
+                Check("RT gallops: faster than the hunter can sprint (1.25x or more)", top > HunterController.SprintSpeed * 1.25f && hound.Anim.Current.Contains("Gallop"), top.ToString("0.0") + " m/s vs hunter sprint " + HunterController.SprintSpeed.ToString("0.0"));
                 Release();
                 yield return Wait(.6f);
                 yield return Tap(PadButton.X);
@@ -1183,6 +1243,7 @@ namespace FH.Game
                 yield return CaptureHoundPoses(hound);
             }
 
+            yield return MovementChecks();
             yield return LanceChecks();
             yield return BowChecks();
             yield return RangeChecks();

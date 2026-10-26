@@ -75,7 +75,7 @@ namespace FH.Game
         bool skipDodge, skipHeavy, spiritShort;
         int buffedSwing = -1, levelledSwing = -1, moveSerial;
         Transform chest, arrowTemplate, quiver, nocked, katanaGlow;
-        Renderer glowRenderer; int shownGlow = -1;
+        Renderer glowRenderer; int shownGlow = -1; bool katanaScaled;
         const float SimultaneousWindow = .07f, BufferLife = .5f;
 
         /// <summary>A weapon's two pieces (main hand, off hand or back piece) and where each sits in hand and on the back.</summary>
@@ -93,6 +93,8 @@ namespace FH.Game
             var katana = WorldKit.Find(H.Visual, "Hunt_Katana");
             katanaGlow = WorldKit.Find(H.Visual, "Hunt_KatanaGlow");
             if (katana && katanaGlow && katanaGlow.parent != katana) katanaGlow.SetParent(katana, true);   // the edge goes where the blade goes
+            // 80 %: at full length the stock two-handed chop drove the tip about 0.4 m into the ground (Claude Eyes).
+            if (katana && !katanaScaled) { katana.localScale *= .8f; katanaScaled = true; }
             glowRenderer = katanaGlow ? katanaGlow.GetComponent<Renderer>() : null;
             if (loadouts.Count == 0)
             {
@@ -120,6 +122,7 @@ namespace FH.Game
                 foreach (var p in kv.Value)
                     if (p != null && p.t) foreach (var r in p.t.GetComponentsInChildren<Renderer>(true)) r.enabled = kv.Key == set.Class;
             if (arrowTemplate) arrowTemplate.GetComponent<Renderer>().enabled = false;
+            if (glowRenderer) glowRenderer.enabled = false;      // the spirit glow shows only from level 1 (UpdateWeaponVisuals)
             pieces = loadouts.TryGetValue(set.Class, out var ps) ? ps : new Piece[0];
             H.SetBlade((set.Class == WeaponClass.Lance || set.Class == WeaponClass.Katana) && pieces.Length > 0 ? pieces[0].t : H.SwordTransform);
             SetSheathed(true);
@@ -232,17 +235,28 @@ namespace FH.Game
             if (CounterStance) { UpdateCounter(dir, now); return; }
             if (IaiStance) { UpdateIai(dir, now); return; }
 
-            // Attacks: Y and B pressed together (within 70 ms) are the special (shield bash, wide sweep, Dragon Piercer).
-            // The first press opens the 70 ms window; mashing must not keep pushing it back.
+            // Attacks: Y and B pressed together (within 70 ms) are the special (shield bash, wide sweep, Y+B moves).
+            // Melee weapons act on the press (no wait): if the other button follows within the window while the move is
+            // still winding up, it becomes the special instead. The bow still waits the window: its tap or hold decides
+            // a quick shot or a draw.
+            bool instant = Class != WeaponClass.Bow;
+            if (instant && instantAt > 0 && now - instantAt <= SimultaneousWindow
+                && (instantInput == HuntInput.Heavy ? InputRouter.Down(GameAction.Attack) : InputRouter.Down(GameAction.HeavyAttack) && !skipHeavy))
+            {
+                instantAt = -1; pendingLight = pendingHeavy = -1;
+                if (buffered == instantInput || buffered == HuntInput.ForwardLight && instantInput == HuntInput.Light) Queue(HuntInput.LightHeavy);
+                else if (moveSerial == instantSerial + 1 && H.Attack.Running && H.Attack.Phase == AttackPhase.Windup) SwapToSpecial(dir);
+            }
             if (InputRouter.Down(GameAction.Attack) && pendingLight < 0) pendingLight = now;
             if (InputRouter.Down(GameAction.HeavyAttack) && pendingHeavy < 0 && !skipHeavy) pendingHeavy = now;
-            if (pendingLight >= 0 && pendingHeavy >= 0) { Queue(HuntInput.LightHeavy); pendingLight = pendingHeavy = -1; }
-            else if (pendingLight >= 0 && now - pendingLight >= SimultaneousWindow)
+            if (pendingLight >= 0 && pendingHeavy >= 0) { Queue(HuntInput.LightHeavy); pendingLight = pendingHeavy = -1; instantAt = -1; }
+            else if (pendingLight >= 0 && (instant || now - pendingLight >= SimultaneousWindow))
             {
                 bool forward = dir.sqrMagnitude > .25f && Vector3.Dot(dir.normalized, H.transform.forward) > .7f && !H.Attack.Running;
                 Queue(forward ? HuntInput.ForwardLight : HuntInput.Light); pendingLight = -1;
+                MarkInstant(HuntInput.Light);
             }
-            else if (pendingHeavy >= 0 && now - pendingHeavy >= SimultaneousWindow) { Queue(HuntInput.Heavy); pendingHeavy = -1; }
+            else if (pendingHeavy >= 0 && (instant || now - pendingHeavy >= SimultaneousWindow)) { Queue(HuntInput.Heavy); pendingHeavy = -1; MarkInstant(HuntInput.Heavy); }
 
             if (buffered != HuntInput.None && now - bufferedAt > BufferLife) buffered = HuntInput.None;
             if (buffered != HuntInput.None) TryExecute(dir);
@@ -251,6 +265,21 @@ namespace FH.Game
         }
 
         void Queue(HuntInput input) { buffered = input; bufferedAt = Time.time; }
+
+        // Instant presses: what was pressed, when, the move it interrupted (for the Y+B route) and whether the guard was up.
+        float instantAt = -1; HuntInput instantInput; int instantSerial; HuntMoveDef instantPrev; bool instantGuarding;
+        void MarkInstant(HuntInput input) { instantAt = Time.time; instantInput = input; instantSerial = moveSerial; instantPrev = Current; instantGuarding = Guarding; }
+
+        /// <summary>The second button arrived just after the first had already started its move: Y+B after all.</summary>
+        void SwapToSpecial(Vector3 dir)
+        {
+            HuntMoveDef next = instantGuarding && Class == WeaponClass.Lance ? Set.Move(Set.dashAttack)
+                : instantPrev != null ? HuntRoutes.Next(Set, instantPrev, HuntInput.LightHeavy) : HuntRoutes.Opener(Set, HuntInput.LightHeavy, false, 99, 99);
+            if (next == null) return;
+            H.CancelActions();
+            Execute(next, dir);
+            LastEvent = LastMove + " (Y+B)";
+        }
 
         // ---------------- guard (sword and shield, lance) ----------------
         void HandleGuard(float now)
@@ -329,6 +358,7 @@ namespace FH.Game
             {
                 recoverUntil = now + Evade.Spec(Set, EvadeKind.Dive, -1).Recover;
                 H.Anim.Play("Lie_StandUp", false, 2.4f, true, .05f);
+                var getUp = H.Anim.State("Lie_StandUp"); if (getUp != null) getUp.time = getUp.length * .3f;   // its first frames lie sunk into the floor (Claude Eyes)
                 LastEvent = "dive (landing)";
             }
             if (foresightAt > 0)

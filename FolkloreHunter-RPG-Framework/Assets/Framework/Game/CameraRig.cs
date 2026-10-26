@@ -53,8 +53,10 @@ namespace FH.Game
                     Yaw = Mathf.LerpAngle(Yaw, wantYaw, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 3.5f));
                 }
             }
-            target = Vector3.Lerp(target, desired, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 8));
-            Place(1 - Mathf.Exp(-Time.unscaledDeltaTime * 10));
+            // Hunt combat follows tightly (Monster Hunter's camera keeps up with a roll); the valley keeps its softer follow.
+            bool tight = hunter && hunter.HuntStyle;
+            target = Vector3.Lerp(target, desired, 1 - Mathf.Exp(-Time.unscaledDeltaTime * (tight ? 18 : 8)));
+            Place(1 - Mathf.Exp(-Time.unscaledDeltaTime * (tight ? 24 : 10)));
         }
 
         void Place(float blend)

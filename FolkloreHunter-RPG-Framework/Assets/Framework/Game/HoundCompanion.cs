@@ -129,6 +129,8 @@ namespace FH.Game
         {
             if (!S || !S.Simulating) { if (Anim != null && (Anim.Current.EndsWith("Walk") || Anim.Current.EndsWith("Gallop"))) Anim.Play("Idle"); return; }
             float dt = Time.deltaTime;
+            // Unity forgets an ignored pair whenever either collider is switched off and on (a teleport, mounting): re-assert it.
+            if (S.Hunter && S.Hunter.Body && S.Hunter.Body.enabled && cc.enabled) Physics.IgnoreCollision(cc, S.Hunter.Body);
             if (Ridden) RideTick(dt);
             else AiTick(dt);
             vertical = cc.isGrounded ? -2 : Mathf.Max(-20, vertical - dt * 24);
@@ -155,6 +157,8 @@ namespace FH.Game
         float actionEnd, strikeAt = -1, travelFrom, travelUntil, travelSpeed, comboReadyAt, pounceReadyAt, evadeReadyAt, rideHopReadyAt, bank, dustClock;
         Vector3 travelDir; bool travelKeepsFacing, rideQueued;
         int comboStep = -1;
+        float lastStrikeAt = -99;
+        public bool PounceReady => Time.time >= pounceReadyAt;
         HoundStrike strike;
         MonsterActor strikeTarget;
         Quaternion visualBase = Quaternion.identity; bool visualBaseSet;
@@ -178,7 +182,7 @@ namespace FH.Game
                 if (stepIn > .05f) Travel(Flat(target.transform.position - transform.position), stepIn, 0, st.HitAt * .9f, true);
                 else travelUntil = 0;
             }
-            Sequence.Add(st.Clip); if (Sequence.Count > 40) Sequence.RemoveAt(0);
+            Sequence.Add(st.Clip); if (Sequence.Count > 4000) Sequence.RemoveRange(0, 1000);
             LastEvent = st.Clip == "Bite" ? "bite" : st.Clip == "Slash_R" ? "slash" : st.Clip == "Spin" ? "spin" : "pounce";
         }
 
@@ -198,7 +202,7 @@ namespace FH.Game
                 cc.Move(to - transform.position);
                 if (!travelKeepsFacing && travelDir.sqrMagnitude > .01f) transform.rotation = Quaternion.LookRotation(travelDir);
             }
-            if (strikeAt > 0 && now >= strikeAt) { strikeAt = -1; LandStrike(); }
+            if (strikeAt > 0 && now >= strikeAt) { strikeAt = -1; lastStrikeAt = now; LandStrike(); }
         }
 
         /// <summary>The strike lands: the spin catches every monster around; the others the nearest body part in front.</summary>
@@ -384,6 +388,12 @@ namespace FH.Game
             else if (State == HoundState.Assist) State = HoundState.Follow;
 
             UpdateAction(dt);
+            // A wind-up aimed at it cancels whatever it is doing (except the instant a strike lands): hop clear first.
+            if (Acting && comboStep >= -1 && target && State == HoundState.Assist && Danger(target) && Time.time >= evadeReadyAt && !(strikeAt > 0 && strikeAt - Time.time < .06f) && !Anim.Current.EndsWith("Hop"))
+            {
+                actionEnd = 0; strikeAt = -1; comboStep = -1; travelUntil = 0;
+                comboReadyAt = Mathf.Max(comboReadyAt, Time.time + .8f);
+            }
             if (Acting)
             {
                 // The combo carries on while the monster stays in reach and is not winding up at the hound.
@@ -397,7 +407,7 @@ namespace FH.Game
             Action = HoundAction.Follow;
             if (ClearOfHuntersLane(dt)) return;
             // Heel behind and to the right; beside the hunter when they sprint (not when an attack carries them), matching their pace.
-            bool hunterRunning = S.Hunter.Velocity.magnitude > S.Hunter.WalkSpeed * 1.2f && !S.Hunter.Attack.Running && !S.Hunter.Dodging;
+            bool hunterRunning = S.Hunter.Hunt && S.Hunter.Hunt.Sprinting && !S.Hunter.Attack.Running && !S.Hunter.Dodging;
             Vector3 goal = hunterRunning ? h.position + (h.right * 2.2f - h.forward * .4f) * Size : h.position - (h.forward * 2.6f - h.right * 1.8f) * Size;
             MoveToward(goal, hunterRunning ? .9f : 1.2f, State == HoundState.Called || hunterRunning, h.forward, dt, hunterRunning ? S.Hunter.Velocity.magnitude * 1.15f : 0);
         }
@@ -409,7 +419,8 @@ namespace FH.Game
             float gap = toM.magnitude - body;
             var h = S.Hunter.transform.position;
             // An opening (recovering, staggered, toppled) or the hunter down: commit now, not after the usual pause.
-            bool open = HoundTactics.IsOpening(target.Brain.Mode) || (S.Hunter.Hunt && S.Hunter.Hunt.Downed);
+            // (A flinch the hound caused itself is not an opening: otherwise a passive target that flinches at every bite keeps it attacking forever.)
+            bool open = (HoundTactics.IsOpening(target.Brain.Mode) && !(target.Brain.Mode == MonsterMode.Stagger && now - lastStrikeAt < 1.5f)) || (S.Hunter.Hunt && S.Hunter.Hunt.Downed);
             if (open && comboReadyAt > now + .25f) comboReadyAt = now + .25f;
             // Flank across from the hunter, on whichever side puts the softest part nearer.
             var soft = BestBox(target, target.transform.position, body + 4, true, out _);

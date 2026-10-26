@@ -65,6 +65,9 @@ namespace FH.Game
         float walkNatural, runNatural;
         public float WalkSpeed { get; private set; } = 2.9f;
         public float RunSpeed { get; private set; } = 5.3f;
+        /// <summary>Hunt combat (Monster Hunter pace): full stick jogs, RT sprints; light stick walks.</summary>
+        public const float JogSpeed = 3.9f, SprintSpeed = 5.6f;
+        float jogNatural, sprintNatural;
         public const float RunCost = 9;
 
         public void Initialize(GameSession s)
@@ -95,6 +98,9 @@ namespace FH.Game
             // Travel speed follows the authored stride so planted feet do not slide; playback runs slightly fast for pace.
             if (walkNatural > .3f) WalkSpeed = Mathf.Clamp(walkNatural * 1.3f, 1.6f, 3.2f);
             if (runNatural > .6f) RunSpeed = Mathf.Clamp(runNatural * 1.3f, WalkSpeed * 1.5f, 6f);
+            jogNatural = Anim.Has("Hunt_Jog") ? Anim.NaturalSpeed("Hunt_Jog", footL, footR, transform) : runNatural;
+            sprintNatural = Anim.Has("Hunt_Sprint") ? Anim.NaturalSpeed("Hunt_Sprint", footL, footR, transform) : runNatural;
+            Debug.Log("FH_LOCO hunt jog " + JogSpeed + " m/s (Hunt_Jog natural " + jogNatural.ToString("0.00") + "), sprint " + SprintSpeed + " m/s (Hunt_Sprint natural " + sprintNatural.ToString("0.00") + ")");
             Debug.Log("FH_LOCO walk speed " + WalkSpeed.ToString("0.00") + ", run speed " + RunSpeed.ToString("0.00") + ",  walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
             Stamina = new StaminaPool(100, 24, s.Core.Db.Balance.staminaRegenDelay, s.Core.Db.Balance.exhaustedThreshold);
             RefreshStats(true);
@@ -216,6 +222,27 @@ namespace FH.Game
             Vector3 moveDir = Vector3.zero;
             if (Dodging) { moveDir = dodgeDir; speed = dodgeSpeed; }
             else if (Attack.Running && Attack.Phase == AttackPhase.Recovery) { moveDir = dir; speed = WalkSpeed * .3f; }
+            else if (!locked && dir.sqrMagnitude > .01f && HuntStyle)
+            {
+                // Monster Hunter pace: a light push walks, full stick jogs, RT sprints (stamina); the weapon drawn slows it.
+                bool canRun = run && !Stamina.Exhausted && Stamina.Current > 1;
+                bool jog = dir.magnitude >= .55f;
+                speed = (canRun ? SprintSpeed : jog ? JogSpeed : WalkSpeed) * Stats[Stat.MoveSpeed] * Hunt.SpeedScale;
+                if (canRun) Stamina.Drain(RunCost, dt);
+                moveDir = dir.normalized;
+                blockedFor = actualSpeed < speed * .25f ? blockedFor + dt : 0;
+                if (blockedFor > .15f) Anim.Play("Idle");
+                else if (Hunt.LocomotionClip(dir, canRun, out var clip, out var natural2)) { Anim.Play(clip, true, natural2 > .1f ? Mathf.Clamp(speed / natural2, .5f, 2.5f) : 1); }
+                else
+                {
+                    string gait = canRun ? "Hunt_Sprint" : jog ? "Hunt_Jog" : "Walking_A";
+                    float natural = canRun ? sprintNatural : jog ? jogNatural : walkNatural;
+                    if (!Anim.Has(gait)) { gait = jog || canRun ? "Running_A" : "Walking_A"; natural = jog || canRun ? runNatural : walkNatural; }
+                    Anim.Play(gait, true, natural > .1f ? Mathf.Clamp(speed / natural, .5f, 3f) : 1, false, .08f);
+                    stepClock -= dt;
+                    if (stepClock <= 0) { stepClock = canRun ? .2f : jog ? .26f : .36f; WorldKit.Sound(transform.position, "step", .08f); }
+                }
+            }
             else if (!locked && dir.sqrMagnitude > .01f)
             {
                 bool canRun = run && !Stamina.Exhausted && Stamina.Current > 1;
@@ -240,7 +267,7 @@ namespace FH.Game
             if (HuntStyle && Hunt.FacesTarget(out var faceDir))
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceDir), 1 - Mathf.Exp(-dt * 12));
             else if (moveDir.sqrMagnitude > .01f && !Attack.Committed && !(LockTarget && Attack.Running) && !(HuntStyle && Dodging && (Hunt.KeepFacing || Hunt.StepDodging)))
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 1 - Mathf.Exp(-dt * 15));
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 1 - Mathf.Exp(-dt * (HuntStyle ? 22 : 15)));
             Move(moveDir * speed, dt);
             Gravity(dt);
         }

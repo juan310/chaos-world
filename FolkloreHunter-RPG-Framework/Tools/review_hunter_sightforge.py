@@ -20,7 +20,7 @@ poses = r / 'Captures/Proving/HunterPoses'
 p = E.Project(str(r), 'Captures/Proving/HunterPoses', pid='folklore-rpg', name='Folklore Hunter - RPG framework')
 STATES = ['bow_draw', 'bow_shoot', 'bow_power', 'bow_arc', 'bow_piercer', 'bow_step', 'walk',
           'katana_overhead', 'katana_slice', 'katana_thrust', 'katana_roundslash', 'katana_spirit3', 'katana_iai',
-          'slide', 'backstep', 'roll', 'dive', 'dive_landing']
+          'run', 'sprint', 'slide', 'backstep', 'roll', 'dive', 'dive_landing']
 # Moves that leave the ground or turn the body edge-on by design: ground-line and silhouette findings there are expected.
 AIRBORNE = {'dive', 'roll', 'bow_step', 'slide', 'backstep', 'katana_roundslash', 'katana_spirit3'}
 for s in STATES: C.EXPECTED_FRAMES[s] = 16
@@ -35,7 +35,9 @@ for state in STATES:
     page, data = E.cmd_animation(SimpleNamespace(project=p, run='hunter-' + state, subject='Hunter', state=state, dir='E', files=list(map(str, files))))
     found = [f for f in data['findings'] if f['kind'] in ('confirmed', 'likely', 'uncertain')]
     for f in found:
-        f['expected'] = state in AIRBORNE and f['check'] in ('feet leave the ground line', 'scale jump', 'part missing', 'frame displaced')
+        # One-shots do not loop, so "loop does not close" does not apply to them; airborne moves leave the ground line.
+        f['expected'] = (state != 'walk' and f['check'] == 'loop does not close') or \
+                        (state in AIRBORNE and f['check'] in ('feet leave the ground line', 'scale jump', 'part missing', 'frame displaced'))
     summary[key] = {'summary': data['summary'], 'findings': found, 'page': page}
     for k in totals: totals[k] += data['summary'].get(k, 0)
     print('SIGHTFORGE_HUNTER', key, json.dumps(data['summary']), 'unexpected', sum(1 for f in found if not f['expected'] and f['kind'] != 'uncertain'), flush=True)

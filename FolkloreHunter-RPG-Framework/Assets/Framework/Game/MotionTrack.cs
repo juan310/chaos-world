@@ -74,6 +74,7 @@ namespace FH.Game
             int k = st == null ? 0 : Mathf.FloorToInt(Mathf.Repeat(st.normalizedTime, 1f) * 32) % 32;
             if (clip.EndsWith("Walking_A") || clip.EndsWith("|Walk")) return who + "_walk_" + dir + "_" + k.ToString("00");
             if (clip.EndsWith("Running_A") || clip.EndsWith("|Gallop")) return who + "_run_" + dir + "_" + k.ToString("00");
+            if (clip.EndsWith("Ride_Idle")) return who + "_ride_" + dir;           // seated on the moving hound, not standing still
             if (clip.EndsWith("Idle") || clip.EndsWith("Idle_Combat") || clip.EndsWith("|Sit")) return who + "_idle_" + dir;
             int cut = clip.LastIndexOf('|');
             return who + "_" + (cut >= 0 ? clip.Substring(cut + 1) : clip).ToLowerInvariant() + "_" + k.ToString("00");
