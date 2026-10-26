@@ -208,7 +208,7 @@ namespace FH.UI
             var rise = c.Db.Quests.Values.FirstOrDefault();
             if (rise != null && c.State.Quest(rise.id).status == QuestStatus.Active && lines.Count < 6)
                 lines.Add("<color=#c9d6ff>" + rise.stages[c.State.Quest(rise.id).stage].description + "</color>");
-            trackerText.text = string.Join("\n", lines);
+            trackerText.text = S.Proving ? "" : string.Join("\n", lines);   // no story tracker in the test arena
 
             // Target bar: locked target, else the nearest engaged boss.
             var t = h.LockTarget && h.LockTarget.Alive ? h.LockTarget : S.Monsters.FirstOrDefault(m => m && m.Alive && m.Def.boss && m.Brain.Engaged);

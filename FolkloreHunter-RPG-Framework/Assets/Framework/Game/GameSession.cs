@@ -270,6 +270,7 @@ namespace FH.Game
             Hunter.Hunt.enabled = true;
             Hunter.Hunt.Initialize(this, Hunter, Db.HuntMovesets["sword_shield"]);
             InputRouter.MouseLook = true;
+            CameraRig.Distance = 7.5f; CameraRig.Pitch = 20;   // closer, lower camera for melee
             ProvingRig = gameObject.AddComponent<ProvingGrounds>();
             ProvingRig.Begin(this);
             CurrentArea = "proving";
@@ -471,6 +472,7 @@ namespace FH.Game
 
         public void OnPartBroken(MonsterActor m, MonsterPartDef part)
         {
+            if (Proving) { Hud?.Notify(m.DisplayName + ": " + part.name + " broken!", NoticeKind.Progress); return; }   // no loot or records in the test arena
             Core.State.Spawn(m.SpawnId).brokenParts.Add(part.id);
             Hud?.Notify(m.DisplayName + ": " + part.name + " broken!", NoticeKind.Progress);
             var drops = Core.Loot.Roll(part.breakLootTable, rng);

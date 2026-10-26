@@ -18,7 +18,7 @@ scene = bpy.context.scene
 scene.render.fps = FPS
 
 # ---------------- palette atlas: one swatch per material, faces UV'd to swatch centres ----------------
-PALETTE = [('fur', (0.20, 0.33, 0.24)), ('fur_light', (0.38, 0.52, 0.35)), ('fur_dark', (0.11, 0.18, 0.14)),
+PALETTE = [('fur', (0.25, 0.41, 0.29)), ('fur_light', (0.44, 0.60, 0.40)), ('fur_dark', (0.14, 0.23, 0.17)),
            ('nose', (0.07, 0.07, 0.08)), ('eye', (0.55, 1.00, 0.72)), ('leather', (0.45, 0.28, 0.14)),
            ('strap', (0.22, 0.14, 0.08)), ('blanket', (0.60, 0.15, 0.12)), ('gold', (0.86, 0.69, 0.26)), ('claw', (0.92, 0.88, 0.78))]
 SW = 16
@@ -269,10 +269,11 @@ def bite(t):
 
 
 def sit_pose(amount, head_up=0, jaw=0):
-    return {'hips': (-38 * amount, 0, 0), 'chest': (-8 * amount, 0, 0), 'hind_upper.l': (-70 * amount, 0, 0), 'hind_upper.r': (-70 * amount, 0, 0),
+    # body pitches nose-up 36 degrees about the hips; the front legs counter-rotate the same amount to stay vertical
+    return {'hips': (-30 * amount, 0, 0), 'chest': (-6 * amount, 0, 0), 'hind_upper.l': (-70 * amount, 0, 0), 'hind_upper.r': (-70 * amount, 0, 0),
             'hind_lower.l': (110 * amount, 0, 0), 'hind_lower.r': (110 * amount, 0, 0), 'hind_paw.l': (-40 * amount, 0, 0), 'hind_paw.r': (-40 * amount, 0, 0),
-            'fore_upper.l': (12 * amount, 0, 0), 'fore_upper.r': (12 * amount, 0, 0), 'neck': (-14 * amount - head_up, 0, 0), 'head': (-head_up * .6, 0, 0),
-            'jaw': (jaw, 0, 0), 'tail_1': (40 * amount, 0, 0), 'root_loc': (0, -.28 * amount, .1 * amount)}
+            'fore_upper.l': (36 * amount, 0, 0), 'fore_upper.r': (36 * amount, 0, 0), 'neck': (-4 * amount - head_up, 0, 0), 'head': (-head_up * .6, 0, 0),
+            'jaw': (jaw, 0, 0), 'tail_1': (40 * amount, 0, 0), 'root_loc': (0, -.22 * amount, .06 * amount)}
 
 
 def sit(t):
@@ -300,8 +301,9 @@ scene.render.resolution_x = 420; scene.render.resolution_y = 340; scene.render.f
 cam_data = bpy.data.cameras.new('PreviewCam'); cam_data.type = 'ORTHO'; cam_data.ortho_scale = 3.2
 cam = bpy.data.objects.new('PreviewCam', cam_data); scene.collection.objects.link(cam); scene.camera = cam
 shots = []
-views = {'side': ((5, -.3, 1.0), (math.radians(90), 0, math.radians(90))), 'front': ((0, -6, 1.0), (math.radians(90), 0, 0)),
-         'threequarter': ((3.6, -3.6, 2.6), (math.radians(65), 0, math.radians(45)))}
+views = {'side': ((5, -.3, 1.15), (math.radians(90), 0, math.radians(90))), 'front': ((0, -6, 1.15), (math.radians(90), 0, 0)),
+         'threequarter': ((3.6, -3.6, 2.9), (math.radians(65), 0, math.radians(45)))}
+cam_data.ortho_scale = 3.8
 for name, (length, fn) in clips.items():
     act = bpy.data.actions[name]
     arm.animation_data.action = act
