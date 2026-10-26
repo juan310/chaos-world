@@ -743,7 +743,7 @@ namespace FH.Game
             for (float t = 0; t < 1.6f; t += Time.unscaledDeltaTime)
             {
                 if (path.Count < 9 && (path.Count == 0 || t > path.Count * .18f))
-                    path.Add(Vector3.Distance(Flat(H.transform.position), Flat(m.transform.position)).ToString("0.0") + (S.Hound ? "/h" + Vector3.Distance(Flat(H.transform.position), Flat(S.Hound.transform.position)).ToString("0.0") : "") + ":" + CurrentId);
+                    path.Add(Vector3.Distance(Flat(H.transform.position), Flat(m.transform.position)).ToString("0.0") + (S.Hound ? "/h" + Vector3.Distance(Flat(H.transform.position), Flat(S.Hound.transform.position)).ToString("0.0") : "") + ":" + CurrentId + ":" + m.Brain.Mode);
                 yield return null;
             }
             scene += "; distance to it / to the hound over the charge: " + string.Join(" ", path);
@@ -754,6 +754,19 @@ namespace FH.Game
             yield return Tap(PadButton.Y);
             yield return Until(() => CurrentId == "dash_finisher", .6f);
             Check("Y during the charge: finishing thrust", CurrentId == "dash_finisher", CurrentId);
+            yield return UntilNeutral();
+            // A toppled monster lies on the ground: the charge must still strike it (in Monster Hunter every attack lands on a downed monster).
+            m = Fresh(Target()); m.Brain.Topple(3f);
+            yield return Wait(.8f);                      // lying down
+            Face(m, 3.5f); yield return Frames(3);
+            if (H.LockTarget != m) { if (H.LockTarget) yield return Tap(PadButton.RightStick); yield return Tap(PadButton.RightStick); }
+            H.Stamina.Current = H.Stamina.Max; landed = H.SwingsLanded;
+            Hold(PadButton.RB); yield return Frames(3);
+            yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
+            Release();
+            yield return Wait(1.4f);
+            Check("charging into a toppled monster strikes it lying down", H.SwingsLanded - landed >= 1, (H.SwingsLanded - landed) + " hits, monster " + m.Brain.Mode);
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
             yield return UntilNeutral();
             Note("lance: hops " + string.Join(", ", dists.Select(d => d.ToString("0.00"))) + " m; dash " + travelled.ToString("0.0") + " m");
         }
