@@ -81,6 +81,63 @@ namespace FH.Game
             return m;
         }
 
+        static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
+        static float Median(List<float> v) { if (v.Count == 0) return 0; var o = v.OrderBy(x => x).ToList(); return o[o.Count / 2]; }
+
+        /// <summary>Pose frames of every hound clip (and of the hunter riding a gallop) for the SightForge / Claude Eyes
+        /// inspector: side view, orthographic, transparent background, 16 frames per clip, rendered by the real player.</summary>
+        IEnumerator CaptureHoundPoses(HoundCompanion hound)
+        {
+            string folder = Path.Combine(root, "HoundPoses"); Directory.CreateDirectory(folder);
+            hound.enabled = false;
+            var hide = new List<(GameObject go, int layer)>();
+            void ToReview(Transform t) { foreach (var x in t.GetComponentsInChildren<Transform>(true)) { hide.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; } }
+            ToReview(hound.Visual);
+            var go = new GameObject("Hound review camera"); var cam = go.AddComponent<Camera>();
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear; cam.orthographic = true; cam.orthographicSize = 1.45f;
+            var rt = new RenderTexture(512, 400, 24); cam.targetTexture = rt;
+            Vector3 c = hound.transform.position + Vector3.up * 1.05f;
+            cam.transform.position = c + hound.transform.right * 6f; cam.transform.LookAt(c);
+            var anim = hound.Anim;
+            var states = new[] { ("Idle", "idle"), ("Walk", "walk"), ("Gallop", "run"), ("Bite", "attack"), ("Sit", "sit"), ("Howl", "howl"), ("Hit", "hit") };
+            foreach (var (clip, label) in states)
+            {
+                var st = anim.State(clip); if (st == null) { Check("hound has the " + clip + " clip", false); continue; }
+                anim.Anim.Stop(); st.enabled = true; st.weight = 1;
+                for (int i = 0; i < 16; i++) { st.time = st.length * i / 16f; anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, "cusith_" + label + "_E_" + i.ToString("00") + ".png")); }
+                st.enabled = false;
+            }
+            // Rider and mount together through one gallop cycle.
+            if (!H.Riding) hound.Mount();
+            ToReview(H.Visual);
+            cam.orthographicSize = 1.75f; c = hound.transform.position + Vector3.up * 1.4f;
+            cam.transform.position = c + hound.transform.right * 6f; cam.transform.LookAt(c);
+            var g = anim.State("Gallop"); var ride = H.Anim.State("Ride_Idle");
+            anim.Anim.Stop(); H.Anim.Anim.Stop(); g.enabled = true; g.weight = 1; ride.enabled = true; ride.weight = 1;
+            for (int i = 0; i < 16; i++)
+            {
+                g.time = g.length * i / 16f; ride.time = 0; anim.Anim.Sample(); H.Anim.Anim.Sample();
+                yield return Render(cam, rt, Path.Combine(folder, "riding_run_E_" + i.ToString("00") + ".png"));
+            }
+            g.enabled = false; ride.enabled = false;
+            hound.Dismount();
+            foreach (var (o, layer) in hide) if (o) o.layer = layer;
+            cam.targetTexture = null; rt.Release(); Destroy(rt); Destroy(go);
+            anim.Current = ""; anim.Play("Idle"); H.Anim.Current = ""; H.Anim.Play("Idle");
+            hound.enabled = true;
+            Note("hound pose frames written to Captures/Proving/HoundPoses for SightForge review");
+        }
+
+        static IEnumerator Render(Camera cam, RenderTexture rt, string path)
+        {
+            cam.Render();
+            var old = RenderTexture.active; RenderTexture.active = rt;
+            var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false); tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0); tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Destroy(tex); RenderTexture.active = old;
+            yield return null;
+        }
+
         int SaveFiles() => Directory.Exists(S.Store.Root) ? Directory.GetFiles(S.Store.Root, "*", SearchOption.AllDirectories).Count(f => !f.EndsWith("settings.json")) : 0;
 
         // ---------------- run ----------------
@@ -286,7 +343,31 @@ namespace FH.Game
                 Check("the stick walks the hound with its rider", Vector3.Distance(start, hound.transform.position) > 1.5f && H.transform.parent == hound.Saddle, Vector3.Distance(start, hound.transform.position).ToString("0.0") + " m");
                 float top = 0;
                 Hold(PadButton.RT, new Vector2(.3f, 1));
-                for (float t = 0; t < 2.2f; t += Time.unscaledDeltaTime) { top = Mathf.Max(top, hound.Speed); yield return null; }
+                var planted = new List<float>(); var bodySpeeds = new List<float>(); var seatGaps = new List<float>();
+                var pawL = WorldKit.Find(hound.Visual, "fore_paw.l"); var pawR = WorldKit.Find(hound.Visual, "fore_paw.r");
+                var hips = WorldKit.Find(H.Visual, "hips");
+                Vector3 prevL = pawL.position, prevR = pawR.position, prevBody = hound.transform.position;
+                for (float t = 0; t < 2.2f; t += Time.unscaledDeltaTime)
+                {
+                    top = Mathf.Max(top, hound.Speed);
+                    yield return null;
+                    float dt = Time.deltaTime;
+                    if (dt <= 0 || t < .6f) { prevL = pawL.position; prevR = pawR.position; prevBody = hound.transform.position; continue; }
+                    // The lower fore paw is the planted one; its ground speed should be near zero while the body travels.
+                    var low = pawL.position.y < pawR.position.y ? pawL : pawR;
+                    var prev = low == pawL ? prevL : prevR;
+                    float ground = S.GroundHeight(low.position);
+                    if (low.position.y - ground < .12f) planted.Add(Vector3.Distance(Flat(low.position), Flat(prev)) / dt);
+                    bodySpeeds.Add(Vector3.Distance(Flat(hound.transform.position), Flat(prevBody)) / dt);
+                    if (hips && hound.Saddle) seatGaps.Add(Vector3.Distance(hips.position, hound.Saddle.position));
+                    prevL = pawL.position; prevR = pawR.position; prevBody = hound.transform.position;
+                }
+                float plantedMedian = Median(planted), bodyMedian = Median(bodySpeeds);
+                Note("hound gallop: planted fore paw " + plantedMedian.ToString("0.00") + " m/s vs body " + bodyMedian.ToString("0.00") + " m/s (" + planted.Count + " planted samples)");
+                Check("galloping, the planted paw does not skate (under 35% of body speed)", planted.Count > 5 && plantedMedian < bodyMedian * .35f, plantedMedian.ToString("0.00") + " vs " + bodyMedian.ToString("0.00"));
+                float gapMin = seatGaps.Count > 0 ? seatGaps.Min() : 0, gapMax = seatGaps.Count > 0 ? seatGaps.Max() : 0;
+                Note("rider hips to saddle bone: " + gapMin.ToString("0.000") + "-" + gapMax.ToString("0.000") + " m through the gallop");
+                Check("the rider stays seated through the gallop (hips within 5 cm of a fixed seat)", seatGaps.Count > 0 && gapMax - gapMin < .05f && gapMax < .45f, gapMin.ToString("0.00") + "-" + gapMax.ToString("0.00"));
                 yield return Snap("p09-gallop");
                 Check("RT gallops: much faster than the hunter can run", top > H.RunSpeed * 2 && hound.Anim.Current.Contains("Gallop"), top.ToString("0.0") + " m/s vs run " + H.RunSpeed.ToString("0.0"));
                 Release();
@@ -303,6 +384,7 @@ namespace FH.Game
                 Check("the hound bites the monster the hunter is locked on to", hound.Bites > bites, hound.LastEvent);
                 yield return Snap("p10-hound-assist");
                 if (H.LockTarget) yield return Tap(PadButton.RightStick);
+                yield return CaptureHoundPoses(hound);
             }
 
             // Menus on the pad: Menu opens pause, B backs out.
