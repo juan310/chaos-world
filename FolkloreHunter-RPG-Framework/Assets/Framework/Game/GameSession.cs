@@ -65,6 +65,7 @@ namespace FH.Game
             Ui.Initialize(this);
             EnterTitle();
             if (args.Contains("--verify-rpg")) gameObject.AddComponent<GameVerifier>();
+            if (args.Contains("--verify-proving")) gameObject.AddComponent<ProvingVerifier>();
             if (args.Contains("--tour-rpg")) gameObject.AddComponent<GameTour>();
             if (args.Contains("--verify-creatures") || args.Contains("--show-hunts")) gameObject.AddComponent<CreatureReview>();
             if (args.Contains("--input-log")) gameObject.AddComponent<InputLogger>();
