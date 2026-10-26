@@ -163,7 +163,8 @@ namespace FH.Game
                     var st = anim.State(clip); if (st == null) { Check("hunter has the " + clip + " clip", false); continue; }
                     anim.Anim.Stop(); st.enabled = true; st.weight = 1;
                     st.time = 0; anim.Anim.Sample(); yield return null;   // warm-up: the first frame must not show the previous clip
-                    for (int i = 0; i < 16; i++) { st.time = st.length * i / 16f; anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, "hunter_" + label + "_E_" + i.ToString("00") + ".png")); written++; }
+                    float from = label == "dive_landing" ? .3f : 0;      // the game starts the get-up past its sunk lying frames
+                    for (int i = 0; i < 16; i++) { st.time = st.length * (from + (1 - from) * i / 16f); anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, "hunter_" + label + "_E_" + i.ToString("00") + ".png")); written++; }
                     st.enabled = false;
                 }
             }
@@ -385,8 +386,9 @@ namespace FH.Game
                     yield return null;
                     float dt = Time.deltaTime; if (dt <= 0) continue;
                     float vl = Vector3.Distance(Flat(footL.position), Flat(pl)) / dt, vr = Vector3.Distance(Flat(footR.position), Flat(pr)) / dt;
-                    // The lower foot is the one on the ground: how fast does it slide?
-                    planted.Add(footL.position.y < footR.position.y ? vl : vr);
+                    // The slower foot is the one on the ground: how fast does it slide? (Height is no guide on this rig:
+                    // the swinging foot's ankle often rides lower than the planted one.)
+                    planted.Add(Mathf.Min(vl, vr));
                     body.Add(Vector3.Distance(Flat(H.transform.position), Flat(pb)) / dt);
                     pl = footL.position; pr = footR.position; pb = H.transform.position;
                 }
@@ -1071,7 +1073,7 @@ namespace FH.Game
             Check("X sheathes: sword back on the back", F.Sheathed && H.SwordTransform.parent.name == "chest");
             Hold(PadButton.RT, new Vector2(0, 1));
             yield return Wait(.5f);
-            Check("RT sprints while sheathed", F.Sprinting && H.Anim.Current.Contains("Running"), H.Anim.Current);
+            Check("RT sprints while sheathed", F.Sprinting && (H.Anim.Current.Contains("Hunt_Sprint") || H.Anim.Current.Contains("Running")), H.Anim.Current);
             Release();
             yield return Wait(.3f);
 

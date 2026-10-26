@@ -471,14 +471,31 @@ namespace FH.Game
                     return;
                 }
                 default:
-                    // Approach or circle to the flank (across the monster from the hunter).
-                    MoveToward(flank, .5f, gap > 7, toM, dt, 0);
+                {
+                    // Approach or circle to the flank (across the monster from the hunter). When the straight way there
+                    // runs through the monster's body, go round it: a point on a circle about it, 60 degrees on toward the flank.
+                    Vector3 goal = flank;
+                    var mc = Flat(target.transform.position); var me = Flat(transform.position); var fl = Flat(flank);
+                    float ring = body + 1.5f * Size;
+                    var seg = fl - me; float tSeg = seg.sqrMagnitude > .01f ? Mathf.Clamp01(Vector3.Dot(mc - me, seg) / seg.sqrMagnitude) : 0;
+                    if (Vector3.Distance(me + seg * tSeg, mc) < body + 1.0f * Size && Vector3.Distance(me, fl) > 1.5f * Size)
+                    {
+                        float aMe = Mathf.Atan2(me.x - mc.x, me.z - mc.z) * Mathf.Rad2Deg, aFl = Mathf.Atan2(fl.x - mc.x, fl.z - mc.z) * Mathf.Rad2Deg;
+                        float step = Mathf.Clamp(Mathf.DeltaAngle(aMe, aFl), -60, 60);
+                        float a = (aMe + step) * Mathf.Deg2Rad;
+                        goal = new Vector3(mc.x + Mathf.Sin(a) * ring, transform.position.y, mc.z + Mathf.Cos(a) * ring);
+                        if (LastEvent != "circling to the flank") Circles++;
+                        LastEvent = "circling to the flank";
+                    }
+                    MoveToward(goal, .5f, gap > 7, toM, dt, 0);
                     return;
+                }
             }
         }
 
         public float PincerAngle { get; private set; }
         public int LaneClears { get; private set; }
+        public int Circles { get; private set; }
         bool inLane; float laneAt;
 
         /// <summary>The hunter is attacking (a charge, a thrust, a shot) and the hound stands in front of them, in the

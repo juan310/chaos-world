@@ -238,7 +238,7 @@ namespace FH.Game
                     string gait = canRun ? "Hunt_Sprint" : jog ? "Hunt_Jog" : "Walking_A";
                     float natural = canRun ? sprintNatural : jog ? jogNatural : walkNatural;
                     if (!Anim.Has(gait)) { gait = jog || canRun ? "Running_A" : "Walking_A"; natural = jog || canRun ? runNatural : walkNatural; }
-                    Anim.Play(gait, true, natural > .1f ? Mathf.Clamp(speed / natural, .5f, 3f) : 1, false, .08f);
+                    Anim.Play(gait, true, natural > .1f ? Mathf.Clamp(speed / natural, .5f, 3.2f) : 1, false, .08f);
                     stepClock -= dt;
                     if (stepClock <= 0) { stepClock = canRun ? .2f : jog ? .26f : .36f; WorldKit.Sound(transform.position, "step", .08f); }
                 }

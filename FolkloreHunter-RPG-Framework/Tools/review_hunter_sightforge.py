@@ -22,7 +22,7 @@ STATES = ['bow_draw', 'bow_shoot', 'bow_power', 'bow_arc', 'bow_piercer', 'bow_s
           'katana_overhead', 'katana_slice', 'katana_thrust', 'katana_roundslash', 'katana_spirit3', 'katana_iai',
           'run', 'sprint', 'slide', 'backstep', 'roll', 'dive', 'dive_landing']
 # Moves that leave the ground or turn the body edge-on by design: ground-line and silhouette findings there are expected.
-AIRBORNE = {'dive', 'roll', 'bow_step', 'slide', 'backstep', 'katana_roundslash', 'katana_spirit3'}
+AIRBORNE = {'dive', 'roll', 'bow_step', 'slide', 'backstep', 'katana_roundslash', 'katana_spirit3', 'dive_landing'}   # (getting up from the ground changes the silhouette by design)
 for s in STATES: C.EXPECTED_FRAMES[s] = 16
 summary = {'scope': 'Hunter with the bow, the katana and the evasions: real Unity player frames (orthographic side view) and the '
                     'hunter actor track. Sprite-oriented 2D pose checks plus temporal track checks.'}
