@@ -79,7 +79,7 @@ namespace FH.Game
             {
                 var a = S.World.Anchor(anchor);
                 var m = SpawnAt(id, a.position, a.eulerAngles.y);
-                if (m) { m.Passive = true; Dummies.Add(m); }
+                if (m) { m.Passive = true; m.Unkillable = true; Dummies.Add(m); }
             }
         }
 

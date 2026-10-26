@@ -664,7 +664,7 @@ namespace FH.Game
             // Dummies never fall.
             dm.Brain.Health = dm.Def.maxHealth * .2f;
             yield return Frames(3);
-            Check("a training dummy is healed before it can fall", dm.Alive && dm.Brain.Health >= dm.Def.maxHealth * .99f, dm.Brain.Health.ToString("0"));
+            Check("the training dummies never fall (healed when low, and before any blow that would fell them)", dm.Alive && dm.Brain.Health >= dm.Def.maxHealth * .99f && dummies.All(d => d && d.Alive), dm.Brain.Health.ToString("0"));
             Note("range: targets " + string.Join(", ", RangeTarget.All.OrderBy(t => t.Distance).Select(t => t.Distance + " m " + t.Hits)) + "; hazards " + string.Join(", ", RangeHazard.All.Select(h => h.name + " " + h.Blows + " blows, " + h.Evaded + " evaded, " + h.Struck + " struck")));
 
             S.ProvingRig.SetWeapon("sword_shield");

@@ -20,6 +20,8 @@ namespace FH.Game
         public bool HuntRules;
         /// <summary>Training target: stands and takes hits, never attacks.</summary>
         public bool Passive;
+        /// <summary>Training Range dummy: a blow that would fell it heals it to full first (it never dies).</summary>
+        public bool Unkillable;
         public float HitstopUntil;
         public MonsterReactions Reactions { get; private set; }
         float getUpUntil;
@@ -321,6 +323,7 @@ namespace FH.Game
             var hit = computeHit(part, partBroken);
             if (part != null && Parts.Damage(part.id, hit.Damage)) BreakPart(part);
             if (!string.IsNullOrEmpty(statusId) && session.Core.Db.Statuses.TryGetValue(statusId, out var st)) Brain.Status.Add(st, statusBuildup);
+            if (Unkillable && Brain.Health - hit.Damage <= 1) Brain.Health = Def.maxHealth;
             bool killed = Brain.TakeHit(hit);
             hurtFlash = .12f;
             // Hunt rules: soft hitzones (weak points, or parts taking 1.3x and more) show orange numbers, as in Monster Hunter.
