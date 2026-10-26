@@ -17,7 +17,9 @@ namespace FH.Game
         public bool FollowOwner;            // centred on the monster when it goes off (slams, sweeps, roars, breath)
         public float FireAt, FiredAt = -1;
         public bool Fired => FiredAt >= 0;
+        /// <summary>Blows that reached the hunter (evaded ones, through a roll's i-frames, are counted apart).</summary>
         public int HunterHits { get; private set; }
+        public int HunterEvaded { get; private set; }
         public int HoundHits { get; private set; }
         /// <summary>The newest shockwave's radius now (0 before it goes off).</summary>
         public float WaveRadius => Fired ? HuntBoss.WaveRadius(Attack, Time.time - FiredAt) : 0;
@@ -122,7 +124,7 @@ namespace FH.Game
                 for (int i = 0; i < 3; i++) WorldKit.Burst(Origin + Vector3.up * (1.5f + i * .4f), new Color(1f, .8f, .4f), 10);
                 S.Hud?.Flash(Owner ? Owner.DisplayName + " roars!" : "Roar!");
                 var h = S.Hunter;
-                if (h && !h.Dead && Hit(h.transform.position, 0)) { h.Roared(Attack, Origin); HunterHits++; }
+                if (h && !h.Dead && Hit(h.transform.position, 0)) StrikeHunter(h, () => h.Roared(Attack, Origin));
                 var hound = S.Hound;
                 if (hound && !hound.Ridden && Hit(hound.transform.position, 0)) { hound.Cower(Attack.roarTime); HoundHits++; }
                 return;
@@ -139,8 +141,8 @@ namespace FH.Game
             var h = S.Hunter;
             if (h && !h.Dead && !hunterPulses.Contains(pulse) && Hit(h.transform.position, t))
             {
-                hunterPulses.Add(pulse); HunterHits++;
-                h.ReceiveHit(Attack, Origin);
+                hunterPulses.Add(pulse);
+                StrikeHunter(h, () => h.ReceiveHit(Attack, Origin));
             }
             var hound = S.Hound;
             if (hound && !hound.Ridden && !houndPulses.Contains(pulse) && Hit(hound.transform.position, t))
@@ -148,6 +150,13 @@ namespace FH.Game
                 houndPulses.Add(pulse); HoundHits++;
                 hound.TakeBlow(Attack, Origin);
             }
+        }
+
+        void StrikeHunter(HunterController h, System.Action blow)
+        {
+            float evaded = h.LastDodgeEvade;
+            blow();
+            if (h.LastDodgeEvade > evaded) HunterEvaded++; else HunterHits++;
         }
 
         void Waves(float t)

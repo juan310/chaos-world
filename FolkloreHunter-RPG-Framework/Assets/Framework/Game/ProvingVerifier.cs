@@ -425,8 +425,9 @@ namespace FH.Game
             float evadedBefore = H.LastDodgeEvade;
             had = slam; hits = 0;
             yield return Tap(PadButton.A, 2);
-            for (float t0 = Time.time; Time.time - t0 < .8f; ) { if (slam) hits = slam.HunterHits; yield return null; }
-            Check("rolling through the shockwave's front evades it", had && hits == 0 && H.LastDodgeEvade > evadedBefore, had ? hits + " hits, evade " + (H.LastDodgeEvade > evadedBefore) : "no area");
+            int dodged = 0;
+            for (float t0 = Time.time; Time.time - t0 < .8f; ) { if (slam) { hits = slam.HunterHits; dodged = slam.HunterEvaded; } yield return null; }
+            Check("rolling through the shockwave's front evades it", had && hits == 0 && dodged > 0 && H.LastDodgeEvade > evadedBefore, had ? hits + " hits, " + dodged + " evaded" : "no area");
             yield return UntilNeutral(4);
             // Eruptions: three circles, one under the hunter; moving away in time avoids them.
             Face(w, 7); yield return Frames(2);
