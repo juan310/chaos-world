@@ -183,6 +183,7 @@ namespace FH.Game
                 else travelUntil = 0;
             }
             Sequence.Add(st.Clip); if (Sequence.Count > 4000) Sequence.RemoveRange(0, 1000);
+            Trace("strike " + st.Clip);
             LastEvent = st.Clip == "Bite" ? "bite" : st.Clip == "Slash_R" ? "slash" : st.Clip == "Spin" ? "spin" : "pounce";
         }
 
@@ -259,6 +260,7 @@ namespace FH.Game
 
         void Hop(Vector3 dir, float distance, float time, bool keepFacing)
         {
+            Trace("hop");
             Anim.Play("Hop", false, Mathf.Max(.3f, Anim.Length("Hop") / time), true, .04f);
             Travel(dir, distance, .05f, time * .85f, keepFacing);
             actionEnd = Time.time + time; strikeAt = -1; comboStep = -1;
@@ -391,8 +393,10 @@ namespace FH.Game
             var target = PickTarget();
             Target = target;
             if (State == HoundState.Called && (dist < 3.5f || Time.time - calledAt > 8)) State = HoundState.Follow;
+            var was = State;
             if (target && State != HoundState.Called) State = HoundState.Assist;
             else if (State == HoundState.Assist) State = HoundState.Follow;
+            if (State != was) Trace("state " + State + (target ? " (" + target.DisplayName + ")" : ""));
 
             UpdateAction(dt);
             // A wind-up aimed at it cancels whatever it is doing (except the instant a strike lands): hop clear first.
@@ -506,6 +510,7 @@ namespace FH.Game
         public float PincerAngle { get; private set; }
         /// <summary>The companion's recent decisions (time, action, gap, readiness, opening, monster mode) for diagnosis.</summary>
         public readonly List<string> DecisionLog = new List<string>();
+        void Trace(string what) { DecisionLog.Add(Time.time.ToString("0.00") + " " + what); if (DecisionLog.Count > 60) DecisionLog.RemoveAt(0); }
         public int LaneClears { get; private set; }
         public int Circles { get; private set; }
         bool inLane; float laneAt;
@@ -533,7 +538,7 @@ namespace FH.Game
             float lane = 1.4f * Size;
             var side = Vector3.Cross(Vector3.up, hf) * (across >= 0 ? 1 : -1);
             MoveToward(transform.position + side * (lane + 1.2f * Size - Mathf.Abs(across) + .6f), .2f, true, -side, dt, GallopSpeed);
-            if (!inLane) LaneClears++;
+            if (!inLane) { LaneClears++; Trace("lane clear"); }
             inLane = true; laneAt = Time.time;
             LastEvent = "out of the hunter's way";
             return true;

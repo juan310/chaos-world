@@ -225,7 +225,8 @@ namespace FH.Game
             float toppledAt = Time.time;
             yield return Until(() => hound.Sequence.Count > sq0, 3);
             float react = Time.time - toppledAt;
-            Check("a toppled monster is punished at once (the hound skips its pause between combos)", hound.Punishes > pun0 && react < 1.2f, "next strike after " + react.ToString("0.00") + " s (pause " + HoundTactics.ComboCooldown + " s), " + hound.LastEvent + "; " + string.Join(" | ", hound.DecisionLog.Skip(Math.Max(0, hound.DecisionLog.Count - 8))));
+            Check("a toppled monster is punished at once (the hound skips its pause between combos)", hound.Punishes > pun0 && react < 1.2f, "toppled at " + toppledAt.ToString("0.00") + ", next strike after " + react.ToString("0.00") + " s (pause " + HoundTactics.ComboCooldown + " s), " + hound.LastEvent + "; "
+                  + string.Join(" | ", hound.DecisionLog.Where(e => float.TryParse(e.Split(' ')[0], out float et) && et >= toppledAt - 1.5f).Take(24)));
             yield return Wait(3.2f);
             Check("the hound cuts the softest part in reach, not just the nearest", hound.WorthChosen >= hound.WorthNearest && hound.WorthChosen > 0,
                   "worth chosen " + hound.WorthChosen.ToString("0.0") + " vs nearest " + hound.WorthNearest.ToString("0.0") + ", last part " + hound.LastPartStruck);
@@ -705,7 +706,14 @@ namespace FH.Game
             Hold(PadButton.RB); yield return Frames(3);
             yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
             Release();
-            yield return Wait(1.6f);
+            var path = new List<string>();
+            for (float t = 0; t < 1.6f; t += Time.unscaledDeltaTime)
+            {
+                if (path.Count < 9 && (path.Count == 0 || t > path.Count * .18f))
+                    path.Add(Vector3.Distance(Flat(H.transform.position), Flat(m.transform.position)).ToString("0.0") + (S.Hound ? "/h" + Vector3.Distance(Flat(H.transform.position), Flat(S.Hound.transform.position)).ToString("0.0") : "") + ":" + CurrentId);
+                yield return null;
+            }
+            scene += "; distance to it / to the hound over the charge: " + string.Join(" ", path);
             yield return Snap("p14-lance-dash");
             Check("charging through a monster strikes it more than once on one pass", H.SwingsLanded - landed >= 2, (H.SwingsLanded - landed) + " hits in 1.6 s, " + Vector3.Distance(H.transform.position, m.transform.position).ToString("0.0") + " m from it; before: " + scene);
             if (H.LockTarget) yield return Tap(PadButton.RightStick);
