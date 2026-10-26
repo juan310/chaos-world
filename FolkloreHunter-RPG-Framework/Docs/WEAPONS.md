@@ -70,6 +70,19 @@ with a three-hit attack on the rider's command ([Fextralife: Palamutes](https://
 - **Ridden:** the stick walks (light push) or **lopes** (full push); **RT dashes**; **RB while dashing drifts**: a
   much tighter turn, the hound leaning into it and throwing up dirt. **Y**: the hound attacks (press again during a
   strike to chain bite, slash, spin). **A**: a quick sidestep, the rider protected for 0.3 s. Riding costs no stamina.
+- **Judgement (smarter hound):**
+  - *Which monster:* your lock first; otherwise one winding up to hit you (top priority while you are knocked
+    down: it comes to the rescue), then the one you have been hitting (even a passive training target), then any
+    engaged monster near you. The overlay and `TargetReason` say why.
+  - *When:* a monster recovering from a swing, staggered or toppled is an opening: the hound attacks at once instead
+    of waiting out its 2.4 s pause (0.6 s; 0.4 s while you are down).
+  - *Where to cut:* each strike goes to the softest part in reach (hitzone, weak points ×1.5, unbroken breakable
+    parts +0.3), and it flanks on the side nearer that part. Strikes step in up to 0.9 m so the combo connects.
+  - *Getting around:* it steers round pillars and walls (tries 35°, 70°, 110° to the side it went last) and only
+    teleports after 2.5 s truly stuck. It steps out of your attack's path (a lance charge's whole lane) and only
+    runs beside you when you sprint, not when an attack carries you.
+  - *Ridden:* lock on (R3) and let go of the stick: it runs you to the monster and stops at striking range. A
+    wind-up aimed at you makes it sidestep on its own (you stay on), unless you are already steering away.
 - **New clips** on the hound's rig (`Tools/rig_briarhound.py`, IK paws as before): `Slash_R`, `Spin` (a full turn with
   a hop, paws carried round), `Pounce` (crouch, leap, slash on landing), `Hop`. The game moves the hound during the
   leap and hops. Backup of the previous hound: `SourceArt/Backups/briarhound-before-palamute-20261026`.
