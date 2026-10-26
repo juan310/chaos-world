@@ -134,6 +134,8 @@ def build_weapons(rig, sword, shield_rect, image):
         R = Matrix.Rotation(math.radians(a), 3, 'Z')
         b.box(R @ Vector((.035, 0, .1)), (.06, .006, .16), 'red', R)
     made['Hunt_Arrow'] = _attach('Hunt_Arrow', b.finish('Hunt_Arrow', mat), sword)
+    na = made['Hunt_Arrow'].copy(); na.name = 'Hunt_NockedArrow'; bpy.context.scene.collection.objects.link(na)
+    made['Hunt_NockedArrow'] = na
 
     # Quiver on the back: a leather tube with fletchings showing, slung over the right shoulder.
     b = Builder(pal)
@@ -230,6 +232,173 @@ def derive_clips(rig):
         q = _pose_at(bpy.data.actions['Blocking'], bone, .5)
         if q is not None: _set_constant(a, bone, q)
     made.append(a)
-    # Bow: walking with the bow held out and the torso turned to aim (the aiming pose over the walk's legs).
-    made.append(overlay('Walking_A', '1H_Ranged_Aiming', right + left + torso, .5, 'Bow_Aim_Walk'))
+    # (Bow_Aim_Walk is authored with the bow clips: bow_clips())
     return made, {'right': right, 'left': left, 'torso': torso}
+
+
+# ---------------- katana (two-handed, like Monster Hunter's long sword) ----------------
+def build_katana(rig, sword, image):
+    """Long, slightly curved single-edged blade, oval gold tsuba, long two-hand wrapped hilt; a thin edge strip
+    (Hunt_KatanaGlow) the game lights by spirit level."""
+    pal = Palette(image); mat = sword.active_material
+    b = Builder(pal)
+    b.tube([(0, 0, -.62), (0, 0, .34)], [.06, .065], 'wood_dark', sides=6)                   # hilt wrap
+    for z in (-.5, -.3, -.1, .1, .28):
+        b.tube([(0, 0, z - .012), (0, 0, z + .012)], [.072, .072], 'red', sides=6)          # ito diamonds suggested by bands
+    b.tube([(0, 0, -.66), (0, 0, -.6)], [.068, .068], 'gold', sides=6)                       # kashira
+    b.tube([(0, 0, .35), (0, 0, .4)], [.19, .19], 'gold', sides=10)                          # tsuba
+    b.tube([(0, 0, .4), (0, 0, .47)], [.055, .05], 'gold', sides=6)                          # habaki
+    L = 2.75; segs = 10
+    prev = None
+    for i in range(segs + 1):
+        z = .47 + (L - .47) * i / segs
+        t = i / segs
+        x = .09 * t * t                                                                       # sori: the blade curves back
+        w = .11 - .03 * t
+        if prev is not None:
+            pz, px, pw = prev
+            mid = Vector(((x + px) / 2, 0, (z + pz) / 2))
+            d = Vector((x - px, 0, z - pz)); R = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_matrix()
+            b.box(mid, (pw * .5 + w * .5, .03, d.length + .002), 'metal', R)
+        prev = (z, x, w)
+    b.cone((.09, 0, L - .02), (.11, 0, L + .22), .055, 'metal', sides=4)                      # kissaki
+    katana = _attach('Hunt_Katana', b.finish('Hunt_Katana', mat), sword)
+    g = Builder(pal)
+    for i in range(segs):
+        z0 = .5 + (L - .5) * i / segs; z1 = .5 + (L - .5) * (i + 1) / segs
+        t0, t1 = i / segs, (i + 1) / segs
+        x0 = .09 * t0 * t0 - (.11 - .03 * t0) * .5; x1 = .09 * t1 * t1 - (.11 - .03 * t1) * .5
+        d = Vector((x1 - x0, 0, z1 - z0)); R = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_matrix()
+        g.box(((x0 + x1) / 2, 0, (z0 + z1) / 2), (.012, .036, d.length + .002), 'string', R)
+    glow = _attach('Hunt_KatanaGlow', g.finish('Hunt_KatanaGlow', mat), sword)
+    return {'Hunt_Katana': katana, 'Hunt_KatanaGlow': glow}
+
+
+# ---------------- pose authoring (Monster Hunter-style bow, katana stance) ----------------
+class Poser:
+    """Sets bones by where they should point (armature space: the hunter faces -Y, up +Z, its left is +X) and keys
+    whole poses into new actions. Two-bone arm IK places elbows and hands."""
+    def __init__(self, rig):
+        self.rig = rig; self.pb = rig.pose.bones
+        self.fps = bpy.context.scene.render.fps
+
+    def update(self): bpy.context.view_layer.update()
+
+    def use(self, action):
+        ad = self.rig.animation_data or self.rig.animation_data_create()
+        ad.action = action
+        try:
+            if action and action.slots: ad.action_slot = action.slots[0]
+        except AttributeError: pass
+
+    def head(self, n): return self.pb[n].head.copy()
+    def length(self, n): return (self.rig.data.bones[n].tail_local - self.rig.data.bones[n].head_local).length
+
+    def aim(self, n, d):
+        self.update()
+        p = self.pb[n]; m = p.matrix.copy(); h = m.translation.copy()
+        cur = (p.tail - p.head).normalized()
+        q = cur.rotation_difference(Vector(d).normalized())
+        p.matrix = Matrix.Translation(h) @ q.to_matrix().to_4x4() @ Matrix.Translation(-h) @ m
+        self.update()
+
+    def turn(self, n, axis, deg):
+        self.update()
+        p = self.pb[n]; m = p.matrix.copy(); h = m.translation.copy()
+        p.matrix = Matrix.Translation(h) @ Matrix.Rotation(math.radians(deg), 4, Vector(axis).normalized()) @ Matrix.Translation(-h) @ m
+        self.update()
+
+    def arm(self, side, target, pole):
+        """Upper and lower arm so the wrist reaches `target`, the elbow bending toward `pole`."""
+        up, lo = 'upperarm.' + side, 'lowerarm.' + side
+        S = self.head(up); L1, L2 = self.length(up), self.length(lo)
+        T = Vector(target); d = min((T - S).length, (L1 + L2) * .995); axis = (T - S).normalized()
+        a = (L1 * L1 - L2 * L2 + d * d) / (2 * d); h = math.sqrt(max(0, L1 * L1 - a * a))
+        n = Vector(pole) - axis * Vector(pole).dot(axis); n = n.normalized() if n.length > 1e-6 else axis.orthogonal().normalized()
+        E = S + axis * a + n * h
+        self.aim(up, E - S); self.aim(lo, (S + axis * d) - E)
+
+    def snapshot(self, action, frame):
+        self.use(action); bpy.context.scene.frame_set(int(round(frame))); self.update()
+        return {p.name: (p.location.copy(), p.rotation_quaternion.copy(), p.scale.copy()) for p in self.pb}
+
+    def clip(self, name, keys, loop=False):
+        """keys: list of (seconds, base action name, base frame fraction, pose function or None)."""
+        act = bpy.data.actions.new(name); act.use_fake_user = True
+        for sec, base, frac, fn in keys:
+            b = bpy.data.actions[base]; f0, f1 = b.frame_range
+            snap = self.snapshot(b, f0 + (f1 - f0) * frac)
+            self.use(act); f = 1 + sec * self.fps
+            bpy.context.scene.frame_set(int(round(f)))
+            for p in self.pb:
+                if p.name in snap: p.location, p.rotation_quaternion, p.scale = snap[p.name]
+            self.update()
+            if fn: fn(self)
+            for p in self.pb:
+                p.keyframe_insert('rotation_quaternion', frame=f); p.keyframe_insert('location', frame=f)
+        return act
+
+
+def bow_pose(depth=1.0, cant=0.0, pitch=0.0, release=0.0, lean=0.0):
+    """Monster Hunter bow: left arm straight out holding the bow, right hand drawing the string to the cheek.
+    depth 0..1.3 how far the string is drawn, cant degrees the bow is tilted flat (power shot, Dragon Piercer),
+    pitch degrees the shot is raised (arc shot), release 0..1 the drawing hand flicking back after the loose."""
+    def fn(P):
+        P.turn('chest', (0, 0, 1), -22)                                  # left shoulder toward the target
+        if lean: P.turn('spine', (1, 0, 0), lean)
+        if pitch: P.turn('chest', (1, 0, 0), -pitch)
+        P.update()
+        A = Vector((.06, -math.cos(math.radians(pitch)), math.sin(math.radians(pitch)))).normalized()
+        SL = P.head('upperarm.l'); reach = P.length('upperarm.l') + P.length('lowerarm.l')
+        P.arm('l', SL + A * reach * .97, (0, 0, -1))
+        for n in ('wrist.l', 'hand.l'):
+            if n in P.pb: P.aim(n, A)
+        if cant and 'lowerarm.l' in P.pb: P.turn('lowerarm.l', A, -cant)
+        bow_hand = P.head('hand.l') if 'hand.l' in P.pb else SL + A * reach
+        string = bow_hand - A * (.36 + .5 * depth) + Vector((-.03, 0, .04))  # back along the arrow to the cheek
+        string += Vector((-.06, .08, -.02)) * release
+        P.arm('r', string, (-1, .6, .3))
+        for n in ('wrist.r', 'hand.r'):
+            if n in P.pb: P.aim(n, A)
+    return fn
+
+
+def katana_iai(P):
+    P.turn('chest', (1, 0, 0), 16); P.turn('spine', (0, 0, 1), 18); P.turn('head', (1, 0, 0), -12)
+
+
+def bow_clips(rig):
+    """The bow moveset's own clips, posed after Monster Hunter's bow (held in the left hand, drawn to the cheek)."""
+    P = Poser(rig); made = []
+    made.append(P.clip('Bow_Draw', [(0, 'Idle', 0, bow_pose(1.0)), (.6, 'Idle', .5, bow_pose(1.05)), (1.2, 'Idle', 1, bow_pose(1.0))]))
+    made.append(P.clip('Bow_Shoot', [(0, 'Idle', 0, bow_pose(1.0)), (.06, 'Idle', .1, bow_pose(.2, release=1)), (.2, 'Idle', .3, bow_pose(.25, release=.6)), (.45, 'Idle', .5, bow_pose(.7))]))
+    made.append(P.clip('Bow_Power_Shoot', [(0, 'Idle', 0, bow_pose(1.0, cant=80)), (.07, 'Idle', .1, bow_pose(.2, cant=80, release=1)), (.25, 'Idle', .3, bow_pose(.3, cant=70, release=.5)), (.5, 'Idle', .5, bow_pose(.7, cant=30))]))
+    made.append(P.clip('Bow_Arc_Shoot', [(0, 'Idle', 0, bow_pose(.6, pitch=15)), (.25, 'Idle', .2, bow_pose(1.0, pitch=55)), (.32, 'Idle', .3, bow_pose(.2, pitch=58, release=1)), (.7, 'Idle', .6, bow_pose(.6, pitch=20))]))
+    made.append(P.clip('Bow_Piercer', [(0, 'Idle', 0, bow_pose(.8, cant=45, lean=8)), (.7, 'Idle', .4, bow_pose(1.3, cant=50, lean=14)), (.78, 'Idle', .5, bow_pose(.1, cant=50, lean=4, release=1)), (1.45, 'Idle', .9, bow_pose(.6, cant=20))]))
+    for side, base in (('L', 'Dodge_Left'), ('R', 'Dodge_Right')):
+        made.append(P.clip('Bow_Step_' + side, [(t, base, t / .6, bow_pose(.5)) for t in (0, .15, .3, .45, .6)]))
+    old = bpy.data.actions.get('Bow_Aim_Walk')
+    if old: bpy.data.actions.remove(old)
+    made.append(P.clip('Bow_Aim_Walk', [(t, 'Walking_A', t / 1.0, bow_pose(.9)) for t in (0, .25, .5, .75, 1.0)], loop=True))
+    made.append(P.clip('Katana_Iai', [(0, '2H_Melee_Idle', 0, katana_iai), (.8, '2H_Melee_Idle', .5, katana_iai), (1.6, '2H_Melee_Idle', 1, katana_iai)], loop=True))
+    P.use(None)
+    return made
+
+
+def place_bow(rig, bow, nocked):
+    """Moves the bow to the left hand: in the full-draw pose it stands upright across the line of the shot, string
+    toward the archer; the nocked arrow sits in the right hand along that line, its head just past the bow."""
+    P = Poser(rig)
+    P.snapshot(bpy.data.actions['Bow_Draw'], 1)
+    A = Vector((.06, -1, 0)).normalized()
+    hand_l = rig.pose.bones['handslot.l'].head.copy(); hand_r = rig.pose.bones['handslot.r'].head.copy()
+    X = -A; Z = Vector((0, 0, 1)); Z = (Z - X * Z.dot(X)).normalized(); Y = Z.cross(X)
+    M = Matrix((X, Y, Z)).transposed().to_4x4(); M.translation = hand_l
+    bow.parent = rig; bow.parent_type = 'BONE'; bow.parent_bone = 'handslot.l'
+    P.update(); bow.matrix_world = M
+    line = (hand_l - hand_r).normalized()
+    Zr = line; Xr = Zr.orthogonal().normalized(); Yr = Zr.cross(Xr)
+    N = Matrix((Xr, Yr, Zr)).transposed().to_4x4(); N.translation = hand_r
+    nocked.parent = rig; nocked.parent_type = 'BONE'; nocked.parent_bone = 'handslot.r'
+    P.update(); nocked.matrix_world = N
+    P.use(None); P.update()

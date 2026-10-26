@@ -99,7 +99,10 @@ for side, sign in (('l', 1), ('r', -1)):
 atlas = next(im for im in bpy.data.images if im.size[0] > 0 and im.name not in ('Render Result', 'Viewer Node'))
 weapons = hunter_weapons.build_weapons(rig, bpy.data.objects['1H_Sword'], bpy.data.objects['Rectangle_Shield'], atlas)
 bpy.data.objects.remove(bpy.data.objects['Rectangle_Shield'], do_unlink=True)   # only its enlarged copy ships
+weapons.update(hunter_weapons.build_katana(rig, bpy.data.objects['1H_Sword'], atlas))
 derived, arm_bones = hunter_weapons.derive_clips(rig)
+derived += hunter_weapons.bow_clips(rig)
+hunter_weapons.place_bow(rig, weapons['Hunt_Bow'], weapons['Hunt_NockedArrow'])
 
 for im in bpy.data.images:
     if im.name in ['Render Result', 'Viewer Node']:
@@ -121,11 +124,13 @@ rig.animation_data_create()
 shots = []
 props = [o for o in bpy.data.objects if o.name in ('1H_Sword', 'Round_Shield', 'Knight_Cape')]
 hunt_props = [o for o in bpy.data.objects if o.name.startswith('Hunt_')]
-LOADOUT = {'sns': ('1H_Sword', 'Round_Shield'), 'lance': ('Hunt_Lance', 'Hunt_TowerShield'), 'bow': ('Hunt_Bow', 'Hunt_Quiver')}
+LOADOUT = {'sns': ('1H_Sword', 'Round_Shield'), 'lance': ('Hunt_Lance', 'Hunt_TowerShield'), 'bow': ('Hunt_Bow', 'Hunt_Quiver', 'Hunt_NockedArrow'),
+           'katana': ('Hunt_Katana', 'Hunt_KatanaGlow')}
 views = (('front', (0, -6, 1.0), (math.radians(90), 0, 0)), ('side', (6, 0, 1.0), (math.radians(90), 0, math.radians(90))),
          ('right', (-6, 0, 1.0), (math.radians(90), 0, math.radians(-90))), ('threequarter', (4.2, -4.2, 2.6), (math.radians(68), 0, math.radians(45))))
-CLIP_LOADOUT = {'1H_Melee_Attack_Stab': 'lance', 'Lance_High_Thrust': 'lance', 'Lance_Charge': 'lance', 'Blocking': 'lance',
-                '1H_Ranged_Aiming': 'bow', '1H_Ranged_Shoot': 'bow', 'Bow_Aim_Walk': 'bow'}
+CLIP_LOADOUT = {'Lance_High_Thrust': 'lance', 'Lance_Charge': 'lance', 'Blocking': 'lance',
+                'Bow_Draw': 'bow', 'Bow_Shoot': 'bow', 'Bow_Power_Shoot': 'bow', 'Bow_Arc_Shoot': 'bow', 'Bow_Piercer': 'bow', 'Bow_Step_L': 'bow', 'Bow_Aim_Walk': 'bow',
+                '2H_Melee_Idle': 'katana', '2H_Melee_Attack_Chop': 'katana', '2H_Melee_Attack_Spin': 'katana', 'Katana_Iai': 'katana'}
 for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spin', 'Lie_Down', 'Use_Item'] + list(CLIP_LOADOUT):
     act = bpy.data.actions.get(name)
     if not act:
@@ -144,6 +149,7 @@ for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spi
         o.hide_render = bare or (o.name in ('1H_Sword', 'Round_Shield') + tuple(n for k in LOADOUT.values() for n in k) and o.name not in show)
     if name in CLIP_LOADOUT and name not in ('Blocking',):
         views_now = views[:2] + views[3:]
+        if name.startswith('Bow_') and name not in ('Bow_Draw',): views_now = views[1:2] + views[3:]
     else:
         views_now = views if bare else views[:2]
     for view, loc, rot in views_now:
