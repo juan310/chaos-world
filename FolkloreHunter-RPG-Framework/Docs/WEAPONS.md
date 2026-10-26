@@ -1,3 +1,70 @@
+# Build 0.8.0 — Katana, evasions, Monster Hunter bow animations, Training Range
+
+## Training Range (new test area)
+Title menu → **Training Range (weapons and evasions)**, or from either ledger → *Go to the Training Range*. Like
+the Proving Grounds it is never saved and gives no rewards. A walled yard 56 × 80 m:
+- **Archery lane** (west): a shooting line and straw targets at 10, 20, 30 and 40 m. Each target counts its hits and
+  its gold (inner third) on its sign; the overlay lists them too.
+- **Dummy pen** (east): a Thornback and a Gravebound, passive and unkillable (a blow that would fell one heals it
+  first), for practising combos and spirit levels.
+- **Hazard yard** (middle): a slow slam pad (3.4 s), a quick slam pad (2.2 s) and a sweeping log. Each shows a red
+  telegraph, then strikes like a monster blow: roll or slide through it (i-frames), guard it, or counter it with the
+  katana's Foresight Slash or Iai Spirit Slash. The overlay counts evaded / struck. Toggle at the ledger.
+- **Dodge lane**: a strip marked every metre, to read how far each evasion travels.
+- **Ledger** at the entrance: weapons, monsters, options (hazards on/off), travel to the Proving Grounds, leave.
+
+## Evasions (all weapons)
+| Input | Evasion | Distance / time / invulnerable / stamina |
+|---|---|---|
+| A, sheathed or stick forward | **Roll** | 3.0 m / 0.42 s / dodge stat / 25 |
+| A, weapon out, stick to the side | **Side slide** (keeps facing) | 2.3 m / 0.30 s / 0.20 s / 18 |
+| A, weapon out, stick back | **Back-step** (keeps facing) | 1.8 m / 0.28 s / 0.18 s / 15 |
+| A while sprinting away from a monster within 12 m | **Dive** (then a short landing) | 4.6 m / 0.55 s / 0.60 s / 30 |
+| A, lance drawn | Hop (unchanged) | |
+| A, bow drawn | Charging sidestep (now with its own step clips) | |
+
+## Katana (two-handed) — Monster Hunter's Long Sword
+| Input (Xbox / keyboard+mouse) | Move | Notes |
+|---|---|---|
+| Y / LMB | Overhead Slash → Thrust → Rising Slash | normal hits fill the **spirit gauge** (9 per hit) |
+| B / RMB | Thrust, Rising Slash | |
+| Y+B | Fade Slash (slides back) | stick to the side: **Lateral Fade Slash** (about 2.6 m sideways) |
+| RB / Ctrl | **Spirit Blade I → II → III → Spirit Roundslash** | each spends gauge (12/14/18/15); short of gauge the move is weaker (×0.6) |
+| (Roundslash lands) | **Spirit level up** | white → yellow → red: ×1.05 / ×1.1 / ×1.2 damage; each level fades after 45 s; the blade's edge glows in the level's colour |
+| RB + B | **Foresight Slash** | a quick invulnerable step back; a blow that passes through it is answered with the Foresight Counter (MV 1.8) and fills the gauge; otherwise a plain slash |
+| RB + A | **Iai stance** (special sheathe, up to 3 s) | Y: **Iai Slash** (multi-hit; the gauge then refills itself for 12 s). RB: **Iai Spirit Slash**: a blow caught in its windup is parried, it lands, level up and a full gauge |
+The gauge drains slowly after 4 s without hitting. Spirit gauge bar under the magic bar; the overlay shows the gauge,
+level, stance and counters. Damage: the katana's own weapon (Slash, base 30).
+
+## Bow — now animated like Monster Hunter's archer
+From gameplay footage and guides: the MH bow is held **in the left hand**, the string drawn to the cheek by the right,
+an arrow nocked on the bow while it is out; the power shot fires with the bow **canted** (turned on its side); the arc
+shot is loosed **upward**; the Dragon Piercer is a long, leaning draw with the bow canted; the charging sidestep is a
+quick side hop with the bow kept up.
+New hunter clips (authored in Blender on the KayKit rig, `Tools/hunter_weapons.py`): `Bow_Draw` (drawn to full over
+the charge time), `Bow_Shoot`, `Bow_Power_Shoot` (canted 80°), `Bow_Arc_Shoot` (pitched up 55°), `Bow_Piercer` (1.45 s,
+canted, leaning), `Bow_Step_L/R`, `Bow_Aim_Walk`; plus `Katana_Iai`. The bow now sits in the left hand slot; the
+nocked arrow (`Hunt_NockedArrow`) shows while the bow is out and leaves the string for a moment at each shot.
+Arrows leave from the bow hand.
+
+## Results (0.8.0)
+RESULTS_PLACEHOLDER
+
+## Limits (0.8.0, honest)
+- The katana uses KayKit's two-handed sword clips (chop, slice, stab, spin, spinning) for its moves; only the iai stance
+  pose is new. No Spirit Helm Breaker, Focus Strike or Spirit Charge yet; the Red level does not lengthen the blade.
+- Evasions have no "perfect evade" bonus (MH's Discerning Dodge), and the dive has no separate animation (the KayKit
+  jump with a quick stand-up).
+- The bow's string is a static mesh line; it does not bend as the hand draws.
+- The Training Range hazards are fixed timers, not monsters; they test i-frames, guards and counters, not reading
+  a monster's tells.
+
+Sources: Monster Hunter Wilds Long Sword guides — [Icy Veins](https://icy-veins.com/monster-hunter-wilds/long-sword-guide),
+[Mobalytics](https://mobalytics.gg/mhw/long-sword-guide), [GameWith](https://gamewith.net/monster-hunter-wilds/49136),
+[PCGamesN](https://www.pcgamesn.com/monster-hunter-wilds/long-sword); Bow guides —
+[Icy Veins](https://icy-veins.com/monster-hunter-wilds/bow-guide), [Mobalytics](https://mobalytics.gg/mhw/bow-guide),
+[PC Gamer](https://pcgamer.com/games/action/monster-hunter-wilds-bow-builds), [PCGamesN](https://www.pcgamesn.com/monster-hunter-wilds/bow).
+
 # Build 0.7.0 — Lance and Bow (Monster Hunter-style weapons)
 
 Both weapons live in the Proving Grounds next to the sword and shield: choose them at the **ledger** (south wall),
@@ -82,7 +149,6 @@ Screenshots: `Captures/Proving/p11-lance-drawn` ... `p18-bow-aim`.
 
 ## Limits (honest)
 - No coatings, tracer arrows, focus strikes, sharpness or weapon wear yet; one lance and one bow (no upgrade trees).
-- The bow is held in the right hand (the KayKit aiming clip's hand), like a mirrored archer; there is no string-pull
-  animation, only the aim, release and walk poses.
+- (0.7.0; fixed in 0.8.0) The bow was held in the right hand with no string-pull animation.
 - The lance's counter stance blocks any frontal blow during its window (no separate power-guard stance).
 - No aim assist: free aim needs the crosshair on the monster; without aiming, shots go to the locked or nearest target.
