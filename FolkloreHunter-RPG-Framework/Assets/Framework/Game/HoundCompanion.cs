@@ -27,6 +27,7 @@ namespace FH.Game
         Transform pawL, pawR;
         float vertical, biteReadyAt, biteAt = -1, idleFor, stuckFor;
         MonsterActor biteTarget;
+        int mountedFrame = -10;
         Vector3 lastPos;
         HoundMount mount;
 
@@ -87,6 +88,7 @@ namespace FH.Game
             h.Hunt?.SetSheathed(true);
             h.LockTarget = null;
             h.BeginRide(this);
+            mountedFrame = Time.frameCount;   // the press that mounted must not also dismount
             State = HoundState.Ridden;
             LastEvent = "mounted";
         }
@@ -123,7 +125,7 @@ namespace FH.Game
         void RideTick(float dt)
         {
             var h = S.Hunter;
-            if (InputRouter.Down(GameAction.Interact) || InputRouter.Down(GameAction.Sheathe)) { Dismount(); return; }
+            if (Time.frameCount > mountedFrame + 1 && (InputRouter.Down(GameAction.Interact) || InputRouter.Down(GameAction.Sheathe))) { Dismount(); return; }
             if (InputRouter.Down(GameAction.Whistle)) { Anim.Play("Howl", false, 1.4f, true); LastEvent = "howl"; }
             var mv = InputRouter.Move();
             var cam = S.CameraRig.Camera.transform;

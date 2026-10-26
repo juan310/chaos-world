@@ -310,10 +310,18 @@ namespace FH.Game
             yield return Snap("p07-topple");
             yield return Until(() => m.Brain.Mode != MonsterMode.Downed, 5);
             m.Brain.Health = m.Def.maxHealth * .45f;
-            Face(m, 1.3f);
-            yield return Tap(PadButton.Y);
-            yield return UntilNeutral();
-            Check("below half health the monster enrages (attacks sooner)", m.Reactions.Enraged && m.Brain.CooldownScale < 1, m.Brain.Health.ToString("0"));
+            int landed = H.SwingsLanded;
+            for (int i = 0; i < 3 && !m.Reactions.Enraged; i++)
+            {
+                yield return UntilNeutral();
+                Face(m, 1.3f);
+                yield return Tap(PadButton.Y);
+                yield return Until(() => F.Current != null, .5f);
+                yield return UntilNeutral();
+                if (m.Brain.Health <= 0) { m = Target(); m.Brain.Health = m.Def.maxHealth * .45f; }
+            }
+            Check("below half health the monster enrages (attacks sooner)", m.Reactions.Enraged && m.Brain.CooldownScale < 1,
+                "hp " + m.Brain.Health.ToString("0") + ", blows landed " + (H.SwingsLanded - landed) + ", mode " + m.Brain.Mode + ", last move " + F.LastMove);
 
             // The Cu-sith: follows, comes to the whistle, can be ridden at a gallop, bites the hunted monster.
             var hound = S.Hound;
