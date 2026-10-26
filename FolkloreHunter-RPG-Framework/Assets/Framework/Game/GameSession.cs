@@ -121,6 +121,8 @@ namespace FH.Game
             World.Estate.Apply(0);
             foreach (var n in World.Npcs) n.PlaceFor(this);
             CameraRig.Manual = true;
+            var home0 = World.Anchor("spawn_home");
+            Hunter.Revive(SafeGround(home0.position), home0.eulerAngles.y);              // at home, on foot (also off a mount)
             Hunter.ApplyLook(Appearance.Models(Settings.lookBody, Settings.lookHair));   // the title shows the hunter last played
             Ui.ShowTitle();
         }
@@ -168,6 +170,7 @@ namespace FH.Game
         void Begin(GameState state, bool fresh)
         {
             ClearMonsters();
+            foreach (var d in FindObjectsByType<GreatDoor>(FindObjectsInactive.Include)) d.Close();   // the crypt's door is shut in every game
             ApplyLook(state.player);
             Core = new GameCore(Db, state);
             Core.Conditions.CurrentArea = () => CurrentArea;

@@ -103,6 +103,14 @@ namespace FH.Game
             holder.position = o + local; holder.rotation = Quaternion.Euler(0, yaw, 0);
             var v = CharacterFactory.Create("Lair/" + name, holder, height);
             foreach (var a in v.GetComponentsInChildren<Animation>()) a.enabled = false;
+            // solid like the stone it stands for: a box around what it draws
+            var rends = v.GetComponentsInChildren<Renderer>();
+            if (rends.Length > 0)
+            {
+                var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+                var box = holder.gameObject.AddComponent<BoxCollider>();
+                box.center = holder.InverseTransformPoint(b.center); box.size = Vector3.Scale(b.size, new Vector3(1 / holder.lossyScale.x, 1 / holder.lossyScale.y, 1 / holder.lossyScale.z)) * .9f;
+            }
             return holder;
         }
 
@@ -171,7 +179,7 @@ namespace FH.Game
         static void Banner(Vector3 local, float yaw, float height = 3.4f)
         {
             var mat = Textured("Crimson banner", "banner", .05f, true);
-            Quad("Banner", local, new Vector2(height * .5f, height), mat, Quaternion.Euler(0, yaw, 0));
+            Quad("Banner", local, new Vector2(height * .5f, height), mat, Quaternion.Euler(0, yaw + 180, 0));   // facing into the room
             TiledBox("Banner rod", local + Vector3.up * (height * .5f + .05f), new Vector3(height * .58f, .06f, .06f), Iron, 1, false, Quaternion.Euler(0, yaw, 0));
         }
 
@@ -192,21 +200,21 @@ namespace FH.Game
         /// <summary>A barred arch in a wall: a dark recess, iron bars and, behind them, a coffin or a pile of bones.</summary>
         static void BarredAlcove(Vector3 local, float yaw, bool coffin)
         {
+            // A barred niche against the wall: the dark back on the wall face, the coffin or bones, then the bars in front.
             var rot = Quaternion.Euler(0, yaw, 0);
-            var back = rot * Vector3.forward;
-            WorldKit.Box("Alcove darkness", o + local + back * .55f + Vector3.up * 1.6f, new Vector3(2.2f, 3.2f, .1f), Dark, g).transform.rotation = rot;
+            var back = rot * Vector3.forward;                    // into the wall
+            WorldKit.Box("Alcove darkness", o + local + back * .02f + Vector3.up * 1.6f, new Vector3(2.2f, 3.2f, .04f), Dark, g).transform.rotation = rot;
+            TiledBox("Alcove frame", local - back * .05f + Vector3.up * 3.3f, new Vector3(2.6f, .35f, .3f), Stone, 1, false, rot);
             for (int i = 0; i < 7; i++)
-            {
-                var bar = WorldKit.Cylinder("Iron bar", o + local + rot * new Vector3(-.9f + i * .3f, 1.6f, 0), .03f, 3.1f, Iron, g);
-            }
-            TiledBox("Bar rail", local + Vector3.up * 3.1f, new Vector3(2.1f, .08f, .08f), Iron, 1, false, rot);
+                WorldKit.Cylinder("Iron bar", o + local - back * 1.05f + rot * new Vector3(-.9f + i * .3f, 1.6f, 0), .03f, 3.1f, Iron, g, true);
+            TiledBox("Bar rail", local - back * 1.05f + Vector3.up * 3.1f, new Vector3(2.1f, .08f, .08f), Iron, 1, false, rot);
             if (coffin)
             {
-                var c = Prop("Sarcophagus", local + back * 1.1f, .9f, yaw + 90);
-                if (!c) TiledBox("Coffin", local + back * 1.1f + Vector3.up * .4f, new Vector3(1.9f, .8f, .9f), Stone, 1, false, rot);
+                var c = Prop("Sarcophagus", local - back * .5f, .9f, yaw + 90);
+                if (!c) TiledBox("Coffin", local - back * .5f + Vector3.up * .4f, new Vector3(1.9f, .8f, .8f), Stone, 1, false, rot);
             }
             else for (int i = 0; i < 9; i++)
-                    WorldKit.Orb("Skull", o + local + back * 1.1f + rot * new Vector3(-.6f + (i % 3) * .55f, .2f + (i / 3) * .3f, 0), .14f, Bone, g);
+                    WorldKit.Orb("Skull", o + local - back * .45f + rot * new Vector3(-.6f + (i % 3) * .55f, .2f + (i / 3) * .3f, 0), .14f, Bone, g);
         }
 
         // ---------------- the hallway ----------------
@@ -230,7 +238,7 @@ namespace FH.Game
                     }
                     if (i < 3) Chain(new Vector3(s * (HallHalfWidth - .2f), HallFloor + 6.6f, z), new Vector3(s * (HallHalfWidth - .2f), HallFloor + 6.6f, z + 4.6f), .9f);
                 }
-                BarredAlcove(new Vector3(s * (HallHalfWidth - .05f), HallFloor, HallStart + 5.3f), s > 0 ? 90 : -90, false);
+                BarredAlcove(new Vector3(s * (HallHalfWidth - .05f), HallFloor, HallStart + 1.6f), s > 0 ? 90 : -90, false);   // beside the stairs, clear of the braziers
                 // knight statues flanking the door, facing the hallway
                 KnightStatue(new Vector3(s * 2.9f, HallFloor, DoorZ - 1.4f), 180, 3.4f);
             }
@@ -295,7 +303,8 @@ namespace FH.Game
         static void Lair()
         {
             var c = LairCentre;
-            TiledBox("Lair floor", c + new Vector3(0, -.25f, 0), new Vector3(WallRadius * 2 + 2, .5f, WallRadius * 2 + 2), Floor, 2.6f);
+            // the floor reaches every wall: from the door wall (z -10.6) to behind the altar (z 23.3), the full width
+            TiledBox("Lair floor", new Vector3(0, -.25f, 6.35f), new Vector3(WallRadius * 2 + 4, .5f, 33.9f), Floor, 2.6f);
             TiledBox("Lair ceiling", c + new Vector3(0, 11f, 0), new Vector3(WallRadius * 2 + 2, .5f, WallRadius * 2 + 2), Wall, 3);
             var rune = Quad("Rune circle", c + Vector3.up * .015f, new Vector2(LairRadius * 1.8f, LairRadius * 1.8f), Textured("Rune circle", "rune_circle", .5f, true), Quaternion.Euler(90, 0, 0));
             // steps down from the door into the lair
@@ -316,7 +325,8 @@ namespace FH.Game
                 bool altar = k == 7 || k == 8;                  // the north wall opens onto the altar
                 if (!doorway && !altar) TiledBox("Lair wall", mid + Vector3.up * 5.5f + (mid - c).normalized * .5f, new Vector3(seg + .4f, 11f, .9f), Wall, 2.5f, true, rot);
                 var pil = p0 + (c - p0).normalized * .6f;
-                TiledBox("Lair pillar", pil + Vector3.up * 5f, new Vector3(1.3f, 10f, 1.3f), Stone, 1.5f, true, rot);
+                if (k != 0 && k != n / 2)                        // none at the foot of the door steps or in the altar's way
+                    TiledBox("Lair pillar", pil + Vector3.up * 5f, new Vector3(1.3f, 10f, 1.3f), Stone, 1.5f, true, rot);
                 if (k % 2 == 1 && !altar) Banner(pil + (c - pil).normalized * .67f + Vector3.up * 5.4f, Quaternion.LookRotation(pil - c).eulerAngles.y + 180, 4.2f);
                 var pNext = p1 + (c - p1).normalized * .6f;
                 if (!doorway && !altar) Chain(pil + Vector3.up * 8.6f, pNext + Vector3.up * 8.6f, 1.4f);

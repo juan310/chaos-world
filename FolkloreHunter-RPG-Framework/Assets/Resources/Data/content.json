@@ -398,8 +398,8 @@
     { "id": "sp_warden", "areaId": "crypt", "monsterId": "grave_warden", "x": 0, "z": 9, "patrolRadius": 1.5, "respawnHours": 72 },
     {"id": "sp_thornback", "areaId": "thornwood", "monsterId": "thornback", "x": -25, "z": 14, "patrolRadius": 2, "respawnHours": 24},
     {"id": "sp_mirejaw", "areaId": "mirebank", "monsterId": "mirejaw", "x": 30, "z": 8, "patrolRadius": 2, "respawnHours": 24},
-    {"id": "sp_graves_knight", "areaId": "ashen_fields", "monsterId": "gravebound_knight", "x": 30, "z": 36, "patrolRadius": 2, "respawnHours": 24},
-    {"id": "sp_night_mage", "areaId": "ashen_fields", "monsterId": "gravebound_mage", "x": 33, "z": 18, "patrolRadius": 2, "respawnHours": 12, "nightOnly": true},
+    {"id": "sp_graves_knight", "areaId": "ashen_fields", "monsterId": "gravebound_knight", "x": 4, "z": 32, "patrolRadius": 2, "respawnHours": 24},
+    {"id": "sp_night_mage", "areaId": "ashen_fields", "monsterId": "gravebound_mage", "x": 0, "z": 27, "patrolRadius": 2, "respawnHours": 12, "nightOnly": true},
     {"id": "sp_crypt_guard_l", "areaId": "crypt", "monsterId": "gravebound", "x": -2.2, "z": -14, "patrolRadius": 0.8, "respawnHours": 72},
     {"id": "sp_crypt_guard_r", "areaId": "crypt", "monsterId": "gravebound", "x": 2.2, "z": -14, "patrolRadius": 0.8, "respawnHours": 72}
   ],

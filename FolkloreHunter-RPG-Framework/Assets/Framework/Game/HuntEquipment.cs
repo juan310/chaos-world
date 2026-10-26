@@ -5,7 +5,10 @@ namespace FH.Game {
  public class HuntEquipment:MonoBehaviour {
   GameObject root;Renderer[] original;SkinnedMeshRenderer blade;Vector3 bladeA,bladeB;Transform bladeBone;Matrix4x4 bladeBind;bool cleaver;
   public int MissingBones{get;private set;}
+  void OnDestroy(){if(root)Destroy(root);}
   public void Refresh(GameSession session,HunterController hero) {
+   // The Thornback set and the cleaver are fitted to the classic knight's body: other looks keep their own (stats still apply).
+   if(hero.Look!="Hunter"){if(root)root.SetActive(false);return;}
    if(!root)Build(hero);
    if(!root)return;
    var state=session.Core.State;

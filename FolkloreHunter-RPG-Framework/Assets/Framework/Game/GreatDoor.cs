@@ -16,6 +16,14 @@ namespace FH.Game
 
         public override void Use(GameSession s) => Open();
 
+        /// <summary>Shut again (a game starting or loading: the door is not part of the save).</summary>
+        public void Close()
+        {
+            IsOpen = false; openedAt = -1;
+            if (LeftHinge) LeftHinge.localRotation = Quaternion.identity;
+            if (RightHinge) RightHinge.localRotation = Quaternion.identity;
+        }
+
         public void Open()
         {
             if (IsOpen) return;

@@ -100,6 +100,7 @@ namespace FH.UI
             text.rectTransform.Stretch(12); text.supportRichText = false;
             var f = r.gameObject.AddComponent<InputField>();
             f.textComponent = text; f.characterLimit = 18; f.text = hunterName;
+            f.shouldActivateOnSelect = false;                  // the pad moves past it; A (or a click) starts typing
             f.onEndEdit.AddListener(v => hunterName = Appearance.CleanName(v));
             f.onValueChanged.AddListener(v => hunterName = v);
             r.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1.5f;
@@ -142,6 +143,7 @@ namespace FH.UI
 
         public override bool Back()
         {
+            if (nameField && nameField.isFocused) { hunterName = nameField.text; nameField.DeactivateInputField(); return false; }   // B leaves the name, not the screen
             Restore();
             S.Hunter.ApplyLook(Appearance.Models(S.Settings.lookBody, S.Settings.lookHair));
             Ui.Close(this);

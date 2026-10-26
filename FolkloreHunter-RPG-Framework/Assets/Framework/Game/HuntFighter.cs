@@ -114,8 +114,15 @@ namespace FH.Game
         /// axis are worked out again on the new body.</summary>
         public void Rebind()
         {
-            loadouts.Clear(); pieces = new Piece[0]; katanaScaled = false; bladeAxisKnown = false; corrected = false; shownGlow = -99;
+            ForgetVisual();
             Initialize(S, H, Set);
+        }
+
+        /// <summary>The hunter's model was replaced while the hunt combat is off: forget the old body's weapon placements,
+        /// worked out again when it next starts (Initialize).</summary>
+        public void ForgetVisual()
+        {
+            loadouts.Clear(); pieces = new Piece[0]; katanaScaled = false; bladeAxisKnown = false; corrected = false; shownGlow = -99;
         }
 
         /// <summary>Switches weapon class (the Proving Grounds ledger): shows its pieces, sheathes, resets its state.</summary>

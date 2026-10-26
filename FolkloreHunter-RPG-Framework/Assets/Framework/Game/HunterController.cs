@@ -102,7 +102,7 @@ namespace FH.Game
             var fitted = GetComponent<HuntEquipment>(); if (fitted) DestroyImmediate(fitted);   // its armour is fitted to the old body
             BindVisual();
             if (Ready) { ApplyEquipmentVisuals(); Anim.Play("Idle"); }
-            if (Hunt && Hunt.Set != null) Hunt.Rebind();
+            if (Hunt && Hunt.Set != null) { if (Hunt.enabled) Hunt.Rebind(); else Hunt.ForgetVisual(); }   // off (valley): rebuilt when the hunt combat starts
             Debug.Log("FH_LOOK " + Look);
             return true;
         }
@@ -110,6 +110,10 @@ namespace FH.Game
         void BindVisual()
         {
             Anim = new AnimationDriver(Visual, Look);
+            rideHipsHeight = 0;                 // the seat height is measured again on this body
+            // Stand in the idle pose at once, even with the world paused (character creation over the title).
+            var idle = Anim.State("Idle");
+            if (idle != null) { foreach (AnimationState st in Anim.Anim) { st.enabled = false; st.weight = 0; } idle.enabled = true; idle.weight = 1; idle.time = 0; Anim.Anim.Sample(); }
             hand = WorldKit.Find(Visual, "handslot.r");
             footL = WorldKit.Find(Visual, "foot.l");
             footR = WorldKit.Find(Visual, "foot.r");
