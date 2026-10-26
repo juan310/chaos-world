@@ -39,7 +39,7 @@ namespace FH.Game
             blade.positionCount = 2; blade.enabled = false;
             S.Hunter.BladeHit += RecordHit;
             Spawn("gravebound", true);
-            if (Resources.Load<GameObject>("Models/CuSith"))
+            if (Resources.Load<GameObject>("Models/Briarhound") || Resources.Load<GameObject>("Models/CuSith"))
             {
                 var h = S.Hunter.transform;
                 S.Hound = HoundCompanion.Spawn(S, h.position - h.forward * 2.6f + h.right * 1.8f, h.eulerAngles.y);

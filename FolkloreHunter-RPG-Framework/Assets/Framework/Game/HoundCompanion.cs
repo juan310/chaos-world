@@ -6,11 +6,15 @@ namespace FH.Game
 {
     public enum HoundState { Follow, Assist, Called, Ridden, Sitting }
 
-    /// <summary>The Cu-sith: a fairy hound that follows the hunter, bites the monster being hunted, comes when
-    /// whistled, and can be ridden at a gallop to cross ground quickly (the Palamute's role, from folklore).
-    /// Gait speeds come from the clip's paw stride so the feet do not slide.</summary>
+    /// <summary>The Briarhound: a great shaggy hunting hound that follows the hunter, slashes the monster being hunted
+    /// with the crescent blade it carries in its jaws, comes when whistled, and can be ridden at a gallop to cross ground
+    /// quickly (the Palamute's role). Gait speeds come from the clip's paw stride so the feet do not slide.</summary>
     public class HoundCompanion : MonoBehaviour
     {
+        public const string DisplayName = "Briarhound";
+        /// <summary>The generated Briarhound model when present, else the earlier hand-built hound.</summary>
+        public static string Model => Resources.Load<GameObject>("Models/Briarhound") ? "Briarhound" : "CuSith";
+        bool moving;
         public HoundState State { get; private set; } = HoundState.Follow;
         public AnimationDriver Anim { get; private set; }
         public Transform Visual { get; private set; }
@@ -33,7 +37,7 @@ namespace FH.Game
 
         public static HoundCompanion Spawn(GameSession s, Vector3 at, float yaw)
         {
-            var go = CharacterFactory.Actor("Cu-sith hound", s.SafeGround(at) + Vector3.up * .05f, 1.25f, .42f);
+            var go = CharacterFactory.Actor(DisplayName, s.SafeGround(at) + Vector3.up * .05f, 1.25f, .42f);
             go.transform.rotation = Quaternion.Euler(0, yaw, 0);
             var h = go.AddComponent<HoundCompanion>();
             h.Initialize(s);
@@ -44,10 +48,10 @@ namespace FH.Game
         {
             S = s;
             cc = GetComponent<CharacterController>();
-            Visual = CharacterFactory.Create("CuSith", transform, 1.9f);
+            Visual = CharacterFactory.Create(Model, transform, 1.9f);
             foreach (var r in Visual.GetComponentsInChildren<Renderer>(true).Where(r => r.name.Contains("Eye_")))
                 r.sharedMaterial = WorldKit.Glow(new Color(.55f, 1f, .72f), 3);
-            Anim = new AnimationDriver(Visual, "CuSith");
+            Anim = new AnimationDriver(Visual, Model);
             Saddle = WorldKit.Find(Visual, "saddle");
             pawL = WorldKit.Find(Visual, "fore_paw.l"); pawR = WorldKit.Find(Visual, "fore_paw.r");
             float walkNatural = Anim.NaturalSpeed("Walk", pawL, pawR, transform);
@@ -180,7 +184,9 @@ namespace FH.Game
                 stopAt = 1.2f;
             }
             Vector3 to = goal - transform.position; to.y = 0;
-            if (to.magnitude > stopAt)
+            // Dead zone: stop inside stopAt, start again only past stopAt + 0.6 m (no idle/walk flicker at heel).
+            moving = moving ? to.magnitude > stopAt : to.magnitude > stopAt + .6f;
+            if (moving)
             {
                 bool gallop = to.magnitude > 7 || State == HoundState.Called;
                 float speed = gallop ? GallopSpeed : WalkSpeed;

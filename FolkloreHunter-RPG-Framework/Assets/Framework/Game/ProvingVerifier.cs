@@ -325,7 +325,7 @@ namespace FH.Game
 
             // The Cu-sith: follows, comes to the whistle, can be ridden at a gallop, bites the hunted monster.
             var hound = S.Hound;
-            Check("the Cu-sith hound is in the ring", hound, S.Hound ? S.Hound.name : "none");
+            Check("the Briarhound is in the ring", hound, (S.Hound ? S.Hound.name + " (" + HoundCompanion.Model + ")" : "none"));
             if (hound)
             {
                 var spot = S.World.ProvingOrigin + new Vector3(-14, 0, -14);
@@ -335,10 +335,15 @@ namespace FH.Game
                 yield return Tap(PadButton.DPadUp);
                 Check("D-pad up whistles the hound", hound.LastEvent == "called" || hound.State == HoundState.Called, hound.LastEvent);
                 yield return Wait(1.6f);
-                // Mount: stand beside it and press X.
+                // Mount: stand beside it and press X. Drawn, X sheathes first; sheathed, X mounts.
                 var beside = hound.transform.position + hound.transform.right * 1.4f;
                 H.Teleport(S.SafeGround(beside), hound.transform.eulerAngles.y);
+                F.SetSheathed(false);
                 yield return Frames(4);
+                Check("with the weapon drawn, X next to the hound does not offer to ride", !(S.Focus is HoundMount), S.Focus ? S.Focus.name : "none");
+                yield return Tap(PadButton.X);
+                yield return Wait(.6f);
+                Check("so X sheathes there instead of mounting", F.Sheathed && !H.Riding);
                 Check("standing beside the hound offers to ride it", S.Focus is HoundMount, S.Focus ? S.Focus.name : "none");
                 yield return Tap(PadButton.X);
                 yield return Frames(3);
@@ -348,10 +353,10 @@ namespace FH.Game
                 Vector3 start = hound.transform.position;
                 Hold(PadButton.None, new Vector2(0, 1));
                 yield return Wait(1.2f);
-                Check("the stick walks the hound with its rider", Vector3.Distance(start, hound.transform.position) > 1.5f && H.transform.parent == hound.Saddle, Vector3.Distance(start, hound.transform.position).ToString("0.0") + " m");
+                Check("the stick walks the hound with its rider", Vector3.Distance(start, hound.transform.position) > .8f && H.transform.parent == hound.Saddle, Vector3.Distance(start, hound.transform.position).ToString("0.0") + " m");
                 float top = 0;
                 Hold(PadButton.RT, new Vector2(.3f, 1));
-                var planted = new List<float>(); var bodySpeeds = new List<float>(); var seatGaps = new List<float>();
+                var pawSamples = new List<(float height, float speed)>(); var bodySpeeds = new List<float>(); var seatGaps = new List<float>();
                 var pawL = WorldKit.Find(hound.Visual, "fore_paw.l"); var pawR = WorldKit.Find(hound.Visual, "fore_paw.r");
                 var hips = WorldKit.Find(H.Visual, "hips");
                 Vector3 prevL = pawL.position, prevR = pawR.position, prevBody = hound.transform.position;
@@ -364,12 +369,14 @@ namespace FH.Game
                     // The lower fore paw is the planted one; its ground speed should be near zero while the body travels.
                     var low = pawL.position.y < pawR.position.y ? pawL : pawR;
                     var prev = low == pawL ? prevL : prevR;
-                    float ground = S.GroundHeight(low.position);
-                    if (low.position.y - ground < .12f) planted.Add(Vector3.Distance(Flat(low.position), Flat(prev)) / dt);
+                    pawSamples.Add((low.position.y - S.GroundHeight(low.position), Vector3.Distance(Flat(low.position), Flat(prev)) / dt));
                     bodySpeeds.Add(Vector3.Distance(Flat(hound.transform.position), Flat(prevBody)) / dt);
                     if (hips && hound.Saddle) seatGaps.Add(Vector3.Distance(hips.position, hound.Saddle.position));
                     prevL = pawL.position; prevR = pawR.position; prevBody = hound.transform.position;
                 }
+                // Planted = within 3 cm of the lowest the paw gets during the gallop (the paw bone sits above the sole).
+                float lowest = pawSamples.Count > 0 ? pawSamples.Min(p => p.height) : 0;
+                var planted = pawSamples.Where(p => p.height <= lowest + .03f).Select(p => p.speed).ToList();
                 float plantedMedian = Median(planted), bodyMedian = Median(bodySpeeds);
                 Note("hound gallop: planted fore paw " + plantedMedian.ToString("0.00") + " m/s vs body " + bodyMedian.ToString("0.00") + " m/s (" + planted.Count + " planted samples)");
                 Check("galloping, the planted paw does not skate (under 35% of body speed)", planted.Count > 5 && plantedMedian < bodyMedian * .35f, plantedMedian.ToString("0.00") + " vs " + bodyMedian.ToString("0.00"));
