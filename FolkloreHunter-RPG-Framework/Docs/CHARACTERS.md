@@ -1,0 +1,65 @@
+# Build 0.9.0 — The hunters, the skeletons and the Warden's crypt from the supplied art
+
+The art supplied for 0.9 is kept unchanged in `Docs/Concepts/Characters-0.9/`: the main characters (male and female
+hunter), the female and male hairstyle sheets (ten each), the skeleton upgrades (warrior, knight, mage), the Grave
+Warden upgrade, the Warden's hallway and the Warden's lair. The older models are kept: the KayKit knight is still offered
+as the "Classic knight", and every new monster falls back to the older KayKit skeleton if its new model is missing.
+
+## How the models were made (all local, no paid service)
+SightForge Forge on this PC (`%LOCALAPPDATA%\ClaudeEyesStudio`, TripoSG shape model and FLUX.2 klein editing model on
+the RTX 5080), driven by scripts in `Tools/`:
+1. **Pictures.** `Tools/forge_queue.py` queues Forge jobs; `Tools/queue_09_art.ps1` lists every one made for 0.9.
+   - The full-body hunters are cropped from the main character sheet (`crops/male_body.png`, `female_body.png`).
+   - Back views and left/right profiles come from the edit tool ("turn the character around ...").
+   - The skeletons and the Warden are edited weapon-free (fused weapons bend with the arm when animated), and their
+     weapons come out as clean item pictures (the items tool, with the concept as the style reference): the warrior's
+     longsword and round red shield, the knight's greatsword, the mage's staff, the Warden's greatsword.
+   - The lair props (skull pedestal with brazier, sarcophagus, knight statue, candelabra, banner) are item pictures with
+     the hallway picture as the style reference.
+   - The hairstyles: the edit tool changes only the hair of the main character sheet's hunters, one per hairstyle on the
+     sheets (`queue_09_art.ps1 -Stage hair`).
+2. **3D.** The model tool turns a front picture (plus the back view) into a textured, rigged mesh; the static tool makes
+   the weapons and props.
+3. **Into the game's skeleton.** `Tools/build_hunter_variant.py` (Blender) puts each new body on the KayKit skeleton the
+   game already animates, so every existing clip plays on it (sword, lance, bow, katana, evasions, riding, the boss
+   moves): the body is scaled to the old character's height (weapons keep their in-game size), turned from the
+   picture's A-pose into the KayKit rest pose, the KayKit bones are moved onto the body's joints keeping their
+   directions and rolls, the clips' hip and IK movement is scaled to the longer limbs, the weights are renamed onto the
+   KayKit bones. The profile pictures are projected onto the flanks the front and back pictures never saw (only surface
+   that faces that side and is visible from it; baked into the texture). Monsters (`--monster`) hold their weapons
+   rigidly in the hand slot the way the game's own sword and shield are held (`Docs/Assets/hand-props.json`).
+   `Tools/build_09_models.ps1` runs all of it; every model writes a report to `Docs/Assets/model-variant-*.json`.
+
+## In the game
+- **Character creation** (New game → slot): male hunter, female hunter or the classic knight; the ten hairstyles of the
+  chosen hunter with the sheet's portraits (`Assets/Resources/UI/Portraits`); a name (typed, or "Random name" on the
+  pad). The real 3D hunter stands beside the menu in the chosen look. The choice is saved; the title screen, the
+  Proving Grounds and the Training Range show the hunter last played. Saves from before 0.9 keep the classic knight.
+- **The skeletons:** the Gravebound wears the skeleton warrior (sword and round shield); the new **Gravebound Knight**
+  (greatsword, heavy cleaves; a slam in the hunt rules) guards the graveyard north of the crypt; the new **Gravebound
+  Mage** (staff; grave bolts from range, a bone nova and curses in the hunt rules) walks the graveyard at night; two
+  skeleton warriors guard the Warden's hallway.
+- **The Grave Warden** wears the new armoured, horned model with its greatsword.
+- **The Warden's crypt** (`Assets/Framework/Game/WardenLair.cs`): the entrance stairs; the hallway of wet cobbles
+  between skull pedestals with fire braziers, crimson banners, hanging chains, candles, a barred ossuary arch and two
+  knight statues; the great horned-skull door under "THE DEAD OBEY THE WARDEN" (the picture's own door and
+  inscription), which the hunter pushes open; steps down into the round lair: the rune circle of ring paving, pillars,
+  banners, chains, braziers, barred coffin alcoves, rubble, ground fog; the altar between two giant knight statues at
+  the far end. Warm brazier light, dark stone.
+
+## Results (0.9.0)
+RESULTS_090
+
+## Limits (0.9.0, honest)
+- The models come from single pictures: the front matches the art closely; the back and the sides are painted by the
+  edit tool from the art (not drawn by an artist), and the side projection can misplace small details.
+- The bodies are realistic in proportion but move with the KayKit clips (made for a chibi knight): poses read
+  correctly, but arm swings and the run were not authored for these bodies.
+- The hairstyles are separate models of the whole hunter (each made from its own picture), so the body can differ
+  slightly from one hairstyle to another.
+- Armour from the game's equipment (the Thornback set) is fitted to the classic knight only; on the new hunters it
+  counts for its stats but is not shown.
+- The Warden's helm break still works (and drops its loot) but no longer hides a helmet mesh: the new Warden is one
+  piece.
+- The crypt is built from boxes, quads, particles and the art-made props; it follows the pictures' layout and
+  materials, not their exact geometry and lighting.
