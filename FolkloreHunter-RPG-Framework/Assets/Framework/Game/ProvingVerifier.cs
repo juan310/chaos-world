@@ -383,11 +383,16 @@ namespace FH.Game
             Face(m, 9f); yield return Frames(3);
             Hold(PadButton.RB);
             yield return Wait(.15f);
-            // Point the camera the way a player would: its centre ray (from over the right shoulder) through the monster.
-            Vector3 shoulder = H.transform.position + Vector3.up * 1.65f + S.CameraRig.Camera.transform.right * .7f;
-            Vector3 toM = ((m.AimPoint ? m.AimPoint.position : m.transform.position + Vector3.up) - shoulder).normalized;
-            S.CameraRig.Yaw = Mathf.Atan2(-toM.x, toM.z) * Mathf.Rad2Deg; S.CameraRig.Pitch = Mathf.Asin(-toM.y) * Mathf.Rad2Deg;
-            yield return Wait(.6f);
+            // Put the crosshair on the monster the way a player nudges the stick: from where the camera actually is.
+            Vector3 toM = Vector3.forward;
+            for (int i = 0; i < 40; i++)
+            {
+                var cp = S.CameraRig.Camera.transform.position;
+                toM = ((m.AimPoint ? m.AimPoint.position : m.transform.position + Vector3.up) - cp).normalized;
+                S.CameraRig.Yaw = Mathf.Atan2(-toM.x, toM.z) * Mathf.Rad2Deg; S.CameraRig.Pitch = Mathf.Asin(-toM.y) * Mathf.Rad2Deg;
+                yield return null;
+            }
+            yield return Wait(.2f);
             float camDist = Vector3.Distance(S.CameraRig.Camera.transform.position, H.transform.position + Vector3.up * 1.5f);
             Check("RB aims: the camera comes in over the shoulder", F.Aiming && S.CameraRig.Aiming && camDist < 4f, camDist.ToString("0.0") + " m");
             yield return Snap("p18-bow-aim");

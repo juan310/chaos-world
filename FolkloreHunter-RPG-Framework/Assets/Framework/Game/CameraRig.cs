@@ -39,7 +39,7 @@ namespace FH.Game
             Vector3 desired = Follow.position + Vector3.up * 1.2f;
             if (aimBlend > 0)
             {
-                Vector3 shoulder = Follow.position + Vector3.up * 1.65f + Camera.transform.right * .7f;
+                Vector3 shoulder = Follow.position + Vector3.up * 1.8f + Camera.transform.right * 1.0f;   // clear of the hunter's head
                 desired = Vector3.Lerp(desired, shoulder, aimBlend);
             }
             if (hunter && hunter.LockTarget && hunter.LockTarget.Alive && !Aiming)
