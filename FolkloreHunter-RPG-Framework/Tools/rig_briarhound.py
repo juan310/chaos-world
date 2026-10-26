@@ -304,13 +304,14 @@ def bite(t):
 
 def sit_pose(a):
     # The whole body pitches nose-up about the shoulders (they stay put, so the straight front legs keep their paws
-    # planted) and the rump drops; the hind legs fold until the hocks rest on the ground with the hind paws flat.
+    # planted) and the rump drops; the hind legs fold into a crouch, hocks low and paws planted (laying the paws fully
+    # flat curls the paw mesh into a hook).
     th = 17 * a
     shoulder = Vector((0, fy, zc))
     R = Matrix.Rotation(math.radians(-th), 3, 'X')
     rot('root', (1, 0, 0), -th); move_root(shoulder - R @ shoulder)
     rot('chest', (1, 0, 0), 5 * a); rot('neck', (1, 0, 0), 8 * a)
-    for k in ('hind.l', 'hind.r'): paw(k, -.12 * a, -.21 * a, -48 * a)
+    for k in ('hind.l', 'hind.r'): paw(k, -.08 * a, -.12 * a, -25 * a)
     if 'tail_1' in pb: rot('tail_1', (1, 0, 0), 28 * a)
 
 

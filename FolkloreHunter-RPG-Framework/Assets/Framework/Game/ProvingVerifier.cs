@@ -104,6 +104,7 @@ namespace FH.Game
             {
                 var st = anim.State(clip); if (st == null) { Check("hound has the " + clip + " clip", false); continue; }
                 anim.Anim.Stop(); st.enabled = true; st.weight = 1;
+                st.time = 0; anim.Anim.Sample(); yield return null;   // warm-up: the first frame must not show the previous clip
                 for (int i = 0; i < 16; i++) { st.time = st.length * i / 16f; anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, HoundCompanion.Model.ToLowerInvariant() + "_" + label + "_E_" + i.ToString("00") + ".png")); }
                 st.enabled = false;
             }
@@ -114,6 +115,7 @@ namespace FH.Game
             cam.transform.position = c + hound.transform.right * 6f; cam.transform.LookAt(c);
             var g = anim.State("Gallop"); var ride = H.Anim.State("Ride_Idle");
             anim.Anim.Stop(); H.Anim.Anim.Stop(); g.enabled = true; g.weight = 1; ride.enabled = true; ride.weight = 1;
+            g.time = 0; ride.time = 0; anim.Anim.Sample(); H.Anim.Anim.Sample(); yield return null;
             for (int i = 0; i < 16; i++)
             {
                 g.time = g.length * i / 16f; ride.time = 0; anim.Anim.Sample(); H.Anim.Anim.Sample();
