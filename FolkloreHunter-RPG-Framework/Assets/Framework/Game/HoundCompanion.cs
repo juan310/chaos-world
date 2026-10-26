@@ -487,7 +487,8 @@ namespace FH.Game
                         if (LastEvent != "circling to the flank") Circles++;
                         LastEvent = "circling to the flank";
                     }
-                    MoveToward(goal, .5f, gap > 7, toM, dt, 0);
+                    // A brisk lope round to the flank (a Palamute repositions quickly), a walk for the last metres.
+                    MoveToward(goal, .5f, gap > 7 || Vector3.Distance(me, fl) > 3 * Size, toM, dt, 0);
                     return;
                 }
             }
