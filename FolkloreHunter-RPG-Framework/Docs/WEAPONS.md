@@ -61,7 +61,24 @@ straight ahead. Arrows hit the part they strike (each part's Pierce hitzone), wi
 - Backup of the previous hunter: `SourceArt\Backups\hunter-before-weapons-20261026`.
 
 ## Verification
-VERIFY_PLACEHOLDER
+Final 0.7.0 build, real Windows player, injected Xbox pad input (`Tools\verify_proving.ps1`):
+- **Proving Grounds verifier: 87/87** (the 52 earlier checks plus 35 for the lance, the bow and the weapon switch).
+  Lance: Y, B, Y gives mid_1 > high_2 > mid_3; thrusts land from 2.3 m; Y+B wide sweep; hops 1.64, 1.64, 2.59 m then
+  a fourth refused, facing kept (0 degrees turned); the tower shield took a Warden blow for 0.8 health; guard thrust;
+  guard dash 2.5 m; the counter stance caught a real Warden blow and answered with the Retribution Thrust; quick
+  RB+B is the counter thrust; dash attack 7.3 m in 1.3 s for 16 stamina, two hits on one pass, Y finishing thrust.
+  Bow: draw shot hits at 10 m; quick follow-ups L2 x2 then L3 x3; back to L1 after a pause; held draw reaches L3 in a
+  second and costs stamina; charging sidestep 2.47 m to level 2, facing kept; power shot x5 at level 3; arc shot on
+  the locked target (hits and stun 0 -> 5); Dragon Piercer 3 hits from one bolt; aiming brings the camera to 2.9 m
+  over the shoulder and the aimed arrow hits the monster under the crosshair.
+- **No regressions:** the original game's verifier on the same build: play-through 127/127, relaunch/continue 16/16.
+  Core tests 79/79 (10 new for the weapons).
+- **Found and fixed by the verification:** a dodge without lock-on turned the hunter toward the dodge, so the bow's
+  sidestep spun the archer and the lance's back-hop would have turned the lancer around (hops and sidesteps now keep
+  facing); the Briarhound could body-block the hunter's charge (a companion no longer collides with its hunter); the
+  over-the-shoulder camera sat behind the hunter's big helmet (moved 1 m to the right); a dash with nothing in reach
+  ignored a monster ahead (charging moves now look 10 m ahead).
+Screenshots: `Captures/Proving/p11-lance-drawn` ... `p18-bow-aim`.
 
 ## Limits (honest)
 - No coatings, tracer arrows, focus strikes, sharpness or weapon wear yet; one lance and one bow (no upgrade trees).

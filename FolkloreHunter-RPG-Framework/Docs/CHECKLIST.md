@@ -1,6 +1,6 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
-Build 0.7.0 (Lance and Bow): Core tests 79/79 (dotnet); Proving Grounds verifier PROVING_RESULT; classic play-through CLASSIC_RESULT.
+Build 0.7.0 (Lance and Bow): Core tests 79/79 (dotnet); Proving Grounds verifier 87/87; classic play-through 127/127 and relaunch/continue 16/16 on the same build.
 Details, moves and limits: `WEAPONS.md`.
 
 | 0.7.0 item | Status | Evidence / notes |
