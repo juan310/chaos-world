@@ -48,6 +48,15 @@ namespace FH.Game
             Current = st.name;
         }
 
+        /// <summary>The current clip is <paramref name="clip"/> and has played to its end. One-shots clamp on their last
+        /// frame, so `Animation.isPlaying` stays true for them; their own time is the test.</summary>
+        public bool Finished(string clip)
+        {
+            if (!Current.EndsWith(clip)) return false;
+            var st = State(clip);
+            return st == null || !st.enabled || st.normalizedTime >= 1;
+        }
+
         readonly Dictionary<AnimationState, float> frozenSpeeds = new Dictionary<AnimationState, float>();
         public bool Frozen { get; private set; }
 

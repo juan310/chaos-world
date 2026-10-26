@@ -1,6 +1,17 @@
-FOLKLORE HUNTER: RISE OF THE ESTATE - RPG FRAMEWORK BUILD 0.4.0
+FOLKLORE HUNTER: RISE OF THE ESTATE - RPG FRAMEWORK BUILD 0.6.0 (PROVING GROUNDS)
 Isolated Unity 6 (6000.6.7f1) project built from the approved 3D sample. The sample, its two review
 builds, the 2D project and Astralwilds are untouched.
+
+NEW IN 0.6.0 (test area first, not yet in the valley) - details: Docs\PROVING-GROUNDS.md
+Title menu -> "Proving Grounds (combat test)": a walled ring that is never saved and gives no rewards.
+ - Hunt-style sword and shield: light chain, hold-to-charge heavy, Y+B shield bash, roll cancels, guard with
+   perfect guard and counter, hitstop/shake/rumble, flinch/knockdown, monster flinch/topple/enrage.
+ - Xbox controller (XInput, rumble, pad menus, Xbox prompts). Keyboard + mouse still works.
+ - The Briarhound: a rideable wolf-hound companion built in the studio from the concept art (heels, comes to
+   the whistle, bites what you are locked on to; ride with X, gallop with RT).
+ - The ledger by the south wall spawns test monsters and toggles training options and the frame-data overlay.
+Player: Build-Proving\FolkloreHunterProving.exe   Shortcut: "Folklore Hunter RPG - Proving Grounds Build"
+Check: Tools\verify_proving.ps1, then python Tools\review_hound_sightforge.py (Claude Eyes on the hound)
 
 PLAY
 Desktop shortcut: "Folklore Hunter RPG - Framework Build"

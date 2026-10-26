@@ -113,7 +113,7 @@ namespace FH.Game
             if (wantGuard && !Guarding) { guardRaisedAt = now; H.Anim.Play("Block", false, 1.6f, true, .05f); LastEvent = "guard"; }
             if (!wantGuard && Guarding) H.Anim.Play("Idle", true, 1, false, .12f);
             Guarding = wantGuard;
-            if (Guarding && H.Anim.Current.EndsWith("Block") && !H.Anim.Anim.isPlaying) H.Anim.Play("Blocking");
+            if (Guarding && H.Anim.Finished("Block")) H.Anim.Play("Blocking");
 
             // Roll: always from neutral; inside a move only once the move allows it.
             if (InputRouter.Down(GameAction.Dodge))

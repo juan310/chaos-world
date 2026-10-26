@@ -45,7 +45,7 @@ namespace FH.Game
                 Visual.rotation = Quaternion.Slerp(Visual.rotation, Quaternion.LookRotation(d), Time.deltaTime * 3);
             idleSwap -= Time.deltaTime;
             if (idleSwap < 0) { idleSwap = Random.Range(6f, 11f); if (anim.Has("Interact") && Random.value < .3f) anim.Play("Interact", false, .8f, true); else anim.Play("Idle"); }
-            if (anim.Current.EndsWith("Interact") && !anim.Anim.isPlaying) anim.Play("Idle");
+            if (anim.Finished("Interact")) anim.Play("Idle");
         }
     }
 }

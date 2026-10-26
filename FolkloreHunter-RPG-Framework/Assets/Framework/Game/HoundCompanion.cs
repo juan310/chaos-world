@@ -150,7 +150,7 @@ namespace FH.Game
                 cc.Move(to - transform.position);
                 PlayGait(gallop, speed);
             }
-            else if (!Anim.Current.EndsWith("Howl") || !Anim.Anim.isPlaying) Anim.Play("Idle");
+            else if (!Busy("Howl")) Anim.Play("Idle");
         }
 
         void AiTick(float dt)
@@ -169,8 +169,8 @@ namespace FH.Game
             else if (State == HoundState.Assist) State = HoundState.Follow;
 
             if (biteAt > 0 && Time.time >= biteAt) LandBite();
-            if (Anim.Current.EndsWith("Bite") && Anim.Anim.isPlaying) return;
-            if (Anim.Current.EndsWith("Howl") && Anim.Anim.isPlaying) return;
+            if (Busy("Bite")) return;
+            if (Busy("Howl")) return;
 
             Vector3 goal; float stopAt;
             if (State == HoundState.Assist)
@@ -213,6 +213,8 @@ namespace FH.Game
                 Anim.Play(idleFor > 6 && State == HoundState.Follow ? "Sit" : "Idle");
             }
         }
+
+        bool Busy(string clip) => Anim.Current.EndsWith(clip) && !Anim.Finished(clip);
 
         void PlayGait(bool gallop, float speed)
         {
