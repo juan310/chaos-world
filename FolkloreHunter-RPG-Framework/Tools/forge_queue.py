@@ -1,6 +1,6 @@
 """Queues SightForge Forge jobs (local GPU, no paid service) through Studio's own code, so they appear in Studio.
 
-  python Tools/forge_queue.py model <name> <picture.png> "<a few words for the painted back>"
+  python Tools/forge_queue.py model <name> <picture.png> "<a few words for the painted back>" [back.png]
   python Tools/forge_queue.py static <name> <picture.png> "<description>" [height_m]
   python Tools/forge_queue.py edit <name> <picture.png> "<change 1>" ["<change 2>" ...]
   python Tools/forge_queue.py items <name> <reference.png> "<item 1>" ["<item 2>" ...]
@@ -26,6 +26,8 @@ def main(argv):
     if tool == "model":
         b = {"tool": "model", "name": name, "front": upload(picture), "paintBack": True, "cloth": True,
              "describe": argv[3] if len(argv) > 3 else ""}
+        if len(argv) > 4:
+            b["back"] = upload(os.path.abspath(argv[4]))     # a back view of the same character (e.g. from the edit tool)
     elif tool == "static":
         b = {"tool": "static", "name": name, "picture": upload(picture), "describe": argv[3] if len(argv) > 3 else "",
              "faces": 20000, "tex": 2048}
