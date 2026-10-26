@@ -46,3 +46,12 @@ if ($Stage -in 'all', 'hair') {
         & $py Tools\forge_queue.py edit "HairM$n" "$c\male_body.png" "change only his hairstyle to $($male[$i]), the same chestnut brown hair colour; $keep"
     }
 }
+if ($Stage -in 'sides') {
+    # profile pictures for the flanks (build_hunter_variant.py --sides): the camera on the character's left sees them
+    # facing the picture's left edge; on the right, facing its right edge
+    $views = @{ 'Left' = "turn the character 90 degrees to show the left side of the body in full profile, facing the left edge of the picture; same outfit, armour, hair and colours, standing straight, arms relaxed, full body, plain dark grey background";
+                'Right' = "turn the character 90 degrees to show the right side of the body in full profile, facing the right edge of the picture; same outfit, armour, hair and colours, standing straight, arms relaxed, full body, plain dark grey background" }
+    $src = @{ 'HunterMale' = "$c\male_body.png"; 'HunterFemale' = "$c\female_body.png"; 'SkeletonWarrior' = "$w\SkeletonWarrior_bare.png";
+              'SkeletonKnight' = "$w\SkeletonKnight_bare.png"; 'SkeletonMage' = "$w\SkeletonMage_bare.png"; 'GraveWarden' = "$w\GraveWarden_bare.png" }
+    foreach ($k in $src.Keys) { foreach ($v in 'Left', 'Right') { & $py Tools\forge_queue.py edit "$k$v" $src[$k] $views[$v] } }
+}

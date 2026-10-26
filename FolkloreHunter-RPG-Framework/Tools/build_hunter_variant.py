@@ -19,7 +19,10 @@ argv = sys.argv[sys.argv.index('--') + 1:]
 MONSTER = '--monster' in argv
 # --prop "<static job dir>|<bone>|<blade|staff|shield>|<length as a share of the body's height>|<grip share from the bottom>|<Name>"
 PROPS = [argv[i + 1] for i, a in enumerate(argv) if a == '--prop']
-argv = [a for i, a in enumerate(argv) if a not in ('--monster', '--prop') and (i == 0 or argv[i - 1] != '--prop')]
+# --sides "<left profile.png>|<right profile.png>": side views (edit tool) projected onto the flanks the front and back
+# pictures never saw, instead of the smeared fill
+SIDES = next((argv[i + 1] for i, a in enumerate(argv) if a == '--sides'), None)
+argv = [a for i, a in enumerate(argv) if a not in ('--monster', '--prop', '--sides') and (i == 0 or argv[i - 1] not in ('--prop', '--sides'))]
 JOB, NAME = Path(argv[0]), argv[1]
 OUT = NAME if MONSTER else 'Hunter_' + NAME
 r = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
@@ -65,6 +68,100 @@ bpy.context.view_layer.update()
 hip = F.matrix_world @ F.data.bones['Hips'].head_local          # the hips over the origin, as on the KayKit rig
 F.location.x -= hip.x; F.location.y -= hip.y
 bpy.context.view_layer.update()
+
+
+def project_sides(body, left_png, right_png):
+    """Paints the flanks from profile pictures: each picture is fitted to the body's silhouette seen from that side
+    (orthographic), and only surface that faces that side and is visible from it takes the picture's colour. The rest
+    of the texture (front and back pictures) is kept. Baked into the body's own texture (Cycles, emission)."""
+    import numpy as np
+    from mathutils.bvhtree import BVHTree
+    mw = body.matrix_world; n3 = mw.to_3x3()
+    me = body.data
+    P = [mw @ v.co for v in me.vertices]
+    N = [(n3 @ v.normal).normalized() for v in me.vertices]
+    bvh = BVHTree.FromPolygons(P, [list(pg.vertices) for pg in me.polygons])
+    ys = [p.y for p in P]; zs = [p.z for p in P]
+    y0, y1, z0, z1 = min(ys), max(ys), min(zs), max(zs)
+    out = {}
+    for side, png in ((1, left_png), (-1, right_png)):
+        im = bpy.data.images.load(png); w, h = im.size
+        px = np.array(im.pixels[:]).reshape(h, w, 4)[::-1]      # row 0 = top
+        bg = np.median(np.concatenate([px[:4, :, :3].reshape(-1, 3), px[-4:, :, :3].reshape(-1, 3)]), axis=0)
+        fg = np.abs(px[..., :3] - bg).sum(2) > .12
+        rows, cols = np.where(fg)
+        r0, r1, c0, c1 = rows.min(), rows.max(), cols.min(), cols.max()
+        uvs, wts = [], []
+        for p, n in zip(P, N):
+            # camera on the +X side looks at the character's left (it faces the picture's left edge); -X: the right
+            depth = (p.y - y0) / (y1 - y0) if side > 0 else (y1 - p.y) / (y1 - y0)
+            col = c0 + depth * (c1 - c0); row = r0 + (z1 - p.z) / (z1 - z0) * (r1 - r0)
+            uvs.append((col / w, 1 - row / h))
+            facing = n.x * side
+            wgt = 0.0
+            if facing > .3:
+                hit = bvh.ray_cast(p + Vector((side * .003, 0, 0)), Vector((side, 0, 0)), 5)
+                if hit[0] is None:
+                    wgt = min(1.0, max(0.0, (facing - .35) / .35))
+            wts.append(wgt)
+        out[side] = (im, uvs, wts)
+        report.setdefault('sides', {})[('left' if side > 0 else 'right')] = {'picture': png, 'silhouette': [int(c0), int(r0), int(c1), int(r1)],
+                                                                             'weighted': sum(1 for x in wts if x > .5)}
+    mat = body.data.materials[0]
+    nt = mat.node_tree
+    base_node = next(nd for nd in nt.nodes if nd.type == 'TEX_IMAGE' and nd.image)
+    base_img = base_node.image
+    uv_base = me.uv_layers.active.name
+    col_attr = me.color_attributes.new('side_weights', 'FLOAT_COLOR', 'POINT')
+    for i, (wl, wr) in enumerate(zip(out[1][2], out[-1][2])):
+        col_attr.data[i].color = (wl, wr, 0, 1)
+    nodes = []
+    for side, name in ((1, 'side_left_uv'), (-1, 'side_right_uv')):
+        layer = me.uv_layers.new(name=name)
+        uvs = out[side][1]
+        for loop in me.loops:
+            layer.data[loop.index].uv = uvs[loop.vertex_index]
+    me.uv_layers.active = me.uv_layers[uv_base]
+    # bake material: mix(original, left, wl) then (.., right, wr) as emission
+    bake_mat = bpy.data.materials.new('SideBake'); bake_mat.use_nodes = True
+    bt = bake_mat.node_tree; bt.nodes.clear()
+    uvn = bt.nodes.new('ShaderNodeUVMap'); uvn.uv_map = uv_base
+    t0 = bt.nodes.new('ShaderNodeTexImage'); t0.image = base_img; bt.links.new(uvn.outputs[0], t0.inputs[0])
+    cur = t0.outputs['Color']
+    attr = bt.nodes.new('ShaderNodeAttribute'); attr.attribute_name = 'side_weights'
+    sep = bt.nodes.new('ShaderNodeSeparateColor'); bt.links.new(attr.outputs['Color'], sep.inputs[0])
+    for side, name, ch in ((1, 'side_left_uv', 0), (-1, 'side_right_uv', 1)):
+        u = bt.nodes.new('ShaderNodeUVMap'); u.uv_map = name
+        t = bt.nodes.new('ShaderNodeTexImage'); t.image = out[side][0]; t.extension = 'CLIP'; bt.links.new(u.outputs[0], t.inputs[0])
+        mix = bt.nodes.new('ShaderNodeMix'); mix.data_type = 'RGBA'
+        bt.links.new(sep.outputs[ch], mix.inputs['Factor']); bt.links.new(cur, mix.inputs[6]); bt.links.new(t.outputs['Color'], mix.inputs[7])
+        cur = mix.outputs[2]
+    em = bt.nodes.new('ShaderNodeEmission'); bt.links.new(cur, em.inputs['Color'])
+    outn = bt.nodes.new('ShaderNodeOutputMaterial'); bt.links.new(em.outputs[0], outn.inputs['Surface'])
+    target = bpy.data.images.new('SideBaked', base_img.size[0], base_img.size[1])
+    tn = bt.nodes.new('ShaderNodeTexImage'); tn.image = target
+    bt.nodes.active = tn
+    old = list(me.materials); me.materials.clear(); me.materials.append(bake_mat)
+    sc = bpy.context.scene
+    engine = sc.render.engine
+    sc.render.engine = 'CYCLES'; sc.cycles.samples = 1; sc.cycles.device = 'CPU'
+    for o in bpy.context.view_layer.objects:
+        o.select_set(o == body)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.bake(type='EMIT', margin=4, use_clear=True)
+    sc.render.engine = engine
+    base_img.pixels[:] = target.pixels[:]                      # the body keeps its own texture, now with painted flanks
+    me.materials.clear()
+    for m in old:
+        me.materials.append(m)
+    for name in ('side_left_uv', 'side_right_uv'):
+        me.uv_layers.remove(me.uv_layers[name])
+    me.color_attributes.remove(me.color_attributes['side_weights'])
+
+
+if SIDES:
+    left_png, right_png = SIDES.split('|')
+    project_sides(body, left_png, right_png)
 report['forgeHeight'] = f_hi - f_lo; report['scale'] = s
 
 # Forge bone -> the KayKit bone whose rest direction it takes.
