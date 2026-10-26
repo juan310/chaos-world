@@ -112,6 +112,7 @@ for im in bpy.data.images:
 # Preview renders of new poses (front and side), so the riding pose can be checked by eye before Unity.
 scene = bpy.context.scene
 scene.render.engine = 'BLENDER_WORKBENCH'
+scene.display.shading.light = 'STUDIO'; scene.display.shading.color_type = 'TEXTURE'
 scene.render.resolution_x = 360; scene.render.resolution_y = 420
 scene.render.film_transparent = True
 cam_data = bpy.data.cameras.new('PreviewCam'); cam_data.type = 'ORTHO'; cam_data.ortho_scale = 3.2

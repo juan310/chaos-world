@@ -223,7 +223,7 @@ def derive_clips(rig):
     made = []
     # High thrust: the stab with the thrusting arm raised, the point driven upward over a monster's back.
     arm = next((n for n in right if 'upperarm' in n), None)
-    if arm: made.append(offset('1H_Melee_Attack_Stab', 'Lance_High_Thrust', arm, rig.data.bones[arm], (1, 0, 0), 38))
+    if arm: made.append(offset('1H_Melee_Attack_Stab', 'Lance_High_Thrust', arm, rig.data.bones[arm], (1, 0, 0), -38))
     # Lance charge: running with the lance couched forward (stab arm part-way out) and the shield up (blocking arm).
     a = overlay('Running_A', '1H_Melee_Attack_Stab', right, .38, 'Lance_Charge')
     for bone in left:
