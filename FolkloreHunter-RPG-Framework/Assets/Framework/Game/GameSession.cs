@@ -121,20 +121,35 @@ namespace FH.Game
             World.Estate.Apply(0);
             foreach (var n in World.Npcs) n.PlaceFor(this);
             CameraRig.Manual = true;
+            Hunter.ApplyLook(Appearance.Models(Settings.lookBody, Settings.lookHair));   // the title shows the hunter last played
             Ui.ShowTitle();
         }
 
-        public void NewGame(int slot, string hunterName)
+        public void NewGame(int slot, string hunterName, string body = Appearance.Classic, int hair = 1)
         {
             Slot = slot;
             var state = GameCore.NewGameState(Db, "slot" + slot + "-" + DateTime.UtcNow.Ticks);
             state.contentVersion = "1";
-            if (!string.IsNullOrEmpty(hunterName)) state.player.name = hunterName;
+            state.player.name = Appearance.CleanName(hunterName);
+            state.player.body = body; state.player.hair = Appearance.ClampHair(hair);
             var home = World.Anchor("spawn_home");
             state.player.x = home.position.x; state.player.y = home.position.y; state.player.z = home.position.z; state.player.yaw = home.eulerAngles.y;
             Begin(state, true);
             Hud.Notify("Your cottage. Your hunt. Mira at Thornbury Crossing has work for you.", NoticeKind.Story);
             Save();
+        }
+
+        /// <summary>The hunter wears the look kept in the save (classic for saves from before 0.9); the Proving Grounds
+        /// and the Training Range, which start from a blank state, wear the look last chosen or played.</summary>
+        void ApplyLook(PlayerState p)
+        {
+            if (string.IsNullOrEmpty(p.body) && Proving) { p.body = Settings.lookBody; p.hair = Settings.lookHair; }
+            Hunter.ApplyLook(Appearance.Models(p.body, p.hair));
+            if (!Proving && (Settings.lookBody != p.body || Settings.lookHair != p.hair))
+            {
+                Settings.lookBody = p.body; Settings.lookHair = p.hair;
+                try { SaveSettings(); } catch (Exception) { }
+            }
         }
 
         public LoadResult LoadSlot(int slot)
@@ -153,6 +168,7 @@ namespace FH.Game
         void Begin(GameState state, bool fresh)
         {
             ClearMonsters();
+            ApplyLook(state.player);
             Core = new GameCore(Db, state);
             Core.Conditions.CurrentArea = () => CurrentArea;
             WireEvents();

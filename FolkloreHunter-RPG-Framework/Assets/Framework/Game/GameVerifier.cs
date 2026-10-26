@@ -145,6 +145,20 @@ namespace FH.Game
             Check("new game opens slot selection", Top is SlotScreen);
             Click("Slot 1");
             yield return Frames(4);
+            // Character creation (0.9): the real hunter changes as a look is picked; the classic knight is kept for
+            // this play-through, so the valley's checks below see the same hunter as before.
+            Check("a new game opens character creation", Top is FH.UI.CharacterCreatorScreen, S.Ui.Describe());
+            Click("Female hunter");
+            yield return Frames(3);
+            Click("High Ponytail");
+            yield return Frames(3);
+            Check("picking the female hunter and a hairstyle dresses the hunter in it", S.Hunter.Look.StartsWith("Hunter_Female") || !FH.Game.CharacterFactory.Exists("Hunter_Female"), S.Hunter.Look);
+            yield return Snap("01b-character-creation");
+            Click("Classic knight");
+            yield return Frames(3);
+            Check("the classic knight is still offered", S.Hunter.Look == "Hunter", S.Hunter.Look);
+            Click("Begin the hunt");
+            yield return Frames(4);
             Check("new game starts play at the cottage", S.Mode == SessionMode.Playing && S.Ui.Top == null && S.CurrentArea == "home", S.CurrentArea);
             Check("content database has no validation errors", S.Db.Errors.Count == 0, string.Join("; ", S.Db.Errors));
             InputRouter.UseVirtual = true;

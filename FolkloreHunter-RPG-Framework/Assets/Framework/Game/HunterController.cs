@@ -76,7 +76,40 @@ namespace FH.Game
         {
             session = s;
             Body = GetComponent<CharacterController>();
-            Anim = new AnimationDriver(Visual, "Hunter");
+            BindVisual();
+            Stamina = new StaminaPool(100, 24, s.Core.Db.Balance.staminaRegenDelay, s.Core.Db.Balance.exhaustedThreshold);
+            RefreshStats(true);
+            Anim.Play("Idle");
+            Ready = true;
+        }
+
+        /// <summary>The model in use: "Hunter" (the classic KayKit knight) or a Hunter_&lt;look&gt; body made from the
+        /// main character sheet (same skeleton and clips, see Tools/build_hunter_variant.py).</summary>
+        public string Look { get; private set; } = "Hunter";
+        public const float LookHeight = 1.85f;
+
+        /// <summary>Puts on the look chosen at a new game: the first of <paramref name="models"/> that exists (the
+        /// hairstyle, the body's base model, the classic hunter). Rebinds bones, clips and the weapon layer.</summary>
+        public bool ApplyLook(string[] models)
+        {
+            string pick = models.FirstOrDefault(CharacterFactory.Exists) ?? "Hunter";
+            if (pick == Look && Visual) return false;
+            var old = Visual;
+            float height = pick.StartsWith("Hunter_Female") ? LookHeight * .95f : LookHeight;
+            Visual = CharacterFactory.Create(pick, transform, height);
+            if (old) { old.gameObject.SetActive(false); Destroy(old.gameObject); }
+            Look = pick;
+            var fitted = GetComponent<HuntEquipment>(); if (fitted) DestroyImmediate(fitted);   // its armour is fitted to the old body
+            BindVisual();
+            if (Ready) { ApplyEquipmentVisuals(); Anim.Play("Idle"); }
+            if (Hunt && Hunt.Set != null) Hunt.Rebind();
+            Debug.Log("FH_LOOK " + Look);
+            return true;
+        }
+
+        void BindVisual()
+        {
+            Anim = new AnimationDriver(Visual, Look);
             hand = WorldKit.Find(Visual, "handslot.r");
             footL = WorldKit.Find(Visual, "foot.l");
             footR = WorldKit.Find(Visual, "foot.r");
@@ -105,10 +138,6 @@ namespace FH.Game
             sprintNatural = Anim.Has("Hunt_Sprint") ? Anim.NaturalSpeed("Hunt_Sprint", footL, footR, transform, true) : runNatural;
             Debug.Log("FH_LOCO hunt jog " + JogSpeed + " m/s (Hunt_Jog natural " + jogNatural.ToString("0.00") + "), sprint " + SprintSpeed + " m/s (Hunt_Sprint natural " + sprintNatural.ToString("0.00") + ")");
             Debug.Log("FH_LOCO walk speed " + WalkSpeed.ToString("0.00") + ", run speed " + RunSpeed.ToString("0.00") + ",  walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
-            Stamina = new StaminaPool(100, 24, s.Core.Db.Balance.staminaRegenDelay, s.Core.Db.Balance.exhaustedThreshold);
-            RefreshStats(true);
-            Anim.Play("Idle");
-            Ready = true;
         }
 
         /// <summary>Recomputes derived stats (equipment, skills, attributes) keeping current health/stamina ratios.</summary>

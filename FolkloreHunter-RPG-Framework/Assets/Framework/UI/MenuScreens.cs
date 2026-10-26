@@ -136,7 +136,7 @@ namespace FH.UI
             }
         }
 
-        void Start(int slot) { S.Store.Delete(slot); S.NewGame(slot, "Hunter"); }
+        void Start(int slot) => Ui.Push(new CharacterCreatorScreen(slot));
 
         void DoSave(int slot)
         {

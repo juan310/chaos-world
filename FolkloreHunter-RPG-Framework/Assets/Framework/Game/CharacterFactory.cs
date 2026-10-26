@@ -27,7 +27,7 @@ namespace FH.Game
             o.transform.localPosition = Vector3.zero;
             o.transform.localRotation = Quaternion.identity;
             var renderers = o.GetComponentsInChildren<Renderer>();
-            var body = renderers.Where(x => !x.name.Contains("Sword") && !x.name.Contains("Shield") && !x.name.Contains("Staff") && !x.name.Contains("Wand") && !x.name.StartsWith("Hunt_")).ToArray();
+            var body = renderers.Where(x => !IsWeapon(x.name)).ToArray();
             Bounds b = body[0].bounds;
             foreach (var rr in body.Skip(1)) b.Encapsulate(rr.bounds);
             float k = targetHeight / Mathf.Max(.1f, b.size.y);
@@ -41,10 +41,15 @@ namespace FH.Game
                 mat = WorldKit.Mat(resource + " Atlas " + ColorUtility.ToHtmlStringRGB(tint.Value), tint.Value);
                 if (!mat.mainTexture) mat.mainTexture = Resources.Load<Texture2D>("Models/" + resource + "_texture");
             }
-            foreach (var rr in renderers) rr.sharedMaterials = Enumerable.Repeat(mat, rr.sharedMaterials.Length).ToArray();
+            // A new hunter body (Hunter_<look>) has its own painted texture; its weapons keep the KayKit atlas.
+            var weaponMat = resource.StartsWith("Hunter_") ? Atlas("Hunter") : mat;
+            foreach (var rr in renderers)
+                rr.sharedMaterials = Enumerable.Repeat(IsWeapon(rr.name) ? weaponMat : mat, rr.sharedMaterials.Length).ToArray();
             foreach (var smr in o.GetComponentsInChildren<SkinnedMeshRenderer>()) smr.updateWhenOffscreen = true;
             return o.transform;
         }
+
+        static bool IsWeapon(string n) => n.Contains("Sword") || n.Contains("Shield") || n.Contains("Staff") || n.Contains("Wand") || n.StartsWith("Hunt_");
 
         static Transform CreateCreature(string resource,GameObject prefab,Transform parent,float height) {
             // A non-animated wrapper owns scale/ground alignment; FBX root animation cannot overwrite it.

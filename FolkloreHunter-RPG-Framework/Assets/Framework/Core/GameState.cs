@@ -20,6 +20,9 @@ namespace FH.Core
     public class PlayerState
     {
         public string name = "Hunter";
+        /// <summary>The look chosen at a new game (Appearance): "male", "female" or "classic"; empty in saves from before 0.9 (classic).</summary>
+        public string body = "";
+        public int hair = 1;
         public int level = 1, xp, attributePoints, skillPoints;
         public List<AttributeValue> attributes = new List<AttributeValue>();
         public List<string> skills = new List<string>();
@@ -170,5 +173,8 @@ namespace FH.Core
         public float masterVolume = .8f, mouseSensitivity = 1, uiScale = 1;
         public bool invertY, fullscreen;
         public bool showDamageNumbers = true;
+        /// <summary>The look last chosen or played (Appearance), used by the Proving Grounds and the Training Range.</summary>
+        public string lookBody = "";
+        public int lookHair = 1;
     }
 }

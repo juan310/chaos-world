@@ -110,6 +110,14 @@ namespace FH.Game
             Equip(set);
         }
 
+        /// <summary>The hunter's model was replaced (a new look): weapon placements, the katana's scale and the blade
+        /// axis are worked out again on the new body.</summary>
+        public void Rebind()
+        {
+            loadouts.Clear(); pieces = new Piece[0]; katanaScaled = false; bladeAxisKnown = false; corrected = false; shownGlow = -99;
+            Initialize(S, H, Set);
+        }
+
         /// <summary>Switches weapon class (the Proving Grounds ledger): shows its pieces, sheathes, resets its state.</summary>
         public void Equip(HuntMovesetDef set)
         {
