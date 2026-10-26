@@ -570,6 +570,9 @@ namespace FH.Game
             var kat = WorldKit.Find(H.Visual, "Hunt_Katana");
             Check("the ledger puts the two-handed katana on the back (spirit gauge empty)", F.Class == WeaponClass.Katana && F.Sheathed && kat.parent.name == "chest" && R("Hunt_Katana").enabled
                   && !H.SwordTransform.GetComponent<Renderer>().enabled && !R("Round_Shield").enabled && F.Spirit.Value == 0 && F.SpiritLevel == 0, kat.parent.name);
+            Place("range_lane", 0);
+            yield return Wait(.3f);
+            yield return Snap("r05b-katana-sheathed");
             var dm = small; dm.Brain.Health = dm.Def.maxHealth;
             Face(dm, 2.2f);
             yield return Tap(PadButton.Y);
