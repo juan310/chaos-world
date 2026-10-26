@@ -93,7 +93,8 @@ namespace FH.Game
             var katana = WorldKit.Find(H.Visual, "Hunt_Katana");
             katanaGlow = WorldKit.Find(H.Visual, "Hunt_KatanaGlow");
             if (katana && katanaGlow && katanaGlow.parent != katana) katanaGlow.SetParent(katana, true);   // the edge goes where the blade goes
-            // 80 %: at full length the stock two-handed chop drove the tip about 0.4 m into the ground (Claude Eyes).
+            // 80 %: at full length the stock two-handed chop drove the tip about 0.4 m into the ground (Claude Eyes); what
+            // is left is lifted out by KeepBladeOffGround.
             if (katana && !katanaScaled) { katana.localScale *= .8f; katanaScaled = true; }
             glowRenderer = katanaGlow ? katanaGlow.GetComponent<Renderer>() : null;
             if (loadouts.Count == 0)
@@ -873,6 +874,7 @@ namespace FH.Game
 
         void LateUpdate()
         {
+            KeepBladeOffGround();
             // Getting up after a knockdown that was not rolled out of: invulnerable while standing up.
             if (downUntil > 0 && Time.time >= downUntil && !H.Dead && !H.Dodging)
             {
@@ -882,6 +884,50 @@ namespace FH.Game
                 H.InvulnerableFor(.75f);
                 LastEvent = "getting up";
             }
+        }
+
+        // ---------------- the blade stays out of the ground ----------------
+        // The stock two-handed chop ends with the sword pointing down in front of the feet; the katana is longer, so its
+        // tip went into the floor (Claude Eyes: up to 0.27 m below the soles at 80 % scale). After the pose, a drawn
+        // katana is tilted up about the grip just enough that its tip stays on the ground's surface.
+        Vector3 bladeA, bladeB; bool bladeAxisKnown;
+        Vector3 preLocalPos, postLocalPos; Quaternion preLocalRot, postLocalRot; bool corrected;
+        /// <summary>Height of the drawn katana's tip over the ground (after the correction); +inf when not drawn.</summary>
+        public float BladeTipClearance { get; private set; } = float.PositiveInfinity;
+        public int BladeLifts { get; private set; }
+
+        public void KeepBladeOffGround()
+        {
+            BladeTipClearance = float.PositiveInfinity;
+            if (Set == null || Set.Class != WeaponClass.Katana || pieces.Length == 0 || Sheathed) { corrected = false; return; }
+            var t = pieces[0].t; var grip = H.Hand;
+            if (!t || !grip) return;
+            // Undo last frame's lift unless the animation has already rewritten the transform.
+            if (corrected && t.localPosition == postLocalPos && t.localRotation == postLocalRot) { t.localPosition = preLocalPos; t.localRotation = preLocalRot; }
+            corrected = false;
+            if (!bladeAxisKnown)
+            {
+                var mf = t.GetComponent<MeshFilter>(); if (!mf || !mf.sharedMesh) return;
+                var bb = mf.sharedMesh.bounds;
+                var axis = bb.size.x > bb.size.y && bb.size.x > bb.size.z ? Vector3.right * bb.extents.x : bb.size.y > bb.size.z ? Vector3.up * bb.extents.y : Vector3.forward * bb.extents.z;
+                bladeA = bb.center - axis; bladeB = bb.center + axis; bladeAxisKnown = true;
+            }
+            Vector3 pivot = grip.position, a = t.TransformPoint(bladeA), b = t.TransformPoint(bladeB);
+            Vector3 tip = Vector3.Distance(a, pivot) > Vector3.Distance(b, pivot) ? a : b;
+            float ground = Mathf.Max(H.transform.position.y, S.GroundHeight(tip)) + .02f;
+            BladeTipClearance = tip.y - ground;
+            if (tip.y >= ground) return;
+            Vector3 d = tip - pivot; float len = d.magnitude;
+            Vector3 flat = new Vector3(d.x, 0, d.z);
+            if (len < 1e-3f || flat.sqrMagnitude < 1e-6f) return;
+            float y = Mathf.Min(ground - pivot.y, len * .98f);
+            Vector3 want = flat.normalized * Mathf.Sqrt(Mathf.Max(0, len * len - y * y)) + Vector3.up * y;
+            var lift = Quaternion.FromToRotation(d, want);
+            preLocalPos = t.localPosition; preLocalRot = t.localRotation;
+            t.SetPositionAndRotation(pivot + lift * (t.position - pivot), lift * t.rotation);
+            postLocalPos = t.localPosition; postLocalRot = t.localRotation; corrected = true;
+            BladeTipClearance = pivot.y + want.y - ground;
+            BladeLifts++;
         }
 
         // ---------------- hits dealt ----------------

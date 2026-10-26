@@ -165,8 +165,17 @@ namespace FH.Game
                     anim.Anim.Stop(); st.enabled = true; st.weight = 1;
                     st.time = 0; anim.Anim.Sample(); yield return null;   // warm-up: the first frame must not show the previous clip
                     float from = label == "dive_landing" ? .3f : 0;      // the game starts the get-up past its sunk lying frames
-                    for (int i = 0; i < 16; i++) { st.time = st.length * (from + (1 - from) * i / 16f); anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, "hunter_" + label + "_E_" + i.ToString("00") + ".png")); written++; }
+                    float lowest = float.PositiveInfinity;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        st.time = st.length * (from + (1 - from) * i / 16f); anim.Anim.Sample();
+                        F.KeepBladeOffGround();                          // as LateUpdate does in play
+                        lowest = Mathf.Min(lowest, F.BladeTipClearance);
+                        yield return Render(cam, rt, Path.Combine(folder, "hunter_" + label + "_E_" + i.ToString("00") + ".png")); written++;
+                    }
                     st.enabled = false;
+                    if (label == "katana_overhead")
+                        Check("katana overhead: the blade tip stays out of the ground (Claude Eyes found it 0.27 m under the soles)", lowest > -.03f, "lowest tip " + lowest.ToString("0.00") + " m over the ground, lifted " + F.BladeLifts + " times");
                 }
             }
             foreach (var (o, layer) in hide) if (o) o.layer = layer;
