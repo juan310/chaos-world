@@ -55,6 +55,26 @@ canted, leaning), `Bow_Step_L/R`, `Bow_Aim_Walk`; plus `Katana_Iai`. The bow now
 nocked arrow (`Hunt_NockedArrow`) shows while the bow is out and leaves the string for a moment at each shot.
 Arrows leave from the bow hand.
 
+## The Briarhound fights and rides like a Palamute
+Reference: Monster Hunter Rise's Palamute, a melee companion that fights beside the hunter (its "Pincer" tactic
+works the far side of the monster) and a mount that runs, dashes and drifts without costing the rider stamina,
+with a three-hit attack on the rider's command ([Fextralife: Palamutes](https://monsterhunterrise.wiki.fextralife.com/Palamutes),
+[GamerGuides](https://gamerguides.com/monster-hunter-rise/guide/how-to-play/new-features/palamutes),
+[HighGround Gaming](https://www.highgroundgaming.com/mhr-palamute-guide/)).
+- **Companion:** against the monster the hunter fights (locked on, or engaged nearby) it runs a **combo**: blade
+  bite (right to left), return slash (left to right), spinning slash that strikes all around (9 / 8 / 14 damage, with
+  stun). Between combos (2.4 s) it circles to the **flank across the monster from the hunter**. From 4.5 to 9 m it
+  **pounces**: crouch, leap in and strike. When the monster **winds up** with the hound inside its reach, it **hops
+  clear** (or trots out if the hop is not ready), then comes back in. It runs **beside** a sprinting hunter at their pace,
+  and heels behind and to the right otherwise.
+- **Ridden:** the stick walks (light push) or **lopes** (full push); **RT dashes**; **RB while dashing drifts**: a
+  much tighter turn, the hound leaning into it and throwing up dirt. **Y**: the hound attacks (press again during a
+  strike to chain bite, slash, spin). **A**: a quick sidestep, the rider protected for 0.3 s. Riding costs no stamina.
+- **New clips** on the hound's rig (`Tools/rig_briarhound.py`, IK paws as before): `Slash_R`, `Spin` (a full turn with
+  a hop, paws carried round), `Pounce` (crouch, leap, slash on landing), `Hop`. The game moves the hound during the
+  leap and hops. Backup of the previous hound: `SourceArt/Backups/briarhound-before-palamute-20261026`.
+- Rules in `Assets/Framework/Core/HoundTactics.cs` (HoundTacticsTests).
+
 ## Results (0.8.0)
 RESULTS_PLACEHOLDER
 
