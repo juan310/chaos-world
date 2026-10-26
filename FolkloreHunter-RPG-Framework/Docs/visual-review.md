@@ -66,6 +66,19 @@ Not declared same-capture, so absolute size was not compared.
 - Blade damage registered at 0.267 s into a swing whose active window is 0.26–0.40 s.
 - 14 registered blade hits across the fights, 0 duplicates within a swing.
 
+## Build 0.6.0: the Briarhound (companion and mount)
+Reviewed on frames the Windows player renders itself (`Captures/Proving/HoundPoses`, 16 per clip, side view) and on
+the hound's actor track from the Proving Grounds verification (`Tools/review_hound_sightforge.py`,
+`Docs/sightforge-hound-review.json`). Compared with the earlier procedural Cu-sith (4 confirmed findings on its howl,
+a 92% scale jump and a 30 px ground-line drop in its gallop), the Briarhound has **0 confirmed findings**; Idle,
+Walk, Sit and the rider at a gallop have none at all. The frozen-gallop negative control is detected.
+What the remaining "likely" flags are: the Hit flinch (head ducks, ears pin back), the Bite wind-up crouch, the
+one-shot Howl (starts standing, sits), the gallop's suspension frame, and the track's 16-step pose naming at 7.4 m/s.
+All intended motion; see `PROVING-GROUNDS.md`. Fixed because of this review: the stale first capture frame (it showed
+the previous clip), the sit's curled hind paws, the hound's size next to the hunter (seen in `p08-riding.png`).
+Paw planting and the seat are measured in the player, not by the inspector: planted fore paw 0.14 m/s vs body
+7.42 m/s galloping; rider hips a constant 0.285 m from the saddle bone.
+
 ## Defects found by looking at captures, and fixed
 | Found | Fix |
 |---|---|

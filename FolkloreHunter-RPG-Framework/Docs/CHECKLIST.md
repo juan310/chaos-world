@@ -1,5 +1,20 @@
 # Implementation checklist — Folklore Hunter RPG framework
 
+Build 0.6.0 (Proving Grounds, hunt combat, Xbox controller, the Briarhound mount): Core tests 69/69 (dotnet);
+Proving Grounds verifier 52/52 in the real player with injected Xbox pad input; classic play-through 127/127 and relaunch/continue 16/16 on the same build;
+Claude Eyes on the Briarhound 0 confirmed findings. Details and limits: `PROVING-GROUNDS.md`.
+
+| 0.6.0 item | Status | Evidence / notes |
+|---|---|---|
+| Separate test area (Proving Grounds), never saved, ledger with spawns/toggles/overlay | Done | verifier: no save files, world monsters absent |
+| Hunt-style sword and shield (chains, charge, bash, roll cancels, guard/perfect guard/counter, hitstop, reactions) | Done | data in `huntMovesets`; 9 Core tests; verifier checks |
+| Monster flinch / topple / enrage under hunt rules | Done | verifier |
+| Xbox controller (XInput, rumble, pad menus, prompts) | Done | injected pad states drive the whole verifier; a real pad was paired but not connected during this session |
+| Rideable companion: the Briarhound (studio model from the concept art, rig, 7 clips, follow/whistle/assist/ride) | Done | `Captures/Briarhound`, `Captures/Proving`, `sightforge-hound-review.json` |
+| Briarhound far-side texture | Partial | mirrored from the concept side; the turned neck is refilled fur |
+| Proving Grounds content in the valley | Not yet | by design: integrate after sign-off |
+| Other weapon types | Missing | one moveset (sword and shield) |
+
 Results for build 0.4.0: Core tests 53/53 (Unity Test Runner and dotnet); in-player play-through 127/127; relaunch/continue 16/16 (four consecutive runs of the final build); real Windows key input exercised (`Docs/real-input-session.txt`).
 
 Legend: **Done** = implemented and verified in the running Windows player (see `Captures/RPG/verification*.txt`) and/or by the Core unit tests (`Docs/unity-test-results.xml`, `Tools/CoreTests`).

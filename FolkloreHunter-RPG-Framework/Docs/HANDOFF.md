@@ -1,5 +1,10 @@
 # Handoff — Folklore Hunter: Rise of the Estate, RPG framework milestone
 
+**Update — build 0.6.0-proving-grounds:** Proving Grounds test ring, hunt-style combat, Xbox controller and the
+Briarhound mount; player `Build-Proving\FolkloreHunterProving.exe`, shortcut "Folklore Hunter RPG - Proving Grounds
+Build". Everything new is in `PROVING-GROUNDS.md` (results, controls, how the Briarhound was made, limits).
+The sections below describe the 0.4.0 framework milestone.
+
 Build **0.4.0-framework** · Unity 6000.6.7f1 · Windows x64 (D3D11) · prepared 2026-10-25
 
 ## Where things are

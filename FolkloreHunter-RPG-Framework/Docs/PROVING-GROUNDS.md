@@ -46,7 +46,7 @@ From the concept art the user supplied (`Docs/Concepts/Briarhound-concept.png`, 
    mesh, 2k texture (`%LOCALAPPDATA%\ClaudeEyesStudio\Forge\static_Briarhound_20261025_194800`). Gates: shape,
    outline (IoU 0.835) and closed surface pass; the texture gate failed because only the concept's side was seen
    (30% from the picture, 70% guessed).
-2. `Tools/briarhound_prep.py` (Blender): faces -Y, paws on the ground, 1.9 m tall; finds the four paws.
+2. `Tools/briarhound_prep.py` (Blender): faces -Y, paws on the ground, 1.9 m tall in the source (the game shows it at 2.5 m, `HoundCompanion.Height`); finds the four paws.
 3. `Tools/briarhound_texture.py`: the far flank takes the mirrored concept-side texture (71% of it; the turnaround's
    rear 3/4 confirms both flanks carry a saddle bag, stirrup and bedroll); the neck fur that the art hid behind the
    blade is refilled from the fur around it.
@@ -66,7 +66,28 @@ back, so the play rate keeps the paws planted at the speed actually travelled.
 `Tools\verify_proving.ps1` drives the real player with injected Xbox pad states. Results:
 `Captures\Proving\verification.txt`; pose frames for Claude Eyes in `Captures\Proving\HoundPoses`;
 `python Tools\review_hound_sightforge.py` → `Docs\sightforge-hound-review.json`.
-RESULTS_PLACEHOLDER
+Latest run (final 0.6.0 build):
+- **Proving Grounds verifier: 52/52.** Highlights: draw slash and chains, hitstop on both sides, charge levels and the
+  charged spin, Y+B bash, roll-cancel refused early / allowed late, roll slash, lock-on strafe, sheathe, sprint, LB
+  potion, guard chip, perfect guard and counter, knockdown and get-up with i-frames, monster flinch, topple and enrage;
+  the Briarhound heels (7.4 m/s gallop to catch up), comes to the whistle, refuses to be mounted while the weapon is
+  drawn (X sheathes instead), mounts on X, walks and gallops with the rider, dismounts, bites the locked target; pad
+  menus; nothing saved.
+- **No regressions:** the original game's verifier on the same build: play-through 127/127, relaunch/continue
+  16/16. Core tests 69/69.
+- **Measured in the player:** gait speeds read from the clips: walk 2.42 m/s, gallop 7.42 m/s (2.4x the hunter's run).
+  Galloping, the planted fore paw moves 0.14 m/s against the body's 7.42 m/s (58 planted samples). The rider's hips stay
+  0.285 m from the saddle bone through the whole gallop (no drift).
+- **Claude Eyes (SightForge) on the player's own frames:** 0 confirmed findings on all 8 clips (Idle, Walk, Sit and the
+  rider at a gallop have no findings at all); the frozen-gallop negative control is caught. The remaining "likely"
+  flags are intended motion read by a 2D sprite inspector: the Hit flinch ducks the head and pins the ears (shorter,
+  wider silhouette), the Bite winds up in a crouch, the one-shot Howl starts standing and sits, and gallop frame 8 is
+  the suspension phase. The actor track (5,449 frames) has one: the track names a pose in 16 steps per cycle, and at
+  7.4 m/s the hound covers 0.21 m in one 29 ms step, over the inspector's 0.15 m rule; the 3D clip itself is continuous.
+- **Found and fixed by this verification:** one-shot clips clamp on their last frame and Unity keeps reporting them
+  as playing, so the hound froze on foot after its first bite or howl (the same pattern kept an NPC in its interact
+  pose and the guard out of its Blocking loop); the hound was the hunter's size (now 2.5 m, a proper mount); the sit
+  curled the hind paws into hooks; the pose captures' first frame showed the previous clip.
 
 ## Limits (honest)
 - The texture's far side is mirrored concept art, not painted for that side; the turned neck is refilled fur, softer
