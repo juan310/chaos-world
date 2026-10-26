@@ -13,7 +13,7 @@ namespace FH.UI
     {
         readonly UiManager ui;
         readonly RectTransform root;
-        Bar health, stamina, magic, target;
+        Bar health, stamina, magic, target, spirit;
         Text nameText, goldText, clockText, rankText, promptText, flashText, areaText, trackerText, targetName, targetParts, spellText;
         Image staminaFill;
         RectTransform promptBox, targetBox, reticle, notices, areaBox;
@@ -49,6 +49,9 @@ namespace FH.UI
             stamina = UiKit.Bar("Stamina", vit.transform, UiKit.Stamina, new Vector2(390, 14)); stamina.Root.Box(new Vector2(0, 1), new Vector2(18, -78), new Vector2(390, 14));
             staminaFill = stamina.FillImage;
             magic = UiKit.Bar("Magic", vit.transform, UiKit.Magic, new Vector2(300, 10)); magic.Root.Box(new Vector2(0, 1), new Vector2(18, -102), new Vector2(300, 10));
+            // Katana spirit gauge (Proving Grounds): the fill takes the spirit level's colour.
+            spirit = UiKit.Bar("Spirit gauge", vit.transform, new Color(.92f, .95f, 1f), new Vector2(300, 8)); spirit.Root.Box(new Vector2(0, 1), new Vector2(18, -118), new Vector2(300, 8));
+            spirit.Root.gameObject.SetActive(false);
 
             // Status, top-right.
             var st = UiKit.Panel("Status", root);
@@ -152,6 +155,9 @@ namespace FH.UI
                 if (cls == FH.Core.WeaponClass.Lance)
                     return pad ? "Y mid thrust   B high thrust   Y+B wide sweep   A hop   RB guard: +Y guard thrust/dash, +B counter, +Y+B dash attack   R3 lock-on   LB item   Menu ledger"
                                : "LMB mid thrust   RMB high thrust   both: wide sweep   Space hop   Ctrl guard: +LMB guard thrust, +RMB counter, +both dash attack   Tab lock-on   1-4 items";
+                if (cls == FH.Core.WeaponClass.Katana)
+                    return pad ? "Y overhead   B thrust   Y+B fade slash (stick side: lateral)   RB spirit blade   RB+B foresight   RB+A iai stance (then Y / RB)   A roll/slide   Menu ledger"
+                               : "LMB overhead   RMB thrust   both: fade slash   Ctrl spirit blade   Ctrl+RMB foresight   Ctrl+Space iai stance (then LMB / Ctrl)   Space roll/slide   1-4 items";
                 if (cls == FH.Core.WeaponClass.Bow)
                     return pad ? "Y hold: draw, release: shoot   B power shot / arc shot   Y+B Dragon Piercer   A charging sidestep   RB aim   R3 lock-on   LB item   Menu ledger"
                                : "LMB hold: draw, release: shoot   RMB power shot / arc shot   both: Dragon Piercer   Space sidestep   Ctrl aim   Tab lock-on   1-4 items";
@@ -173,6 +179,14 @@ namespace FH.UI
             stamina.Set(h.Stamina.Current / Mathf.Max(1, h.Stamina.Max), dt);
             staminaFill.color = h.Stamina.Exhausted ? new Color(.45f, .45f, .3f) : UiKit.Stamina;
             magic.Set(h.Magic / Mathf.Max(1, st[Stat.MaxMagic]), dt);
+            var f = h.Hunt && h.Hunt.enabled ? h.Hunt : null;
+            bool katana = f && f.Spirit != null;
+            if (spirit.Root.gameObject.activeSelf != katana) spirit.Root.gameObject.SetActive(katana);
+            if (katana)
+            {
+                spirit.Set(f.Spirit.Value / FH.Core.SpiritGauge.Max, dt);
+                spirit.FillImage.color = f.SpiritLevel >= 3 ? new Color(1f, .25f, .15f) : f.SpiritLevel == 2 ? new Color(1f, .82f, .25f) : f.SpiritLevel == 1 ? new Color(.95f, .97f, 1f) : new Color(.6f, .7f, .85f);
+            }
             goldText.text = c.State.gold + " gold";
             rankText.text = c.Progression.Rank.name + "  ·  " + (c.Db.Areas.TryGetValue(S.CurrentArea, out var a) ? a.name : "");
             clockText.text = c.Clock.Label + (c.Clock.IsNight ? "  ·  Night" : "");

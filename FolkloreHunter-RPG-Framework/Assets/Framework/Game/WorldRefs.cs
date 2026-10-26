@@ -21,6 +21,10 @@ namespace FH.Game
         /// <summary>Proving Grounds: a separate walled ring for testing combat and movement (never saved).</summary>
         public Vector3 ProvingOrigin = new Vector3(-200, 0, 0);
         public float ProvingRadius = 38;   // room to gallop the Briarhound
+        /// <summary>Training Range: a walled yard beside the Proving Grounds with archery targets, training dummies,
+        /// dodge hazards and a measured dodge lane (never saved).</summary>
+        public Vector3 RangeOrigin = new Vector3(-200, 0, 160);
+        public Vector2 RangeHalfSize = new Vector2(28, 40);
         public Rect MapBounds = new Rect(-50, -50, 100, 100);
 
         public Transform Anchor(string id)
@@ -31,6 +35,9 @@ namespace FH.Game
         }
 
         public bool IsInProving(Vector3 p) => Vector2.Distance(new Vector2(p.x, p.z), new Vector2(ProvingOrigin.x, ProvingOrigin.z)) < ProvingRadius + 6;
+        public bool IsInRange(Vector3 p) => Mathf.Abs(p.x - RangeOrigin.x) < RangeHalfSize.x + 6 && Mathf.Abs(p.z - RangeOrigin.z) < RangeHalfSize.y + 6;
+        /// <summary>Either test area (Proving Grounds ring or Training Range).</summary>
+        public bool IsInTestArea(Vector3 p) => IsInProving(p) || IsInRange(p);
         public bool IsInCrypt(Vector3 p) => Mathf.Abs(p.x - CryptOrigin.x) < CryptHalfSize.x + 3 && Mathf.Abs(p.z - CryptOrigin.z) < CryptHalfSize.y + 3;
 
         public Vector3 SpawnPosition(SpawnDef sp)

@@ -65,6 +65,7 @@ namespace FH.Game
             HuntGrounds();
             Crypt();
             ProvingGrounds();
+            TrainingRange();
             Library();
             return refs;
         }
@@ -526,6 +527,125 @@ namespace FH.Game
             ledger.transform.SetParent(g); ledger.transform.position = desk.transform.position + Vector3.up * .3f; ledger.Range = 2.2f;
             Anchor("proving_spawn", o + new Vector3(0, .1f, -r + 7), 0);
             Anchor("proving_target", o + new Vector3(0, .1f, 3), 180);
+        }
+
+        /// <summary>Training Range: a walled yard for practising the weapons and evasions. West: an archery lane with
+        /// targets at 10, 20, 30 and 40 m from the shooting line. East: a pen for training dummies (passive monsters
+        /// that never die). South: the hazard yard (two slam pads, one slow and one quick, and a sweeping log) and a dodge
+        /// lane marked every metre. Reached from the title or the ledger; nothing done here is saved.</summary>
+        static void TrainingRange()
+        {
+            var o = refs.RangeOrigin; var half = refs.RangeHalfSize;
+            var g = new GameObject("Training Range - weapons and evasion practice").transform; g.SetParent(root); g.position = o;
+            var turf = M("Range turf", new Color(.42f, .50f, .30f)); var sand = M("Range sand", new Color(.66f, .58f, .43f));
+            var stone = M("Arena stone", new Color(.42f, .40f, .37f)); var wood = M("Arena wood", new Color(.40f, .26f, .14f));
+            var straw = M("Range straw", new Color(.82f, .70f, .38f)); var paint = M("Range paint", new Color(.92f, .90f, .84f));
+            var red = M("Range red", new Color(.70f, .16f, .12f)); var gold = M("Range gold", new Color(.95f, .75f, .22f));
+            var cloth = M("Arena banner", new Color(.55f, .14f, .12f)); var iron = WorldKit.Mat("Range iron", new Color(.30f, .30f, .32f), .6f);
+            WorldKit.Box("Range floor", o + new Vector3(0, -.25f, 0), new Vector3(half.x * 2 + 12, .5f, half.y * 2 + 12), turf, g, true);
+            // Walls (solid) with torches at the corners and halfway along.
+            foreach (var (c, size) in new[] {
+                (new Vector3(0, .9f, half.y + .6f), new Vector3(half.x * 2 + 2.4f, 1.8f, 1.1f)), (new Vector3(0, .9f, -half.y - .6f), new Vector3(half.x * 2 + 2.4f, 1.8f, 1.1f)),
+                (new Vector3(half.x + .6f, .9f, 0), new Vector3(1.1f, 1.8f, half.y * 2 + 2.4f)), (new Vector3(-half.x - .6f, .9f, 0), new Vector3(1.1f, 1.8f, half.y * 2 + 2.4f)) })
+                WorldKit.Box("Range wall", o + c, size, stone, g, true);
+            foreach (var at in new[] { new Vector2(-1, -1), new Vector2(1, -1), new Vector2(-1, 1), new Vector2(1, 1), new Vector2(-1, 0), new Vector2(1, 0) })
+            {
+                var p = o + new Vector3(at.x * (half.x - .4f), 0, at.y * (half.y - .4f));
+                var post = WorldKit.Box("Range torch post", p + Vector3.up * 1.6f, new Vector3(.22f, 3.2f, .22f), wood, g, true);
+                var l = new GameObject("Range torch").AddComponent<Light>(); l.transform.SetParent(g); l.transform.position = post.transform.position + Vector3.up * 1.8f;
+                l.type = LightType.Point; l.color = new Color(1f, .72f, .42f); l.range = 16; l.intensity = 1.5f;
+                WorldKit.Orb("Range torch flame", l.transform.position, .16f, WorldKit.Glow(new Color(1f, .5f, .15f), 3), g);
+            }
+
+            // Archery lane (west): a shooting line and four straw targets facing it.
+            const float laneX = -17, lineZ = -30;
+            WorldKit.Box("Archery lane", o + new Vector3(laneX, .005f, lineZ + 22), new Vector3(9, .01f, 46), sand, g);
+            WorldKit.Box("Shooting line", o + new Vector3(laneX, .015f, lineZ), new Vector3(9, .01f, .18f), paint, g);
+            var lineSign = WorldKit.Label("SHOOTING LINE", g, new Vector3(laneX, 2.2f, lineZ - .5f), .09f, new Color(1f, .95f, .8f));
+            lineSign.transform.rotation = Quaternion.identity;
+            foreach (float dist in new[] { 10f, 20f, 30f, 40f })
+            {
+                var c = o + new Vector3(laneX + (dist == 20 || dist == 40 ? 1.6f : -1.6f), 0, lineZ + dist);
+                var stand = new GameObject("Archery target " + dist + " m").transform; stand.SetParent(g); stand.position = c;
+                WorldKit.Box("Target leg", c + new Vector3(-.7f, .9f, .25f), new Vector3(.12f, 1.8f, .12f), wood, stand);
+                WorldKit.Box("Target leg", c + new Vector3(.7f, .9f, .25f), new Vector3(.12f, 1.8f, .12f), wood, stand);
+                var face = WorldKit.Cylinder("Target face", c + Vector3.up * 1.6f, 1f, .3f, straw, stand, true);
+                face.transform.rotation = Quaternion.Euler(90, 0, 0);
+                var ring = WorldKit.Cylinder("Target ring", c + Vector3.up * 1.6f - Vector3.forward * .16f, .66f, .01f, red, stand);
+                ring.transform.rotation = Quaternion.Euler(90, 0, 0);
+                var bull = WorldKit.Cylinder("Target gold", c + Vector3.up * 1.6f - Vector3.forward * .17f, .33f, .01f, gold, stand);
+                bull.transform.rotation = Quaternion.Euler(90, 0, 0);
+                var t = stand.gameObject.AddComponent<RangeTarget>();
+                t.Distance = dist; t.Face = face.transform; t.FaceRadius = 1f;
+                t.Sign = WorldKit.Label(dist + " m\nhits 0  gold 0", stand, new Vector3(0, 3.1f, 0), .07f, new Color(1f, .95f, .8f));
+                t.Sign.transform.rotation = Quaternion.identity;    // readable from the shooting line
+                var floorMark = WorldKit.Label(dist + " m", g, new Vector3(laneX - 4, .05f, lineZ + dist), .1f, new Color(1f, .95f, .8f));
+                floorMark.transform.rotation = Quaternion.Euler(90, 0, 0);
+            }
+            Anchor("range_archery", o + new Vector3(laneX, .1f, lineZ - 1.2f), 0);
+
+            // Dummy pen (east): low fence posts; the dummies themselves are spawned by the session.
+            for (int i = 0; i <= 10; i++)
+            {
+                WorldKit.Box("Pen post", o + new Vector3(8, .5f, -2 + i * 3.6f), new Vector3(.2f, 1f, .2f), wood, g, true);
+            }
+            WorldKit.Box("Pen rail", o + new Vector3(8, .8f, 16), new Vector3(.12f, .12f, 36), wood, g);
+            Anchor("range_dummy_large", o + new Vector3(18, .1f, 24), 180);
+            Anchor("range_dummy_small", o + new Vector3(18, .1f, 6), 180);
+
+            // Hazard yard (south-centre): two slam pads and a sweeping log.
+            Hazard(g, "Slow slam pad", o + new Vector3(-2, 0, -18), RangeHazard.Shape.Circle, 3.4f, 1.1f, 0, stone, iron, red);
+            Hazard(g, "Quick slam pad", o + new Vector3(5.5f, 0, -18), RangeHazard.Shape.Circle, 2.2f, .7f, 1.1f, stone, iron, red);
+            Hazard(g, "Sweeping log", o + new Vector3(2, 0, -26), RangeHazard.Shape.Strip, 4f, 1f, 2f, stone, wood, red);
+            var yardSign = WorldKit.Label("HAZARDS - roll, slide or step through the blow\n(i-frames), or guard / counter it", g, new Vector3(2, 2.6f, -13.2f), .06f, new Color(1f, .9f, .75f));
+            yardSign.transform.rotation = Quaternion.identity;
+
+            // Dodge lane (centre): a strip marked every metre to read how far each evasion travels.
+            WorldKit.Box("Dodge lane", o + new Vector3(2, .005f, -6), new Vector3(14, .01f, 2.4f), sand, g);
+            for (int i = 0; i <= 12; i++)
+            {
+                WorldKit.Box("Dodge lane mark", o + new Vector3(-4 + i, .015f, -6), new Vector3(i % 5 == 0 ? .08f : .04f, .01f, i % 5 == 0 ? 2.4f : 1.2f), paint, g);
+                var n = WorldKit.Label(i.ToString(), g, new Vector3(-4 + i, .03f, -7.6f), .06f, new Color(1f, .95f, .8f));
+                n.transform.rotation = Quaternion.Euler(90, 0, 0);
+            }
+            Anchor("range_lane", o + new Vector3(2, .1f, -6), 0);
+
+            // Ledger at the entrance (weapons, options, travel), and the spawn.
+            var desk = WorldKit.Box("Range ledger desk", o + new Vector3(4.5f, .5f, -half.y + 4), new Vector3(1.4f, 1f, .7f), wood, g, true);
+            WorldKit.Box("Range ledger book", desk.transform.position + Vector3.up * .55f, new Vector3(.6f, .08f, .45f), cloth, g);
+            var ledger = new GameObject("Range ledger").AddComponent<ProvingLedger>();
+            ledger.transform.SetParent(g); ledger.transform.position = desk.transform.position + Vector3.up * .3f; ledger.Range = 2.2f;
+            var rack = WorldKit.Box("Weapon rack", o + new Vector3(-4.5f, .9f, -half.y + 3.4f), new Vector3(2.6f, .12f, .4f), wood, g, true);
+            WorldKit.Box("Weapon rack leg", rack.transform.position + new Vector3(-1.2f, -.45f, 0), new Vector3(.12f, .9f, .3f), wood, g);
+            WorldKit.Box("Weapon rack leg", rack.transform.position + new Vector3(1.2f, -.45f, 0), new Vector3(.12f, .9f, .3f), wood, g);
+            var title = WorldKit.Label("TRAINING RANGE", g, new Vector3(0, 3.4f, -half.y + .2f), .12f, new Color(1f, .9f, .6f));
+            title.transform.rotation = Quaternion.identity;
+            Anchor("range_spawn", o + new Vector3(0, .1f, -half.y + 6), 0);
+        }
+
+        static void Hazard(Transform g, string name, Vector3 c, RangeHazard.Shape shape, float period, float telegraph, float offset, Material stone, Material striker, Material warn)
+        {
+            var h = new GameObject(name).AddComponent<RangeHazard>();
+            h.transform.SetParent(g); h.transform.position = c;
+            h.Kind = shape; h.Period = period; h.Telegraph = telegraph; h.Offset = offset;
+            var ring = WorldKit.Cylinder(name + " warning", c + Vector3.up * .03f, .5f, .02f, WorldKit.Transparent("Telegraph ring", new Color(.95f, .18f, .08f, .35f)), h.transform);
+            h.Warning = ring.transform;
+            if (shape == RangeHazard.Shape.Circle)
+            {
+                WorldKit.Cylinder(name + " pad", c + Vector3.up * .01f, h.Radius, .02f, stone, h.transform);
+                WorldKit.Box(name + " post", c - Vector3.forward * (h.Radius + .8f) + Vector3.up * 1.8f, new Vector3(.35f, 3.6f, .35f), stone, h.transform, true);
+                var hammer = WorldKit.Box(name + " hammer", c + Vector3.up * .6f, new Vector3(1.6f, 1.0f, 1.6f), striker, h.transform);
+                h.Striker = hammer.transform;
+            }
+            else
+            {
+                ring.transform.localScale = new Vector3(h.StripSize.x, .02f, h.StripSize.y);
+                WorldKit.Box(name + " lane", c + Vector3.up * .01f, new Vector3(h.StripSize.x, .01f, h.StripSize.y), stone, h.transform);
+                var log = WorldKit.Box(name + " log", c + Vector3.up * .45f, new Vector3(.7f, .7f, h.StripSize.y), striker, h.transform);
+                h.Striker = log.transform;
+                foreach (float side in new[] { -1f, 1f })
+                    WorldKit.Box(name + " end post", c + new Vector3(side * (h.StripSize.x * .5f + .4f), .9f, 0), new Vector3(.3f, 1.8f, .3f), stone, h.transform, true);
+            }
         }
 
         /// <summary>Materials created at runtime must exist in the build with their shader variants.</summary>

@@ -21,6 +21,7 @@ namespace FH.Game
         readonly Dictionary<Hurtbox, float> struck = new Dictionary<Hurtbox, float>();
         readonly Dictionary<MonsterActor, int> hitsOn = new Dictionary<MonsterActor, int>();
         readonly Collider[] found = new Collider[12];
+        readonly HashSet<RangeTarget> targetsHit = new HashSet<RangeTarget>();
 
         /// <summary>Looses one arrow. <paramref name="hitDef"/> carries this arrow's motion value, poise and stun.</summary>
         public static ArrowShot Fire(GameSession s, HunterController h, Transform template, ShotDef shot, AttackDef hitDef, Vector3 from, Vector3 dir, float delay = 0)
@@ -91,9 +92,17 @@ namespace FH.Game
                 return;
             }
             RaycastHit hitInfo = default;
+            if (shot.pierce && hit.damageMultiplier > 0)
+                foreach (var w in Physics.RaycastAll(from, transform.position - from, Vector3.Distance(from, transform.position), Layers.WorldMask, QueryTriggerInteraction.Ignore))
+                {
+                    var t = w.collider.GetComponentInParent<RangeTarget>();
+                    if (t && targetsHit.Add(t)) t.Struck(w.point);      // the piercing bolt goes through the target
+                }
             if (!shot.pierce && Physics.Linecast(from, transform.position, out hitInfo, Layers.WorldMask, QueryTriggerInteraction.Ignore))
             {
                 transform.position = hitInfo.point;
+                var target = hitInfo.collider.GetComponentInParent<RangeTarget>();
+                if (target && hit.damageMultiplier > 0) target.Struck(hitInfo.point);
                 if (shot.arc) WorldKit.Burst(hitInfo.point + Vector3.up * .1f, new Color(.85f, .75f, .55f), 4);
                 enabled = false; Destroy(gameObject, 1.5f);       // it sticks where it landed for a moment
                 return;

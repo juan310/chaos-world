@@ -62,6 +62,7 @@ namespace FH.UI
             var load = UiKit.Button(col, "Load Game", () => Ui.Push(new SlotScreen(SlotMode.Load)));
             load.Enabled(recent > 0, recent > 0 ? null : "No saved games.");
             UiKit.Button(col, "Proving Grounds  (combat test)", () => S.EnterProvingGrounds());
+            UiKit.Button(col, "Training Range  (weapons and evasions)", () => S.EnterTrainingRange());
             UiKit.Button(col, "Settings", () => Ui.Push(new SettingsScreen()));
             UiKit.Button(col, "Controls", () => Ui.Push(new ControlsScreen()));
             UiKit.Button(col, "Quit", () => S.QuitGame(false));
@@ -197,8 +198,8 @@ namespace FH.UI
                 UiKit.Button(col, "Proving ledger", () => { Ui.Close(this); Ui.Push(new ProvingScreen()); });
                 UiKit.Button(col, "Settings", () => Ui.Push(new SettingsScreen()));
                 UiKit.Button(col, "Controls", () => Ui.Push(new ControlsScreen()));
-                UiKit.Button(col, "Leave Proving Grounds", () => S.LeaveProvingGrounds());
-                UiKit.Paragraph(col, "Nothing in the Proving Grounds is saved.", 16, UiKit.Muted);
+                UiKit.Button(col, "Leave the " + S.TestAreaName, () => S.LeaveProvingGrounds());
+                UiKit.Paragraph(col, "Nothing in the Proving Grounds or the Training Range is saved.", 16, UiKit.Muted);
                 return;
             }
             bool fighting = S.InFight;
@@ -216,7 +217,7 @@ namespace FH.UI
     public class ControlsScreen : UiScreen
     {
         public override string Title => "Controls";
-        public override Vector2 Size => new Vector2(1180, 860);
+        public override Vector2 Size => new Vector2(1240, 1000);
         public override void Build()
         {
             var col = UiKit.Column("Controls", Body, 8);
@@ -227,15 +228,21 @@ namespace FH.UI
                 "<b>Dodge</b> Space / A   <b>Spell</b> Q / LT   <b>Change spell</b> F / D-pad down   <b>Lock-on</b> Tab, middle mouse / R3\n" +
                 "<b>Interact</b> E / X   <b>Items</b> 1-4, R / LB   <b>Camera</b> hold right mouse / right stick   <b>Zoom</b> wheel\n" +
                 "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n\n" +
-                "<color=#f5d68c>Proving Grounds (Monster Hunter-style)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
-                "<b>All weapons</b>  Roll / hop / sidestep Space, A   Sprint Shift, RT (sheathes)   Sheathe X   Items 1-4, LB (D-pad picks)   Whistle G, D-pad up\n" +
+                "<color=#f5d68c>Proving Grounds and Training Range (Monster Hunter-style)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
+                "<b>All weapons</b>  Evade Space, A: roll; weapon out, stick to the side: side slide, stick back: back-step (both keep facing);\n" +
+                "    sprinting away from a monster: dive (long, very safe, then a moment to get up)   Sprint Shift, RT (sheathes)   Sheathe X\n" +
+                "    Items 1-4, LB (D-pad picks)   Whistle G, D-pad up\n" +
                 "<b>Sword and shield</b>  Light LMB, Y (slash, slash, overhead; forward: lunge)   Heavy RMB, B (hold: charge, level 2 spins)\n" +
                 "    Y+B shield bash (stun)   Guard Ctrl, RB (perfect guard, then light: counter)   light right after a roll: roll slash\n" +
                 "<b>Lance</b>  Y mid thrust, B high thrust (mix up to three)   Y+B wide sweep   A hop (three in a row, the last is long)\n" +
                 "    Guard RB (wide, little chip)  then Y guard thrust (stick: guard dash), B counter stance (a blocked blow: Retribution Thrust),\n" +
                 "    Y+B dash attack (Y during it: finishing thrust)\n" +
                 "<b>Bow</b>  Hold Y to draw (three charge levels), release to shoot; quick follow-up shots rise a level   A charging sidestep (+1 level)\n" +
-                "    B after a shot: power shot   B: arc shot (arrows rain on the target)   Y+B Dragon Piercer   RB aim over the shoulder\n\n" +
+                "    B after a shot: power shot   B: arc shot (arrows rain on the target)   Y+B Dragon Piercer   RB aim over the shoulder\n" +
+                "<b>Katana</b> (two-handed)  Y overhead, B thrust, then rising slash   Y+B fade slash (back; stick to the side: lateral fade)\n" +
+                "    RB Spirit Blade I, II, III, then Spirit Roundslash: a landed roundslash raises the spirit level (white, yellow, red)\n" +
+                "    Hits fill the spirit gauge; spirit moves spend it. RB+B Foresight Slash: step back, a blow caught in it is countered\n" +
+                "    RB+A iai stance: Y Iai Slash (the gauge refills itself), RB Iai Spirit Slash (a blow in its windup is countered: level up)\n\n" +
                 "<color=#f5d68c>Hunting tips</color>  Watch the raised weapon, red eyes and warning ring; roll through the blow, then punish.\n" +
                 "Orange numbers mean a soft hitzone. Shield bashes and overheads build stun: a toppled monster is wide open.", 19);
             UiKit.Button(col, "Back", () => Ui.Close(this));

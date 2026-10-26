@@ -13,7 +13,13 @@ namespace FH.Game
     /// answers a blocked blow with a Retribution Thrust, dash attack with a finishing thrust, up to three hops.
     /// Bow: hold Y to draw through charge levels, quick follow-up shots rise a level, the charging sidestep adds one,
     /// B after a shot is a power shot (wider fan), B alone the arc shot (arrows rain on the target), Y+B the Dragon
-    /// Piercer, RB aims over the shoulder.</summary>
+    /// Piercer, RB aims over the shoulder. The bow is held in the left hand and drawn to the cheek (Monster Hunter's
+    /// archer), with an arrow nocked while drawn.
+    /// Katana (two-handed, Monster Hunter's long sword): RB is the Spirit Blade combo, hits fill the spirit gauge, a
+    /// landed Spirit Roundslash raises the spirit level (white, yellow, red: more damage), RB+B is the Foresight Slash
+    /// (a step back that counters a blow caught in it), RB+A the iai stance (Y: Iai Slash, RB: Iai Spirit Slash that
+    /// counters a blow during its windup).
+    /// Evasions: roll; drawn, a side slide or back-step that keeps facing; sprinting away from a monster, a dive.</summary>
     public class HuntFighter : MonoBehaviour
     {
         public HuntMovesetDef Set { get; private set; }
@@ -43,6 +49,17 @@ namespace FH.Game
         public int LastShotLevel { get; private set; }
         public int LastShotArrows { get; private set; }
         public Vector3 LastAimPoint { get; private set; }
+        // Katana
+        public SpiritGauge Spirit { get; private set; }
+        public bool IaiStance { get; private set; }
+        public bool Foresight => foresightAt > 0;
+        public int ForesightCounters { get; private set; }
+        public int SpiritCounters { get; private set; }
+        public int SpiritLevel => Spirit != null ? Spirit.Level : 0;
+        // Evasions
+        public EvadeKind LastEvade { get; private set; }
+        public int Evades { get; private set; }
+        public bool Recovering => Time.time < recoverUntil;
 
         HunterController H;
         GameSession S;
@@ -54,7 +71,11 @@ namespace FH.Game
         BowCharge bow;
         readonly DodgeChain dodges = new DodgeChain();
         int nextShotLevel = 1; bool nextIsPower;
-        Transform chest, arrowTemplate, quiver;
+        float iaiStart, foresightAt = -1, pendingSpirit = -1, recoverUntil;
+        bool skipDodge, skipHeavy, spiritShort;
+        int buffedSwing = -1, levelledSwing = -1, moveSerial;
+        Transform chest, arrowTemplate, quiver, nocked, katanaGlow;
+        Renderer glowRenderer; int shownGlow = -1;
         const float SimultaneousWindow = .07f, BufferLife = .5f;
 
         /// <summary>A weapon's two pieces (main hand, off hand or back piece) and where each sits in hand and on the back.</summary>
@@ -68,11 +89,18 @@ namespace FH.Game
             chest = WorldKit.Find(H.Visual, "chest");
             arrowTemplate = WorldKit.Find(H.Visual, "Hunt_Arrow");
             quiver = WorldKit.Find(H.Visual, "Hunt_Quiver");
+            nocked = WorldKit.Find(H.Visual, "Hunt_NockedArrow");
+            var katana = WorldKit.Find(H.Visual, "Hunt_Katana");
+            katanaGlow = WorldKit.Find(H.Visual, "Hunt_KatanaGlow");
+            if (katana && katanaGlow && katanaGlow.parent != katana) katanaGlow.SetParent(katana, true);   // the edge goes where the blade goes
+            glowRenderer = katanaGlow ? katanaGlow.GetComponent<Renderer>() : null;
             if (loadouts.Count == 0)
             {
                 loadouts[WeaponClass.SwordShield] = new[] { Long(H.SwordTransform, -28, -.2f, .22f, .14f), Flat(WorldKit.Find(H.Visual, "Round_Shield")) };
                 loadouts[WeaponClass.Lance] = new[] { Long(WorldKit.Find(H.Visual, "Hunt_Lance"), 152, -.22f, -.35f, -.1f), Flat(WorldKit.Find(H.Visual, "Hunt_TowerShield")) };
-                loadouts[WeaponClass.Bow] = new[] { Long(WorldKit.Find(H.Visual, "Hunt_Bow"), 160, -.3f, .02f, .05f), new Piece { t = quiver, onBackAlways = true } };
+                var bowT = WorldKit.Find(H.Visual, "Hunt_Bow");
+                loadouts[WeaponClass.Bow] = new[] { Long(bowT, 160, -.3f, .02f, .05f, bowT ? bowT.parent : null), new Piece { t = quiver, onBackAlways = true }, new Piece { t = nocked, onBackAlways = true } };
+                loadouts[WeaponClass.Katana] = new[] { Long(katana, 52, -.26f, .32f, .22f) };
             }
             H.BladeHit -= OnBladeHit; H.BladeHit += OnBladeHit;
             H.ShotLoosed -= OnShotLoosed; H.ShotLoosed += OnShotLoosed;
@@ -85,22 +113,24 @@ namespace FH.Game
             Set = set;
             CancelStates();
             bow = set.Class == WeaponClass.Bow ? new BowCharge(set) : null;
+            Spirit = set.Class == WeaponClass.Katana ? new SpiritGauge() : null;
+            shownGlow = -1;
             dodges.Reset();
             foreach (var kv in loadouts)
                 foreach (var p in kv.Value)
                     if (p != null && p.t) foreach (var r in p.t.GetComponentsInChildren<Renderer>(true)) r.enabled = kv.Key == set.Class;
             if (arrowTemplate) arrowTemplate.GetComponent<Renderer>().enabled = false;
             pieces = loadouts.TryGetValue(set.Class, out var ps) ? ps : new Piece[0];
-            H.SetBlade(set.Class == WeaponClass.Lance && pieces.Length > 0 ? pieces[0].t : H.SwordTransform);
+            H.SetBlade((set.Class == WeaponClass.Lance || set.Class == WeaponClass.Katana) && pieces.Length > 0 ? pieces[0].t : H.SwordTransform);
             SetSheathed(true);
             LastEvent = "equipped " + set.name;
         }
 
         void CancelStates()
         {
-            Guarding = Charging = CounterStance = Aiming = false;
+            Guarding = Charging = CounterStance = Aiming = IaiStance = false;
             bow?.CancelDraw();
-            buffered = HuntInput.None; pendingLight = pendingHeavy = -1;
+            buffered = HuntInput.None; pendingLight = pendingHeavy = pendingSpirit = foresightAt = -1;
             if (S && S.CameraRig) S.CameraRig.Aiming = false;
         }
 
@@ -129,13 +159,13 @@ namespace FH.Game
 
         // ---------------- state the controller asks about ----------------
         /// <summary>Movement locked: charging, counter stance, knocked down, getting up, staggering, or sheathing.</summary>
-        public bool Locked => Charging || CounterStance || Time.time < reactionUntil || Downed || Time.time < getUpUntil;
+        public bool Locked => Charging || CounterStance || IaiStance || Time.time < reactionUntil || Downed || Time.time < getUpUntil || Time.time < recoverUntil;
         public float SpeedScale => Guarding ? .3f : Drawing || Aiming ? .45f : Sheathed ? 1f : Set.drawnSpeed;
         public bool KeepFacing => H.LockTarget && H.LockTarget.Alive;
-        /// <summary>A lance hop or bow sidestep is under way: the hunter keeps facing forward (it is a step, not a roll).</summary>
+        /// <summary>A hop, sidestep, side slide, back-step or dive is under way: the hunter does not turn with the stick.</summary>
         public bool StepDodging => dodgeEndAt > 0 && H.Dodging;
         /// <summary>Guarding (raised shield), charging, the counter stance and the bow's draw own the idle pose.</summary>
-        public bool OwnsIdlePose => Guarding || Charging || CounterStance || Drawing || Aiming || Downed || Time.time < getUpUntil;
+        public bool OwnsIdlePose => Guarding || Charging || CounterStance || IaiStance || Drawing || Aiming || Downed || Time.time < getUpUntil || Time.time < recoverUntil;
 
         /// <summary>Locked on and drawn, or aiming / drawing the bow: the hunter faces the target or the aim while moving.</summary>
         public bool FacesTarget(out Vector3 dir)
@@ -166,7 +196,9 @@ namespace FH.Game
         public void HandleInput(Vector3 dir)
         {
             float now = Time.time;
-            if (H.Dead) { Guarding = Charging = CounterStance = false; bow?.CancelDraw(); SetAim(false); return; }
+            if (H.Dead) { Guarding = Charging = CounterStance = IaiStance = false; bow?.CancelDraw(); SetAim(false); return; }
+            Spirit?.Tick(now, Time.deltaTime);
+            UpdateWeaponVisuals(now);
             if (InputRouter.Down(GameAction.LockOn)) H.ToggleLock();
             if (InputRouter.Down(GameAction.CycleSpell)) H.CycleSpell();
             if (InputRouter.Down(GameAction.Whistle) && S.Hound) S.Hound.Call();
@@ -181,26 +213,29 @@ namespace FH.Game
             }
             if (getUpUntil > 0 && now >= getUpUntil) getUpUntil = 0;
             if (sheatheDoneAt > 0 && now >= sheatheDoneAt) { sheatheDoneAt = -1; SetSheathed(true); }
-            if (dodgeEndAt > 0 && !H.Dodging) { dodges.Ended(now); dodgeEndAt = -1; if (Drawing) H.Anim.Play("1H_Ranged_Aiming", true, 1, true, .08f); }
+            if (dodgeEndAt > 0 && !H.Dodging) { dodges.Ended(now); dodgeEndAt = -1; EvadeEnded(dir, now); }
 
             bool wantRun = InputRouter.Held(GameAction.Run) && dir.sqrMagnitude > .01f;
             if (wantRun && !Sheathed && !H.Attack.Running && !Charging && !CounterStance && sheatheDoneAt < 0) { bow?.CancelDraw(); SetAim(false); BeginSheathe(); }
             Sprinting = wantRun && Sheathed && sheatheDoneAt < 0;
             if (InputRouter.Down(GameAction.Sheathe) && !Sheathed && !S.Focus && !H.Attack.Running && !Charging && !CounterStance) { bow?.CancelDraw(); SetAim(false); BeginSheathe(); }
 
+            skipDodge = skipHeavy = false;
             if (Class == WeaponClass.Bow) HandleBow(dir, now);
+            else if (Class == WeaponClass.Katana) HandleKatana(dir, now);
             else HandleGuard(now);
 
-            // Dodge: roll (sword and shield, sheathed), hop (lance), charging sidestep (bow). Inside a move only once
+            // Evade: roll, side slide, back-step or dive; hop (lance); charging sidestep (bow). Inside a move only once
             // the move allows it.
-            if (InputRouter.Down(GameAction.Dodge)) TryDodge(dir, now);
+            if (InputRouter.Down(GameAction.Dodge) && !skipDodge) TryDodge(dir, now);
 
             if (CounterStance) { UpdateCounter(dir, now); return; }
+            if (IaiStance) { UpdateIai(dir, now); return; }
 
             // Attacks: Y and B pressed together (within 70 ms) are the special (shield bash, wide sweep, Dragon Piercer).
             // The first press opens the 70 ms window; mashing must not keep pushing it back.
             if (InputRouter.Down(GameAction.Attack) && pendingLight < 0) pendingLight = now;
-            if (InputRouter.Down(GameAction.HeavyAttack) && pendingHeavy < 0) pendingHeavy = now;
+            if (InputRouter.Down(GameAction.HeavyAttack) && pendingHeavy < 0 && !skipHeavy) pendingHeavy = now;
             if (pendingLight >= 0 && pendingHeavy >= 0) { Queue(HuntInput.LightHeavy); pendingLight = pendingHeavy = -1; }
             else if (pendingLight >= 0 && now - pendingLight >= SimultaneousWindow)
             {
@@ -229,27 +264,52 @@ namespace FH.Game
             if (Guarding && H.Anim.Finished("Block")) H.Anim.Play("Blocking");
         }
 
-        // ---------------- dodges ----------------
+        // ---------------- evasions ----------------
         void TryDodge(Vector3 dir, float now)
         {
             var cur = Current;
-            if (H.Hurt || !HuntRoutes.CanRollCancel(cur, H.Attack.Normalized)) return;
-            bool drawnSpecial = !Sheathed && Set.Dodge != DodgeStyle.Roll;
-            if (!drawnSpecial)
-            {
-                if (Charging) Charging = false;
-                if (H.Roll(dir, KeepFacing && !Sheathed)) { lastRollEnd = now + .42f; buffered = HuntInput.None; Guarding = false; CounterStance = false; LastEvent = "roll"; }
-                return;
-            }
+            if (H.Hurt || Foresight || now < recoverUntil || !HuntRoutes.CanRollCancel(cur, H.Attack.Normalized)) return;
+            float side = Vector3.Dot(dir, H.transform.right), front = Vector3.Dot(dir, H.transform.forward);
+            var kind = Evade.Choose(Set, !Sheathed, Sprinting, Sprinting && Fleeing(dir), side, front);
+            if (kind == EvadeKind.Hop || kind == EvadeKind.Sidestep) { StepDodge(kind, dir, now); return; }
+            var spec = Evade.Spec(Set, kind, -1);
+            if (Charging) Charging = false;
+            // A roll keeps facing only when locked on with the weapon out; side slides and back-steps always do.
+            bool keep = spec.KeepFacing || (kind == EvadeKind.Roll && KeepFacing && !Sheathed);
+            string clip = kind == EvadeKind.SideSlide ? (side > 0 ? "Dodge_Right" : "Dodge_Left") : kind == EvadeKind.Backstep ? "Dodge_Backward" : kind == EvadeKind.Dive ? "Jump_Full_Short" : null;
+            float clipSpeed = kind == EvadeKind.Dive ? Mathf.Clamp(H.Anim.Length("Jump_Full_Short") / (spec.Time + .1f), .6f, 2.5f) : spec.ClipSpeed;
+            if (!H.Roll(dir, keep, spec.Distance, spec.Time, spec.Stamina, spec.Invulnerable, clipSpeed, clip)) return;
+            if (kind != EvadeKind.Roll) dodgeEndAt = now + spec.Time;    // steps and the dive: the stick does not turn the hunter
+            lastRollEnd = now + spec.Time; buffered = HuntInput.None; Guarding = false; CounterStance = false; IaiStance = false;
+            LastEvade = kind; Evades++;
+            LastEvent = kind == EvadeKind.SideSlide ? "side slide " + (side > 0 ? "right" : "left") : kind == EvadeKind.Backstep ? "back-step" : kind == EvadeKind.Dive ? "dive" : "roll";
+        }
+
+        /// <summary>Sprinting with the stick pointing away from a monster within 12 m: a dive instead of a roll.</summary>
+        bool Fleeing(Vector3 dir)
+        {
+            var m = S.NearestMonster(H.transform.position, 12, Vector3.zero, 180);
+            if (!m || dir.sqrMagnitude < .1f) return false;
+            var away = H.transform.position - m.transform.position; away.y = 0;
+            return away.sqrMagnitude > .01f && Vector3.Dot(dir.normalized, away.normalized) > .3f;
+        }
+
+        /// <summary>Lance hop or bow charging sidestep: short, chainable, keeps facing.</summary>
+        void StepDodge(EvadeKind kind, Vector3 dir, float now)
+        {
             if (H.Dodging || !dodges.TryStart(Set, now, out bool last)) return;
-            float distance = Set.dodgeDistance * (last ? 1.6f : 1), time = Set.dodgeTime * (last ? 1.3f : 1);
+            var spec = Evade.Spec(Set, kind, -1);
+            float distance = spec.Distance * (last ? 1.6f : 1), time = spec.Time * (last ? 1.3f : 1);
             bool keepDraw = Drawing;
             if (Charging) Charging = false;
             CounterStance = false;
             // Hops and sidesteps keep facing the front (or the target); with no stick the lance hops back.
             Vector3 d = dir.sqrMagnitude > .1f ? dir : Class == WeaponClass.Lance ? -H.transform.forward : H.transform.right;
-            if (!H.Roll(d, true, distance, time, Set.dodgeStamina, Set.dodgeInvulnerable, Class == WeaponClass.Lance ? 1.9f : 1.7f)) { dodges.Reset(); return; }
+            string clip = Class == WeaponClass.Bow && !Sheathed ? (Vector3.Dot(d, H.transform.right) >= 0 ? "Bow_Step_R" : "Bow_Step_L") : null;
+            if (Class == WeaponClass.Bow && Mathf.Abs(Vector3.Dot(d.normalized, H.transform.forward)) > .7f) clip = null;   // forward / back: the plain dodge clip
+            if (!H.Roll(d, true, distance, time, spec.Stamina, spec.Invulnerable, spec.ClipSpeed, clip)) { dodges.Reset(); return; }
             dodgeEndAt = now + time; buffered = HuntInput.None; Guarding = false;
+            LastEvade = kind; Evades++;
             if (Class == WeaponClass.Bow)
             {
                 int level = bow.Stepped(now);
@@ -259,6 +319,35 @@ namespace FH.Game
             }
             else LastEvent = last ? "long hop" : "hop " + dodges.Count;
             lastRollEnd = now + time;
+        }
+
+        /// <summary>A step, slide or dive just ended: the draw resumes, the dive's landing, the foresight slash strikes.</summary>
+        void EvadeEnded(Vector3 dir, float now)
+        {
+            if (Drawing) H.Anim.Play("Bow_Draw", false, 2f, true, .08f);
+            if (LastEvade == EvadeKind.Dive)
+            {
+                recoverUntil = now + Evade.Spec(Set, EvadeKind.Dive, -1).Recover;
+                H.Anim.Play("Lie_StandUp", false, 2.4f, true, .05f);
+                LastEvent = "dive (landing)";
+            }
+            if (foresightAt > 0)
+            {
+                bool caught = H.LastDodgeEvade >= foresightAt;
+                foresightAt = -1;
+                if (caught)
+                {
+                    ForesightCounters++;
+                    Spirit?.Fill(now);
+                    WorldKit.Burst(H.transform.position + Vector3.up * 1.2f, new Color(.75f, .9f, 1f), 20);
+                    WorldKit.Sound(H.transform.position, "chime", .4f);
+                    GamePad.Rumble(.4f, .8f, .12f);
+                    S.Hud?.Flash("Foresight! Spirit gauge full");
+                    Execute(Set.Move(Set.foresightCounter), Vector3.zero);
+                    LastEvent = "foresight counter";
+                }
+                else { Execute(Set.Move(Set.foresightSlash), Vector3.zero); LastEvent = "foresight slash"; }
+            }
         }
 
         // ---------------- moves ----------------
@@ -283,6 +372,19 @@ namespace FH.Game
             if (Sheathed) Draw();
             Guarding = false;
             if (next.chargeTime > 0 && input == HuntInput.Heavy && InputRouter.Held(GameAction.HeavyAttack)) { BeginCharge(next, dir); return; }
+            // Katana: Y+B with the stick to the side is the Lateral Fade Slash (a slash that slides sideways).
+            if (Class == WeaponClass.Katana && input == HuntInput.LightHeavy && dir.sqrMagnitude > .25f && Set.Move(Set.lateralFade) != null)
+            {
+                float side = Vector3.Dot(dir.normalized, H.transform.right);
+                if (Mathf.Abs(side) > .6f)
+                {
+                    var slide = H.transform.right * Mathf.Sign(side);
+                    Execute(Set.Move(Set.lateralFade), Vector3.zero);
+                    H.Push(slide * (2 * 2.6f / .35f), .35f);    // about 2.6 m sideways
+                    LastEvent = "lateral fade slash " + (side > 0 ? "right" : "left");
+                    return;
+                }
+            }
             Execute(next, dir);
         }
 
@@ -319,7 +421,23 @@ namespace FH.Game
             }
             if (Aiming) aim = Flat(S.CameraRig.Camera.transform.forward);
             if (aim.sqrMagnitude > .01f) H.transform.rotation = Quaternion.LookRotation(aim);
-            if (H.StartMove(move)) { LastMove = move.name ?? move.id; LastEvent = LastMove; }
+            if (Spirit != null) move = SpiritMove(move);
+            if (H.StartMove(move)) { moveSerial++; LastMove = move.name ?? move.id; LastEvent = LastMove + (spiritShort ? " (gauge short)" : ""); }
+        }
+
+        /// <summary>Katana: a spirit move spends gauge (short of it, the move is weaker and a roundslash does not level
+        /// up); every move hits harder with the spirit level.</summary>
+        HuntMoveDef SpiritMove(HuntMoveDef move)
+        {
+            if (move == null) return null;
+            float now = Time.time;
+            spiritShort = move.spiritCost > 0 && !Spirit.Spend(now, move.spiritCost);
+            float k = Spirit.DamageMultiplier * (spiritShort ? .6f : 1);
+            if (k == 1 && !spiritShort) return move;
+            var c = move.Clone();
+            c.damageMultiplier *= k;
+            if (spiritShort) c.spiritLevelUp = false;
+            return c;
         }
 
         // ---------------- charge (sword and shield heavy) ----------------
@@ -378,6 +496,77 @@ namespace FH.Game
             }
         }
 
+        // ---------------- katana ----------------
+        /// <summary>RB tapped: the Spirit Blade route. RB with B: Foresight Slash. RB with A: the iai stance.</summary>
+        void HandleKatana(Vector3 dir, float now)
+        {
+            if (IaiStance) return;    // the stance reads its own buttons
+            bool rb = InputRouter.Held(GameAction.Guard);
+            bool rbDown = InputRouter.Down(GameAction.Guard);
+            if (rbDown && pendingHeavy >= 0) { pendingHeavy = pendingSpirit = -1; TryForesight(now); return; }
+            if (rbDown && pendingSpirit < 0) pendingSpirit = now;
+            bool withRb = rb || pendingSpirit >= 0;
+            if (withRb && InputRouter.Down(GameAction.Dodge)) { pendingSpirit = -1; skipDodge = true; TryIai(now); return; }
+            if (withRb && InputRouter.Down(GameAction.HeavyAttack)) { pendingSpirit = -1; skipHeavy = true; TryForesight(now); return; }
+            if (pendingSpirit >= 0 && now - pendingSpirit >= SimultaneousWindow) { pendingSpirit = -1; Queue(HuntInput.Spirit); }
+        }
+
+        /// <summary>Foresight Slash: a quick step back, invulnerable; a blow that passes through it is answered with
+        /// the Foresight Counter and fills the spirit gauge, otherwise it is a plain slash.</summary>
+        void TryForesight(float now)
+        {
+            if (H.Hurt || H.Dodging || Foresight || !HuntRoutes.CanRollCancel(Current, H.Attack.Normalized) || Set.Move(Set.foresightSlash) == null) return;
+            if (Sheathed) Draw();
+            if (KeepFacing) { var t = H.LockTarget.transform.position - H.transform.position; t.y = 0; if (t.sqrMagnitude > .01f) H.transform.rotation = Quaternion.LookRotation(t); }
+            if (!H.Roll(-H.transform.forward, true, 1.9f, .34f, 10, .34f, 1.7f, "Dodge_Backward")) return;
+            foresightAt = now; dodgeEndAt = now + .34f;
+            buffered = HuntInput.None; LastEvade = EvadeKind.Backstep;
+            WorldKit.Burst(H.transform.position + Vector3.up * 1.1f, new Color(.75f, .9f, 1f), 8);
+            LastEvent = "foresight step";
+        }
+
+        /// <summary>Iai stance (Monster Hunter's special sheathe): the blade held low at the hip, up to a few seconds.</summary>
+        void TryIai(float now)
+        {
+            if (H.Hurt || H.Dodging || Foresight || !HuntRoutes.CanRollCancel(Current, H.Attack.Normalized) || Set.Move(Set.iaiSlash) == null) return;
+            if (Sheathed) Draw();
+            H.CancelActions();
+            IaiStance = true; iaiStart = now; buffered = HuntInput.None; pendingLight = pendingHeavy = -1;
+            H.Anim.Play("Katana_Iai", true, 1, true, .08f);
+            LastEvent = "iai stance";
+        }
+
+        void UpdateIai(Vector3 dir, float now)
+        {
+            if (dir.sqrMagnitude > .05f) H.transform.rotation = Quaternion.Slerp(H.transform.rotation, Quaternion.LookRotation(dir), 1 - Mathf.Exp(-Time.deltaTime * 3));
+            if (InputRouter.Down(GameAction.Attack)) { IaiStance = false; Execute(Set.Move(Set.iaiSlash), dir); return; }
+            if (InputRouter.Down(GameAction.Guard)) { IaiStance = false; Execute(Set.Move(Set.iaiSpiritSlash), dir); return; }
+            if (now - iaiStart > Set.iaiStanceTime) { IaiStance = false; H.Anim.Play("Idle", true, 1, false, .15f); LastEvent = "iai stance released"; }
+        }
+
+        static Color SpiritColor(int level) => level >= 3 ? new Color(1f, .22f, .12f) : level == 2 ? new Color(1f, .82f, .25f) : new Color(.92f, .95f, 1f);
+
+        /// <summary>The katana's edge glows in the spirit level's colour (white, yellow, red); the bow's nocked arrow
+        /// shows while the bow is out and drawn, and leaves the string for a moment after each shot.</summary>
+        void UpdateWeaponVisuals(float now)
+        {
+            if (glowRenderer)
+            {
+                int want = Class != WeaponClass.Katana ? -2 : Sheathed ? -1 : Spirit.Level;
+                if (want != shownGlow)
+                {
+                    shownGlow = want;
+                    glowRenderer.enabled = want >= 1;
+                    if (want >= 1) glowRenderer.sharedMaterial = WorldKit.Glow(SpiritColor(want), 2.5f);
+                }
+            }
+            if (nocked && Class == WeaponClass.Bow)
+            {
+                var r = nocked.GetComponent<Renderer>();
+                if (r) r.enabled = !Sheathed && now - lastShotAt > .3f && !(Current != null && Current.shot != null && Current.shot.arc);
+            }
+        }
+
         // ---------------- bow ----------------
         void HandleBow(Vector3 dir, float now)
         {
@@ -385,9 +574,9 @@ namespace FH.Game
             bool wantAim = InputRouter.Held(GameAction.Guard) && !H.Hurt && !Locked;
             if (wantAim && Sheathed && !H.Attack.Running) Draw();
             SetAim(wantAim && !Sheathed);
-            if (Aiming && !Drawing && !H.Attack.Running && !H.Dodging && !H.Anim.Current.EndsWith("Bow_Aim_Walk")) H.Anim.Play("1H_Ranged_Aiming", true, 1, false, .1f);
-            // Standing still while drawing or aiming: the held aim, not the aiming walk running in place.
-            if ((Aiming || Drawing) && H.Velocity.sqrMagnitude < .01f && H.Anim.Current.EndsWith("Bow_Aim_Walk")) H.Anim.Play("1H_Ranged_Aiming", true, 1, false, .1f);
+            if (Aiming && !Drawing && !H.Attack.Running && !H.Dodging && !H.Anim.Current.EndsWith("Bow_Aim_Walk")) H.Anim.Play("Bow_Draw", false, 1.6f, false, .1f);
+            // Standing still while drawing or aiming: the held draw, not the aiming walk running in place.
+            if ((Aiming || Drawing) && H.Velocity.sqrMagnitude < .01f && H.Anim.Current.EndsWith("Bow_Aim_Walk")) H.Anim.Play("Bow_Draw", false, 2.5f, true, .1f);
             if (Aiming) LastAimPoint = AimPoint(out _);
         }
 
@@ -417,7 +606,7 @@ namespace FH.Game
                     if (!InputRouter.Held(GameAction.Attack)) { FireShot(Set.Move(Set.shot), bow.Ready(now), false, dir); return true; }
                     H.CancelActions();
                     bow.BeginDraw(now);
-                    H.Anim.Play("1H_Ranged_Aiming", true, 1, true, .08f);
+                    H.Anim.Play("Bow_Draw", false, H.Anim.Length("Bow_Draw") / Mathf.Max(.2f, Set.chargeTimes.Count > 0 ? Set.chargeTimes[Set.chargeTimes.Count - 1] : 1), true, .08f);
                     LastEvent = "drawing";
                     return true;
                 case HuntInput.Heavy:
@@ -492,7 +681,9 @@ namespace FH.Game
             if (!enabled || move.shot == null) return;
             var shot = move.shot;
             float now = Time.time;
-            Vector3 origin = (H.Hand ? H.Hand.position : H.transform.position + Vector3.up * 1.2f) + H.transform.forward * .35f;
+            // Loosed from the bow hand (the left), where the nocked arrow rests.
+            var bowHand = pieces.Length > 0 && pieces[0] != null && pieces[0].hand ? pieces[0].hand : H.Hand;
+            Vector3 origin = (bowHand ? bowHand.position : H.transform.position + Vector3.up * 1.2f) + H.transform.forward * .3f;
             Vector3 aimAt = ShotTarget(origin, out var target);
             LastAimPoint = aimAt;
             if (shot.arc)
@@ -548,6 +739,22 @@ namespace FH.Game
             bool guardPoint = cur != null && cur.guardPoint && (H.Attack.Phase == AttackPhase.Windup || cur.guardPointActive && H.Attack.Phase == AttackPhase.Active);
             if (!Guarding && !guardPoint && !CounterStance) return false;
             var to = from - H.transform.position; to.y = 0;
+            if (guardPoint && cur.spiritCounter)
+            {
+                // Iai Spirit Slash: a blow caught in the windup is parried; the slash lands and raises the spirit level.
+                if (Vector3.Angle(H.transform.forward, to) > 100) return false;
+                SpiritCounters++;
+                Spirit?.LevelUp(Time.time); Spirit?.Fill(Time.time);
+                levelledSwing = moveSerial;
+                Vector3 at = H.transform.position + Vector3.up * 1.1f + H.transform.forward * .5f;
+                WorldKit.Burst(at, new Color(.75f, .9f, 1f), 24);
+                WorldKit.Sound(at, "chime", .45f);
+                GamePad.Rumble(.5f, .9f, .15f);
+                S.Hud?.Flash("Iai Spirit counter! Spirit level " + SpiritLevel);
+                H.HitstopUntil = Time.time + .08f;
+                LastEvent = "iai spirit counter";
+                return true;
+            }
             float angle = Vector3.Angle(H.transform.forward, to);
             Vector3 spark = H.transform.position + Vector3.up * 1.0f + H.transform.forward * .4f;
             if (CounterStance)
@@ -598,7 +805,7 @@ namespace FH.Game
         public void React(HitReaction reaction, Vector3 away)
         {
             LastReaction = reaction;
-            Charging = false; Guarding = false; CounterStance = false; buffered = HuntInput.None;
+            Charging = false; Guarding = false; CounterStance = false; IaiStance = false; foresightAt = -1; buffered = HuntInput.None;
             bow?.CancelDraw(); SetAim(false);
             H.CancelActions();
             float now = Time.time;
@@ -646,6 +853,18 @@ namespace FH.Game
             if (!enabled) return;
             if (H.ReportingRangedHit) { monster.HitstopUntil = Time.time + .02f; GamePad.Rumble(.08f, .15f, .06f); return; }   // arrows: no freeze on the archer
             var move = Current;
+            if (Spirit != null && move != null)
+            {
+                float now = Time.time;
+                if (move.spiritCost <= 0) Spirit.Hit(now, Set.spiritPerHit * (move.rehit > 0 ? .5f : 1));
+                if (move.spiritLevelUp && levelledSwing != moveSerial)
+                {
+                    levelledSwing = moveSerial; Spirit.LevelUp(now);
+                    S.Hud?.Flash("Spirit level " + Spirit.Level);
+                    WorldKit.Burst(H.BladeTip, SpiritColor(Spirit.Level), 24);
+                }
+                if (move.iaiBuff > 0 && buffedSwing != moveSerial) { buffedSwing = moveSerial; Spirit.Iai(now, move.iaiBuff); S.Hud?.Flash("Iai: the spirit gauge fills"); }
+            }
             float stop = move != null ? move.hitstop : .04f;
             if (monster.LastHitZone >= 1.3f || hit.WeakPoint) stop *= 1.25f;
             H.HitstopUntil = Time.time + stop;
@@ -712,8 +931,9 @@ namespace FH.Game
 
         /// <summary>Works out once where a long weapon sits on the back, relative to the chest bone. Sword: blade down
         /// behind the right shoulder (tilt -28). Lance: point up across the back (tilt 152 from down), the grip low so
-        /// the long shaft clears the ground. Bow: across the middle of the back, over the quiver.</summary>
-        Piece Long(Transform w, float tilt, float back, float gripUp, float gripRight)
+        /// the long shaft clears the ground. Bow: across the middle of the back, over the quiver (gripped by the left
+        /// hand). Katana: hilt over the right shoulder, the blade slanting down across the back.</summary>
+        Piece Long(Transform w, float tilt, float back, float gripUp, float gripRight, Transform grip = null)
         {
             var p = new Piece { t = w };
             if (!w || !chest) return p;
@@ -723,7 +943,8 @@ namespace FH.Game
             Vector3 fwd = H.transform.forward, right = H.transform.right, up = Vector3.up;
             var b = sm.bounds;
             Vector3 axis = b.size.x > b.size.y && b.size.x > b.size.z ? Vector3.right * b.extents.x : b.size.y > b.size.z ? Vector3.up * b.extents.y : Vector3.forward * b.extents.z;
-            Vector3 gripLocal = H.Hand ? w.InverseTransformPoint(H.Hand.position) : b.center - axis;
+            if (!grip) grip = H.Hand;
+            Vector3 gripLocal = grip ? w.InverseTransformPoint(grip.position) : b.center - axis;
             Vector3 tipLocal = Vector3.Distance(b.center + axis, gripLocal) > Vector3.Distance(b.center - axis, gripLocal) ? b.center + axis : b.center - axis;
             Vector3 tipDir = (w.TransformPoint(tipLocal) - w.TransformPoint(gripLocal)).normalized;
             Vector3 want = Quaternion.AngleAxis(tilt, fwd) * -up;

@@ -10,11 +10,14 @@ namespace FH.Game
 {
     /// <summary>Runs the Proving Grounds: test monsters under hunt rules, training toggles, the frame-data overlay
     /// (move, phase, windows, hitstop, hitzone, monster build-ups, live input), optional hit-volume display, and the
-    /// hunting-style mouse look (cursor locked while playing, released whenever a menu is open).</summary>
+    /// hunting-style mouse look (cursor locked while playing, released whenever a menu is open). Also runs the
+    /// Training Range (archery targets, dummies that never die, dodge hazards).</summary>
     public class ProvingGrounds : MonoBehaviour
     {
         public bool InfiniteStamina, Invulnerable, MonstersPassive = true, ShowVolumes, ShowOverlay = true;
         public readonly List<MonsterActor> Spawned = new List<MonsterActor>();
+        /// <summary>Training Range dummies: passive, and healed before they can fall.</summary>
+        public readonly HashSet<MonsterActor> Dummies = new HashSet<MonsterActor>();
         public string LastHitText { get; private set; } = "-";
         GameSession S;
         RectTransform panel;
@@ -23,7 +26,7 @@ namespace FH.Game
         readonly List<GameObject> markers = new List<GameObject>();
         float overlayClock;
 
-        public static readonly (string id, string label)[] Weapons = { ("sword_shield", "Sword and Shield"), ("lance", "Lance"), ("bow", "Bow") };
+        public static readonly (string id, string label)[] Weapons = { ("sword_shield", "Sword and Shield"), ("lance", "Lance"), ("bow", "Bow"), ("katana", "Katana (two-handed)") };
 
         /// <summary>Puts another weapon in the hunter's hands (sheathed): its moveset, its pieces, its controls.</summary>
         public void SetWeapon(string id)
@@ -33,7 +36,9 @@ namespace FH.Game
             S.Hunter.Hunt.Equip(set);
             S.Hud?.Flash(set.name + " in hand");
             S.Hud?.Notify(set.name + ": " + (set.Class == WeaponClass.Lance ? "thrust, guard, counter and charge; hop instead of rolling." :
-                set.Class == WeaponClass.Bow ? "draw and charge shots, sidestep to charge, power shot, arc shot, Dragon Piercer; RB aims." : "fast slashes, charged heavy, shield bash, guard."), NoticeKind.Story);
+                set.Class == WeaponClass.Bow ? "draw and charge shots, sidestep to charge, power shot, arc shot, Dragon Piercer; RB aims." :
+                set.Class == WeaponClass.Katana ? "Y/B slashes fill the spirit gauge; RB spirit combo ending in the Roundslash (levels up); RB+B Foresight; RB+A iai stance." :
+                "fast slashes, charged heavy, shield bash, guard."), NoticeKind.Story);
         }
 
         public static readonly (string id, string label)[] Monsters =
@@ -51,13 +56,31 @@ namespace FH.Game
             blade.material = WorldKit.Transparent("Blade volume", new Color(1, .2f, .1f, .5f));
             blade.positionCount = 2; blade.enabled = false;
             S.Hunter.BladeHit += RecordHit;
-            Spawn("gravebound", true);
+            SpawnDefaults();
             if (Resources.Load<GameObject>("Models/Briarhound") || Resources.Load<GameObject>("Models/CuSith"))
             {
                 var h = S.Hunter.transform;
                 S.Hound = HoundCompanion.Spawn(S, h.position - (h.forward * 2.6f - h.right * 1.8f) * HoundCompanion.Size, h.eulerAngles.y);
             }
-            S.Hud?.Notify("Proving Grounds: a passive Gravebound waits at the centre. The ledger by the south wall spawns monsters and sets options.", NoticeKind.Story);
+            S.Hud?.Notify(S.InRange
+                ? "Training Range: archery targets to the west (10 to 40 m), dummies to the east, dodge hazards and a measured dodge lane in the middle. The ledger by the entrance sets weapons and options."
+                : "Proving Grounds: a passive Gravebound waits at the centre. The ledger by the south wall spawns monsters and sets options.", NoticeKind.Story);
+        }
+
+        /// <summary>What each area starts with: the Proving Grounds a Gravebound at the centre; the Training Range a
+        /// large and a small dummy in the pen. Target and hazard counts start from zero.</summary>
+        public void SpawnDefaults()
+        {
+            Dummies.Clear();
+            if (!S.InRange) { Spawn("gravebound", true); return; }
+            foreach (var t in RangeTarget.All) t.ResetCount();
+            foreach (var h in FindObjectsByType<RangeHazard>(FindObjectsSortMode.None)) h.ResetCount();
+            foreach (var (id, anchor) in new[] { ("thornback", "range_dummy_large"), ("gravebound", "range_dummy_small") })
+            {
+                var a = S.World.Anchor(anchor);
+                var m = SpawnAt(id, a.position, a.eulerAngles.y);
+                if (m) { m.Passive = true; Dummies.Add(m); }
+            }
         }
 
         public void End()
@@ -78,15 +101,29 @@ namespace FH.Game
         {
             if (!Available(S, id)) { S.Hud?.Flash("No 3D model for " + id + " in this build."); return null; }
             var h = S.Hunter.transform;
-            Vector3 pos = atTarget ? S.World.Anchor("proving_target").position : h.position + h.forward * 8;
-            var o = S.World.ProvingOrigin;
-            var flat = new Vector2(pos.x - o.x, pos.z - o.z);
-            if (flat.magnitude > S.World.ProvingRadius - 4) { flat = flat.normalized * (S.World.ProvingRadius - 4); pos = new Vector3(o.x + flat.x, pos.y, o.z + flat.y); }
+            Vector3 pos = atTarget && !S.InRange ? S.World.Anchor("proving_target").position : h.position + h.forward * 8;
+            var look = h.position - pos; look.y = 0;
+            return SpawnAt(id, pos, look.sqrMagnitude > .01f ? Quaternion.LookRotation(look).eulerAngles.y : 0);
+        }
+
+        MonsterActor SpawnAt(string id, Vector3 pos, float yaw)
+        {
+            if (!Available(S, id)) { S.Hud?.Flash("No 3D model for " + id + " in this build."); return null; }
+            if (S.InRange)
+            {
+                var r = S.World.RangeOrigin; var half = S.World.RangeHalfSize - new Vector2(4, 4);
+                pos.x = Mathf.Clamp(pos.x, r.x - half.x, r.x + half.x); pos.z = Mathf.Clamp(pos.z, r.z - half.y, r.z + half.y);
+            }
+            else
+            {
+                var o = S.World.ProvingOrigin;
+                var flat = new Vector2(pos.x - o.x, pos.z - o.z);
+                if (flat.magnitude > S.World.ProvingRadius - 4) { flat = flat.normalized * (S.World.ProvingRadius - 4); pos = new Vector3(o.x + flat.x, pos.y, o.z + flat.y); }
+            }
             var m = S.SpawnForTest(id, pos);
             m.HuntRules = true;
             m.Passive = MonstersPassive;
-            var look = h.position - m.transform.position; look.y = 0;
-            if (look.sqrMagnitude > .01f) m.transform.rotation = Quaternion.LookRotation(look);
+            m.transform.rotation = Quaternion.Euler(0, yaw, 0);
             m.Calm(2.5f);
             Spawned.Add(m);
             return m;
@@ -95,18 +132,18 @@ namespace FH.Game
         public void ClearMonsters()
         {
             foreach (var m in Spawned) if (m) S.DespawnMonster(m);
-            Spawned.Clear();
+            Spawned.Clear(); Dummies.Clear();
         }
 
         public void SetPassive(bool on)
         {
             MonstersPassive = on;
-            foreach (var m in Spawned) if (m) { m.Passive = on; m.Calm(2); }
+            foreach (var m in Spawned) if (m) { m.Passive = on || Dummies.Contains(m); m.Calm(2); }
         }
 
         public void ResetHunter()
         {
-            var spawn = S.World.Anchor("proving_spawn");
+            var spawn = S.World.Anchor(S.TestSpawnAnchor);
             S.Hunter.Revive(S.SafeGround(spawn.position), spawn.eulerAngles.y);
             S.Hunter.Hunt?.SetSheathed(true);
             S.CameraRig.Snap();
@@ -127,6 +164,8 @@ namespace FH.Game
             if (InfiniteStamina) h.Stamina.Current = h.Stamina.Max;
             if (Invulnerable && !h.Dead) h.Health = h.Stats[Stat.MaxHealth];
             Spawned.RemoveAll(m => !m);
+            // Dummies never fall: healed once they drop under a third of their health.
+            foreach (var m in Dummies) if (m && m.Alive && m.Brain.Health < m.Def.maxHealth * .33f) { m.Brain.Health = m.Def.maxHealth; WorldKit.Burst(m.transform.position + Vector3.up * 2, new Color(.6f, 1f, .6f), 10); }
             bool play = S.Simulating && InputRouter.MouseLook;
             Cursor.lockState = play ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !play;
@@ -167,14 +206,16 @@ namespace FH.Game
             if (!ShowOverlay) return;
             var h = S.Hunter; var f = h.Hunt;
             var sb = new StringBuilder();
-            sb.Append("<b><color=#f5d68c>PROVING GROUNDS</color></b>   ").Append(InputRouter.PadActive ? "Xbox controller" : GamePad.Connected ? "Keyboard + mouse (controller connected)" : "Keyboard + mouse").Append('\n');
+            sb.Append("<b><color=#f5d68c>").Append(S.TestAreaName.ToUpperInvariant()).Append("</color></b>   ").Append(InputRouter.PadActive ? "Xbox controller" : GamePad.Connected ? "Keyboard + mouse (controller connected)" : "Keyboard + mouse").Append('\n');
             if (f)
             {
                 sb.Append("Weapon ").Append(f.Set.name).Append(f.Sheathed ? "  sheathed" : "  drawn").Append(f.Guarding ? "  GUARD" : "")
                   .Append(f.Charging ? "  CHARGING " + f.ChargeHeld.ToString("0.0") + " s  level " + f.ChargeLevel : "")
                   .Append(f.CounterStance ? "  <color=#9cf>COUNTER STANCE</color>" : "")
                   .Append(f.Class == WeaponClass.Bow ? "  charge level " + f.BowLevel + (f.Drawing ? " (drawing)" : "") + (f.Aiming ? "  AIMING" : "") + "   last shot L" + f.LastShotLevel + " x" + f.LastShotArrows + "   arrows fired " + ArrowShot.Fired + ", hits " + ArrowShot.Landed : "")
-                  .Append(f.Class == WeaponClass.Lance ? "  retributions " + f.Retributions + (f.ChainedDodges > 0 ? "  hops " + f.ChainedDodges : "") : "").Append('\n');
+                  .Append(f.Class == WeaponClass.Lance ? "  retributions " + f.Retributions + (f.ChainedDodges > 0 ? "  hops " + f.ChainedDodges : "") : "")
+                  .Append(f.Class == WeaponClass.Katana ? "  spirit " + f.Spirit.Value.ToString("0") + "/100  level " + f.SpiritLevel + (f.Spirit.IaiActive(Time.time) ? " (iai refill)" : "") + (f.IaiStance ? "  <color=#9cf>IAI STANCE</color>" : "") + (f.Foresight ? "  <color=#9cf>FORESIGHT</color>" : "") + "   foresight counters " + f.ForesightCounters + ", iai counters " + f.SpiritCounters : "").Append('\n');
+                sb.Append("Evade ").Append(f.Evades > 0 ? f.LastEvade.ToString() : "-").Append(" (").Append(f.Evades).Append(" so far)").Append(f.Sprinting ? "   sprinting: evade away from a monster to dive" : "").Append('\n');
                 var cur = f.Current;
                 if (cur != null)
                     sb.Append("Move <b>").Append(cur.name ?? cur.id).Append("</b>  ").Append(h.Attack.Phase).Append("  ").Append(h.Attack.Time.ToString("0.00")).Append(" / ").Append(cur.Total.ToString("0.00"))
@@ -192,6 +233,14 @@ namespace FH.Game
                   .Append("  flinch ").Append(r.FlinchBuild.ToString("0")).Append('/').Append(r.FlinchThreshold.ToString("0"))
                   .Append("  stun ").Append(r.StunBuild.ToString("0")).Append('/').Append(r.StunThreshold.ToString("0"))
                   .Append(r.Enraged ? "  <color=#f66>ENRAGED</color>" : "").Append(r.Topples > 0 ? "  toppled x" + r.Topples : "").Append('\n');
+            }
+            if (S.InRange)
+            {
+                sb.Append("Targets ");
+                foreach (var t in RangeTarget.All.OrderBy(x => x.Distance)) sb.Append(t.Distance.ToString("0")).Append(" m: ").Append(t.Hits).Append(" (gold ").Append(t.Golds).Append(")  ");
+                sb.Append("  Hazards ").Append(RangeHazard.Enabled ? "on" : "off");
+                foreach (var hz in FindObjectsByType<RangeHazard>(FindObjectsSortMode.None)) sb.Append("  ").Append(hz.name.Replace(" pad", "")).Append(": evaded ").Append(hz.Evaded).Append(", struck ").Append(hz.Struck);
+                sb.Append('\n');
             }
             var ls = GamePad.LeftStick; var rs = GamePad.RightStick;
             sb.Append("Input  LS ").Append(ls.x.ToString("0.00")).Append(',').Append(ls.y.ToString("0.00")).Append("  RS ").Append(rs.x.ToString("0.00")).Append(',').Append(rs.y.ToString("0.00"))

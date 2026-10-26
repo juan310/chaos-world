@@ -6,13 +6,13 @@ namespace FH.UI
     /// <summary>The Proving Grounds ledger: spawn test monsters, training toggles, reset, leave.</summary>
     public class ProvingScreen : UiScreen
     {
-        public override string Title => "Proving Grounds";
-        public override Vector2 Size => new Vector2(980, 900);
+        public override string Title => S.TestAreaName;
+        public override Vector2 Size => new Vector2(980, 1010);
 
         public override void Build()
         {
             var rig = S.ProvingRig;
-            var row = UiKit.Row("Columns", Body, 24, 780);
+            var row = UiKit.Row("Columns", Body, 24, 890);
             row.Stretch();
             var left = UiKit.Column("Monsters", row, 8);
             UiKit.Paragraph(left, "Spawn a monster", 22, UiKit.Gold);
@@ -22,7 +22,7 @@ namespace FH.UI
                 UiKit.Button(left, label, () => { rig.Spawn(id); rig.RefreshVolumes(); Ui.Close(this); }).Enabled(ok, ok ? null : "Its 3D model is not in this build.");
             }
             UiKit.Button(left, "Clear monsters", () => { rig.ClearMonsters(); rig.RefreshVolumes(); Refresh(); });
-            UiKit.Paragraph(left, rig.Spawned.Count + " monster(s) in the ring. Monsters here use the hunt rules: flinch, topple and enrage.", 16, UiKit.Muted);
+            UiKit.Paragraph(left, rig.Spawned.Count + " monster(s) here. Monsters use the hunt rules: flinch, topple and enrage." + (S.InRange ? " The pen's dummies never fall." : ""), 16, UiKit.Muted);
 
             UiKit.Paragraph(left, "Weapon", 22, UiKit.Gold);
             foreach (var (id, label) in ProvingGrounds.Weapons)
@@ -39,9 +39,11 @@ namespace FH.UI
             Toggle(right, "Show hit volumes", rig.ShowVolumes, v => { rig.ShowVolumes = v; rig.RefreshVolumes(); });
             Toggle(right, "Frame-data overlay", rig.ShowOverlay, v => rig.ShowOverlay = v);
             Toggle(right, "Controller rumble", InputRouter.RumbleEnabled, v => { InputRouter.RumbleEnabled = v; if (!v) GamePad.StopRumble(); });
+            if (S.InRange) Toggle(right, "Dodge hazards", RangeHazard.Enabled, v => RangeHazard.Enabled = v);
             UiKit.Button(right, "Heal and reset hunter", () => { rig.ResetHunter(); Ui.Close(this); });
+            UiKit.Button(right, S.InRange ? "Go to the Proving Grounds" : "Go to the Training Range", () => { Ui.Close(this); S.SwitchTestArea(!S.InRange); });
             UiKit.Button(right, "Controls", () => Ui.Push(new ControlsScreen()));
-            UiKit.Button(right, "Leave Proving Grounds", () => Ui.Confirm("Leave the Proving Grounds?", "Nothing here is saved. You return to the title.", "Leave", () => S.LeaveProvingGrounds()));
+            UiKit.Button(right, "Leave the " + S.TestAreaName, () => Ui.Confirm("Leave the " + S.TestAreaName + "?", "Nothing here is saved. You return to the title.", "Leave", () => S.LeaveProvingGrounds()));
             UiKit.Button(right, "Back", () => Ui.Close(this));
         }
 

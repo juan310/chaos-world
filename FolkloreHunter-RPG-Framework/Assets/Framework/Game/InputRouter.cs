@@ -59,6 +59,7 @@ namespace FH.Game
                 case GameAction.Dodge: return Input.GetKeyDown(KeyCode.Space);
                 case GameAction.Interact: return Input.GetKeyDown(KeyCode.E);
                 case GameAction.Sheathe: return Input.GetKeyDown(KeyCode.X);
+                case GameAction.Guard: return Input.GetKeyDown(KeyCode.LeftControl);
                 case GameAction.Whistle: return Input.GetKeyDown(KeyCode.G);
                 case GameAction.LockOn: return Input.GetKeyDown(KeyCode.Tab) || Input.GetMouseButtonDown(2);
                 case GameAction.Hotbar1: return Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.R);

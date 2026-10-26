@@ -356,7 +356,7 @@ namespace FH.Game
 
         /// <summary>Roll, lance hop or bow sidestep: <paramref name="distance"/> over <paramref name="time"/>, with
         /// <paramref name="iframes"/> seconds of invulnerability (negative: the hunter's dodge stat).</summary>
-        public bool Roll(Vector3 dir, bool keepFacing, float distance, float time, float stamina, float iframes, float clipSpeed)
+        public bool Roll(Vector3 dir, bool keepFacing, float distance, float time, float stamina, float iframes, float clipSpeed, string clipOverride = null)
         {
             if (Dead || Dodging) return false;
             if (!Stamina.TrySpend(stamina)) { session.Hud?.Flash("Too tired to roll."); return false; }
@@ -373,7 +373,7 @@ namespace FH.Game
             dodgeUntil = Time.time + time;
             invulnFrom = Time.time + .03f;
             invulnUntil = invulnFrom + (iframes >= 0 ? iframes : Stats[Stat.DodgeWindow]);
-            Anim.Play(clip, false, clipSpeed, true, .05f);
+            Anim.Play(clipOverride != null && Anim.Has(clipOverride) ? clipOverride : clip, false, clipSpeed, true, .05f);
             return true;
         }
 

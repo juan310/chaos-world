@@ -33,6 +33,10 @@ namespace FH.Game
         /// <summary>In the Proving Grounds: the Monster Hunter-style moveset is on, nothing is saved, no rewards.</summary>
         public bool Proving { get; private set; }
         public ProvingGrounds ProvingRig { get; private set; }
+        /// <summary>In the Training Range (the second test area; <see cref="Proving"/> is true there too).</summary>
+        public bool InRange { get; private set; }
+        public string TestSpawnAnchor => InRange ? "range_spawn" : "proving_spawn";
+        public string TestAreaName => InRange ? "Training Range" : "Proving Grounds";
         /// <summary>The Briarhound companion (Proving Grounds until integrated into the valley).</summary>
         public HoundCompanion Hound;
         public bool Automated { get; private set; }
@@ -254,13 +258,19 @@ namespace FH.Game
         // ---------------- Proving Grounds ----------------
         /// <summary>Starts a throwaway hunter in the walled test ring: hunt-style combat on, potions in the pack, nothing
         /// written to any save slot, world monsters not spawned. Leaving returns to the title.</summary>
-        public void EnterProvingGrounds()
+        public void EnterProvingGrounds() => EnterTestArea(false);
+
+        /// <summary>The Training Range: archery targets, training dummies, dodge hazards and a measured dodge lane.</summary>
+        public void EnterTrainingRange() => EnterTestArea(true);
+
+        void EnterTestArea(bool range)
         {
             var state = GameCore.NewGameState(Db, "proving-" + DateTime.UtcNow.Ticks);
             state.player.name = "Proving Hunter";
-            var spawn = World.Anchor("proving_spawn");
+            InRange = range;
+            var spawn = World.Anchor(TestSpawnAnchor);
             state.player.x = spawn.position.x; state.player.y = spawn.position.y; state.player.z = spawn.position.z; state.player.yaw = spawn.eulerAngles.y;
-            state.player.areaId = "proving";
+            state.player.areaId = range ? "range" : "proving";
             Proving = true;
             Slot = 0;
             Begin(state, true);
@@ -275,8 +285,28 @@ namespace FH.Game
             CameraRig.Distance = 7.5f; CameraRig.Pitch = 20;   // closer, lower camera for melee
             ProvingRig = gameObject.AddComponent<ProvingGrounds>();
             ProvingRig.Begin(this);
-            CurrentArea = "proving";
-            Hud?.ShowArea("Proving Grounds");
+            CurrentArea = range ? "range" : "proving";
+            Hud?.ShowArea(TestAreaName);
+        }
+
+        /// <summary>From the ledger: walk over to the other test area (the hunter, the weapon and the options come along).</summary>
+        public void SwitchTestArea(bool range)
+        {
+            if (!Proving || range == InRange) return;
+            if (Hunter.Riding) { Hud?.Flash("Dismount first."); return; }
+            Ui.Fade(() =>
+            {
+                ProvingRig.ClearMonsters();
+                InRange = range;
+                var spawn = World.Anchor(TestSpawnAnchor);
+                Hunter.Teleport(SafeGround(spawn.position), spawn.eulerAngles.y);
+                Hunter.Hunt?.SetSheathed(true);
+                CameraRig.Yaw = spawn.eulerAngles.y; CameraRig.Snap();
+                if (Hound) { Destroy(Hound.gameObject); Hound = HoundCompanion.Spawn(this, spawn.position - (spawn.forward * 2.6f - spawn.right * 1.8f) * HoundCompanion.Size, spawn.eulerAngles.y); }
+                ProvingRig.SpawnDefaults();
+                CurrentArea = range ? "range" : "proving";
+                Hud?.ShowArea(TestAreaName);
+            });
         }
 
         public void LeaveProvingGrounds()
@@ -285,7 +315,7 @@ namespace FH.Game
             if (Hunter.Hunt) Hunter.Hunt.enabled = false;
             InputRouter.MouseLook = false;
             Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
-            Proving = false;
+            Proving = false; InRange = false;
             EnterTitle();
         }
 
@@ -359,6 +389,7 @@ namespace FH.Game
         public string AreaAt(Vector3 p)
         {
             if (World.IsInCrypt(p)) return "crypt";
+            if (World.IsInRange(p)) return "range";
             if (World.IsInProving(p)) return "proving";
             string best = "old_bridge"; float bestD = 999;
             foreach (var a in Db.Areas.Values.Where(a => a.kind != AreaKind.Dungeon))
@@ -551,10 +582,10 @@ namespace FH.Game
         {
             if (Proving)
             {
-                var spawn = World.Anchor("proving_spawn");
+                var spawn = World.Anchor(TestSpawnAnchor);
                 Hunter.Revive(SafeGround(spawn.position), spawn.eulerAngles.y);
                 CameraRig.Snap(); Calm(2);
-                Hud?.Notify("Carted in the Proving Grounds. No penalty here.", NoticeKind.Warning);
+                Hud?.Notify("Carted in the " + TestAreaName + ". No penalty here.", NoticeKind.Warning);
                 return;
             }
             int lost = Core.Wallet.LoseFraction(Db.Balance.deathGoldLossFraction);
@@ -613,7 +644,7 @@ namespace FH.Game
         /// <summary>Overworld edges and the river (crossed only on the bridge) constrain player movement.</summary>
         public Vector3 ConstrainMove(Vector3 from, Vector3 to)
         {
-            if (World.IsInCrypt(from) || World.IsInProving(from)) return to;
+            if (World.IsInCrypt(from) || World.IsInTestArea(from)) return to;
             to.x = Mathf.Clamp(to.x, -43, 43);
             to.z = Mathf.Clamp(to.z, -41, 41);
             if (Mathf.Abs(to.z - WorldBuilder.RiverZ(to.x)) < 1.4f && Mathf.Abs(to.x - 3) > 1.25f) return from;
