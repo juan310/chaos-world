@@ -3,6 +3,7 @@
   python Tools/forge_queue.py model <name> <picture.png> "<a few words for the painted back>"
   python Tools/forge_queue.py static <name> <picture.png> "<description>" [height_m]
   python Tools/forge_queue.py edit <name> <picture.png> "<change 1>" ["<change 2>" ...]
+  python Tools/forge_queue.py items <name> <reference.png> "<item 1>" ["<item 2>" ...]
 
 Prints the job id; the job runs in the background (one at a time on the graphics card) and writes its results to
 %LOCALAPPDATA%\\ClaudeEyesStudio\\Forge\\<job id>."""
@@ -32,8 +33,10 @@ def main(argv):
             b["height"] = float(argv[4])
     elif tool == "edit":
         b = {"tool": "edit", "name": name, "picture": upload(picture), "edits": argv[3:], "colours": "free"}
+    elif tool == "items":
+        b = {"tool": "items", "name": name, "picture": upload(picture), "items": argv[3:], "colours": "auto"}
     else:
-        raise SystemExit("tool: model | static | edit")
+        raise SystemExit("tool: model | static | edit | items")
     print("FORGE_QUEUED", forge.start(None, b)["id"], flush=True)
 
 
