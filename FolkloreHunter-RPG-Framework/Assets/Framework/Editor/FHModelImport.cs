@@ -10,7 +10,7 @@ public class FHModelImport : AssetPostprocessor
         var m = (ModelImporter)assetImporter;
         m.materialImportMode = ModelImporterMaterialImportMode.ImportStandard; m.importCameras = false; m.importLights = false; m.isReadable = true;
         string p = assetPath;
-        if (p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx") || p.EndsWith("Hunter.fbx") || p.EndsWith("Gravebound.fbx") || p.EndsWith("Herbalist.fbx") || p.EndsWith("Smith.fbx") || p.EndsWith("Noble.fbx"))
+        if (p.EndsWith("CuSith.fbx") || p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx") || p.EndsWith("Hunter.fbx") || p.EndsWith("Gravebound.fbx") || p.EndsWith("Herbalist.fbx") || p.EndsWith("Smith.fbx") || p.EndsWith("Noble.fbx"))
         {
             m.animationType = ModelImporterAnimationType.Legacy; m.importAnimation = true; m.animationCompression = ModelImporterAnimationCompression.Off;
             if (p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx")) { m.skinWeights = ModelImporterSkinWeights.Custom; m.maxBonesPerVertex = 8; m.minBoneWeight = .001f; }
