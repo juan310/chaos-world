@@ -341,9 +341,10 @@ namespace FH.Game
                         TiledBox("Rubble", mid + (c - mid).normalized * (1 + r * .35f) + new Vector3(r * .3f - .4f, .15f, r % 2 * .4f), new Vector3(.5f, .3f, .4f) * (1 - r * .15f), Stone, 1, true, Quaternion.Euler(r * 17, r * 41, r * 9));
             }
             // the south wall either side of the steps
+            // behind the door's plane (z DoorZ..DoorZ+0.8), so nothing covers the inscription on the hallway side
             foreach (int s in new[] { -1, 1 })
-                TiledBox("Lair south wall", new Vector3(s * (3.5f + (WallRadius - 3.5f) / 2), 5.5f, DoorZ - .2f), new Vector3(WallRadius - 3.5f, 11f, .8f), Wall, 2.5f);
-            TiledBox("Lair south wall over the door", new Vector3(0, HallFloor + 6f + 2.5f, DoorZ - .2f), new Vector3(7f, 5f, .8f), Wall, 2.5f);
+                TiledBox("Lair south wall", new Vector3(s * (3.5f + (WallRadius - 3.5f) / 2), 5.5f, DoorZ + .4f), new Vector3(WallRadius - 3.5f, 11f, .8f), Wall, 2.5f);
+            TiledBox("Lair south wall over the door", new Vector3(0, HallFloor + 6f + 2.5f, DoorZ + .4f), new Vector3(7f, 5f, .8f), Wall, 2.5f);
         }
 
         static void Altar()
