@@ -44,6 +44,7 @@ namespace FH.Game
             foreach (var m in s.Monsters)
                 if (m && m.gameObject.activeInHierarchy && Vector3.Distance(m.transform.position, hero) < Range)
                     Actor(sb, ref first, m.InstanceKey, m.DisplayName, "monster", m.MonsterId, m.transform, m.Visual, m.Anim, m.Def.height);
+            if (s.Hound) Actor(sb, ref first, "hound", "Cu-sith", "companion", "cusith", s.Hound.transform, s.Hound.Visual, s.Hound.Anim, 1.9f);
             foreach (var n in s.World.Npcs)
                 if (n && n.gameObject.activeInHierarchy && Vector3.Distance(n.transform.position, hero) < Range)
                     Actor(sb, ref first, "npc_" + n.NpcId, n.Def(s).name, "npc", n.NpcId, n.transform, n.Visual, n.Anim, 1.8f);
@@ -70,9 +71,9 @@ namespace FH.Game
             string clip = anim?.Current ?? "";
             var st = anim?.State(clip);
             int k = st == null ? 0 : Mathf.FloorToInt(Mathf.Repeat(st.normalizedTime, 1f) * 16) % 16;
-            if (clip.EndsWith("Walking_A")) return who + "_walk_" + dir + "_" + k.ToString("00");
-            if (clip.EndsWith("Running_A")) return who + "_run_" + dir + "_" + k.ToString("00");
-            if (clip.EndsWith("Idle") || clip.EndsWith("Idle_Combat")) return who + "_idle_" + dir;
+            if (clip.EndsWith("Walking_A") || clip.EndsWith("|Walk")) return who + "_walk_" + dir + "_" + k.ToString("00");
+            if (clip.EndsWith("Running_A") || clip.EndsWith("|Gallop")) return who + "_run_" + dir + "_" + k.ToString("00");
+            if (clip.EndsWith("Idle") || clip.EndsWith("Idle_Combat") || clip.EndsWith("|Sit")) return who + "_idle_" + dir;
             int cut = clip.LastIndexOf('|');
             return who + "_" + (cut >= 0 ? clip.Substring(cut + 1) : clip).ToLowerInvariant() + "_" + k.ToString("00");
         }

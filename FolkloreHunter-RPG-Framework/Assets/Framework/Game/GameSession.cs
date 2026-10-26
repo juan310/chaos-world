@@ -33,6 +33,8 @@ namespace FH.Game
         /// <summary>In the Proving Grounds: the Monster Hunter-style moveset is on, nothing is saved, no rewards.</summary>
         public bool Proving { get; private set; }
         public ProvingGrounds ProvingRig { get; private set; }
+        /// <summary>The Cu-sith companion (Proving Grounds until integrated into the valley).</summary>
+        public HoundCompanion Hound;
         public bool Automated { get; private set; }
         public bool Simulating => Mode == SessionMode.Playing && (Ui == null || !Ui.BlocksWorld);
         public Interactable Focus { get; private set; }
@@ -329,7 +331,7 @@ namespace FH.Game
         void UpdateFocus()
         {
             Focus = null;
-            if (Hunter.Dead) return;
+            if (Hunter.Dead || Hunter.Riding) return;
             var hp = Hunter.transform.position;
             float best = 999;
             foreach (var i in FindObjectsByType<Interactable>())

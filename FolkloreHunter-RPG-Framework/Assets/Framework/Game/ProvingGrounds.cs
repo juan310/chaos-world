@@ -39,12 +39,18 @@ namespace FH.Game
             blade.positionCount = 2; blade.enabled = false;
             S.Hunter.BladeHit += RecordHit;
             Spawn("gravebound", true);
+            if (Resources.Load<GameObject>("Models/CuSith"))
+            {
+                var h = S.Hunter.transform;
+                S.Hound = HoundCompanion.Spawn(S, h.position - h.forward * 2.6f + h.right * 1.8f, h.eulerAngles.y);
+            }
             S.Hud?.Notify("Proving Grounds: a passive Gravebound waits at the centre. The ledger by the south wall spawns monsters and sets options.", NoticeKind.Story);
         }
 
         public void End()
         {
             if (S && S.Hunter) S.Hunter.BladeHit -= RecordHit;
+            if (S && S.Hound) { Destroy(S.Hound.gameObject); S.Hound = null; }
             ClearMonsters();
             if (panel) Destroy(panel.gameObject);
             if (blade) Destroy(blade.gameObject);

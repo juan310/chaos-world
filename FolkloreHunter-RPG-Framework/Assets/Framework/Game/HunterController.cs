@@ -34,6 +34,11 @@ namespace FH.Game
         public HuntFighter Hunt;
         public bool HuntStyle => Hunt && Hunt.enabled;
         public float HitstopUntil;
+        /// <summary>Riding the Cu-sith: the hunter sits on its saddle bone and the hound takes the movement input.</summary>
+        public HoundCompanion Mount { get; private set; }
+        public bool Riding => Mount;
+        Transform rideParent;
+        float rideHipsHeight;
         /// <summary>Raised when the blade registers a hit: (monster, damage dealt).</summary>
         public event System.Action<MonsterActor, HitInfo> BladeHit;
 
@@ -128,6 +133,7 @@ namespace FH.Game
             if (!Ready) return;
             // A fade or a window that does not pause time (dialogue, shop) holds the world: stand, don't run in place.
             if (!session.Simulating) { if (Anim.Current.EndsWith("Walking_A") || Anim.Current.EndsWith("Running_A")) Anim.Play("Idle"); return; }
+            if (Riding) { if (!Anim.Current.EndsWith("Ride_Idle")) Anim.Play("Ride_Idle"); Stamina.Tick(Time.deltaTime); return; }
             var mv = InputRouter.Move();
             var cam = session.CameraRig.Camera.transform;
             Vector3 fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized, right = Vector3.Cross(Vector3.up, fwd);
@@ -495,6 +501,7 @@ namespace FH.Game
                 return;
             }
             if (Time.time < hurtUntil - .2f) return;
+            if (Riding) Mount.RiderHit();   // thrown from the saddle, then hit as usual
             if (HuntStyle && Hunt.TryGuard(attack, from)) return;
             var core = session.Core;
             float dmg = DamageMath.MonsterHit(attack, Stats[Stat.Defense], core.Stats.PlayerResistances());
@@ -525,12 +532,53 @@ namespace FH.Game
 
         public void Revive(Vector3 position, float yaw)
         {
+            if (Mount) Mount.Dismount();
             Dead = false; deathAt = -1;
             GetComponent<VenomStatus>()?.Clear();
             Teleport(position, yaw);
             Health = Stats[Stat.MaxHealth]; Stamina.Current = Stamina.Max; Magic = Stats[Stat.MaxMagic];
             Attack.Cancel(); hurtUntil = 0; lockUntil = 0;
             Anim.Play("Idle", true, 1, true);
+        }
+
+        /// <summary>Climbs onto the hound: parented to its saddle bone, seated pose, no own movement or collision.</summary>
+        public void BeginRide(HoundCompanion hound)
+        {
+            CancelActions(); knock = Vector3.zero;
+            Mount = hound;
+            rideParent = transform.parent;
+            Body.enabled = false;
+            // Seat height: how high the hips sit above the feet in the riding pose, measured from the clip itself.
+            if (rideHipsHeight <= 0)
+            {
+                var hips = WorldKit.Find(Visual, "hips");
+                var st = Anim.State("Ride_Idle");
+                if (hips && st != null)
+                {
+                    foreach (AnimationState other in Anim.Anim) other.enabled = false;
+                    st.enabled = true; st.weight = 1; st.time = 0; Anim.Anim.Sample();
+                    rideHipsHeight = hips.position.y - transform.position.y;
+                    st.enabled = false;
+                }
+                if (rideHipsHeight <= 0) rideHipsHeight = .55f;
+            }
+            var seat = hound.Saddle ? hound.Saddle : hound.transform;
+            transform.SetParent(seat, false);
+            transform.localScale = new Vector3(1 / Mathf.Max(1e-4f, seat.lossyScale.x), 1 / Mathf.Max(1e-4f, seat.lossyScale.y), 1 / Mathf.Max(1e-4f, seat.lossyScale.z));
+            transform.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(hound.transform.forward, Vector3.up));
+            transform.position = seat.position + Vector3.down * (rideHipsHeight - .08f);
+            Anim.Play("Ride_Idle", true, 1, true, .1f);
+        }
+
+        /// <summary>Gets down at <paramref name="p"/>, facing <paramref name="yaw"/>.</summary>
+        public void EndRide(Vector3 p, float yaw)
+        {
+            if (!Mount) return;
+            Mount = null;
+            transform.SetParent(rideParent, false);
+            transform.localScale = Vector3.one;
+            Teleport(p, yaw);
+            Anim.Play("Idle", true, 1, true, .1f);
         }
 
         public void Teleport(Vector3 p, float yaw)

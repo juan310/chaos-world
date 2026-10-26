@@ -499,7 +499,7 @@ namespace FH.Game
             var wood = M("Arena wood", new Color(.40f, .26f, .14f)); var cloth = M("Arena banner", new Color(.55f, .14f, .12f));
             WorldKit.Box("Arena floor", o + new Vector3(0, -.25f, 0), new Vector3(r * 2 + 14, .5f, r * 2 + 14), sand, g, true);
             WorldKit.Cylinder("Arena centre ring", o + new Vector3(0, .01f, 0), 4.2f, .02f, M("Arena ring", new Color(.55f, .48f, .35f)), g);
-            int segments = 36;
+            int segments = Mathf.CeilToInt(2 * Mathf.PI * (r + .6f) / 4.5f);
             for (int i = 0; i < segments; i++)
             {
                 float a = i * Mathf.PI * 2 / segments;

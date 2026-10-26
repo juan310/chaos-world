@@ -89,6 +89,7 @@ namespace FH.Game
             if (H.Dead) { Guarding = Charging = false; return; }
             if (InputRouter.Down(GameAction.LockOn)) H.ToggleLock();
             if (InputRouter.Down(GameAction.CycleSpell)) H.CycleSpell();
+            if (InputRouter.Down(GameAction.Whistle) && S.Hound) S.Hound.Call();
             if (InputRouter.Down(GameAction.Spell) && !Locked && !H.Attack.Running) H.TryCast();
             HandleItems();
 

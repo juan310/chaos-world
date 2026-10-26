@@ -330,6 +330,9 @@ namespace FH.Core
             Set(MonsterMode.Stagger);
         }
 
+        /// <summary>Training target: back to standing idle after a flinch or topple, without the homeward heal.</summary>
+        public void Settle() { if (Alive && Mode != MonsterMode.Downed && Mode != MonsterMode.Stagger) Set(MonsterMode.Idle); }
+
         /// <summary>Hunt combat: knocked off its feet for a few seconds; the opening the hunter works for.</summary>
         public void Topple(float seconds)
         {

@@ -20,7 +20,7 @@ namespace FH.Game
         public float CryptFloor => CryptOrigin.y;
         /// <summary>Proving Grounds: a separate walled ring for testing combat and movement (never saved).</summary>
         public Vector3 ProvingOrigin = new Vector3(-200, 0, 0);
-        public float ProvingRadius = 26;
+        public float ProvingRadius = 38;   // room to gallop the Cu-sith
         public Rect MapBounds = new Rect(-50, -50, 100, 100);
 
         public Transform Anchor(string id)

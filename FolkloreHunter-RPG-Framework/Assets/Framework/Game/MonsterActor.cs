@@ -137,7 +137,7 @@ namespace FH.Game
         {
             if (Brain.Mode == MonsterMode.Stagger || Brain.Mode == MonsterMode.Downed)
                 Brain.Tick(dt, new MonsterBrain.Senses { distanceToPlayer = 99, playerAlive = true });
-            else if (Brain.Mode != MonsterMode.Idle && Brain.Mode != MonsterMode.Dead) Brain.Tick(dt, new MonsterBrain.Senses { distanceToPlayer = 99, playerAlive = true, playerHidden = true });
+            else Brain.Settle();   // never wanders home (which would heal it to full)
         }
 
         void OnMode(MonsterMode m)

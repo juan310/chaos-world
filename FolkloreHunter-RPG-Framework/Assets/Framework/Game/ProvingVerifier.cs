@@ -258,6 +258,53 @@ namespace FH.Game
             yield return UntilNeutral();
             Check("below half health the monster enrages (attacks sooner)", m.Reactions.Enraged && m.Brain.CooldownScale < 1, m.Brain.Health.ToString("0"));
 
+            // The Cu-sith: follows, comes to the whistle, can be ridden at a gallop, bites the hunted monster.
+            var hound = S.Hound;
+            Check("the Cu-sith hound is in the ring", hound, S.Hound ? S.Hound.name : "none");
+            if (hound)
+            {
+                var spot = S.World.ProvingOrigin + new Vector3(-14, 0, -14);
+                H.Teleport(S.SafeGround(spot), 45);
+                yield return Until(() => Vector3.Distance(hound.transform.position, H.transform.position) < 5, 8);
+                Check("the hound follows the hunter", Vector3.Distance(hound.transform.position, H.transform.position) < 5, Vector3.Distance(hound.transform.position, H.transform.position).ToString("0.0") + " m");
+                yield return Tap(PadButton.DPadUp);
+                Check("D-pad up whistles the hound", hound.LastEvent == "called" || hound.State == HoundState.Called, hound.LastEvent);
+                yield return Wait(1.6f);
+                // Mount: stand beside it and press X.
+                var beside = hound.transform.position + hound.transform.right * 1.4f;
+                H.Teleport(S.SafeGround(beside), hound.transform.eulerAngles.y);
+                yield return Frames(4);
+                Check("standing beside the hound offers to ride it", S.Focus is HoundMount, S.Focus ? S.Focus.name : "none");
+                yield return Tap(PadButton.X);
+                yield return Frames(3);
+                Check("X mounts: the hunter sits on the saddle", H.Riding && H.transform.parent == hound.Saddle && H.Anim.Current.Contains("Ride_Idle"), H.Anim.Current);
+                Check("weapons go on the back to ride", F.Sheathed);
+                yield return Snap("p08-riding");
+                Vector3 start = hound.transform.position;
+                Hold(PadButton.None, new Vector2(0, 1));
+                yield return Wait(1.2f);
+                Check("the stick walks the hound with its rider", Vector3.Distance(start, hound.transform.position) > 1.5f && H.transform.parent == hound.Saddle, Vector3.Distance(start, hound.transform.position).ToString("0.0") + " m");
+                float top = 0;
+                Hold(PadButton.RT, new Vector2(.3f, 1));
+                for (float t = 0; t < 2.2f; t += Time.unscaledDeltaTime) { top = Mathf.Max(top, hound.Speed); yield return null; }
+                yield return Snap("p09-gallop");
+                Check("RT gallops: much faster than the hunter can run", top > H.RunSpeed * 2 && hound.Anim.Current.Contains("Gallop"), top.ToString("0.0") + " m/s vs run " + H.RunSpeed.ToString("0.0"));
+                Release();
+                yield return Wait(.6f);
+                yield return Tap(PadButton.X);
+                yield return Frames(3);
+                Check("X dismounts beside the hound, back on foot", !H.Riding && H.Body.enabled && H.transform.parent != hound.Saddle, hound.LastEvent);
+                // Assist: lock on to the training target and let the hound bite it.
+                m = Target();
+                Face(m, 3f);
+                yield return Tap(PadButton.RightStick);
+                int bites = hound.Bites;
+                yield return Until(() => hound.Bites > bites, 10);
+                Check("the hound bites the monster the hunter is locked on to", hound.Bites > bites, hound.LastEvent);
+                yield return Snap("p10-hound-assist");
+                if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            }
+
             // Menus on the pad: Menu opens pause, B backs out.
             yield return Tap(PadButton.Start);
             Check("Menu button opens the pause menu", S.Ui.Top is PauseScreen, S.Ui.Describe());
