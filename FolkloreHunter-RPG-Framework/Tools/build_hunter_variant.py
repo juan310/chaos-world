@@ -106,6 +106,17 @@ bpy.data.objects.remove(F, do_unlink=True)
 
 # ---- move the KayKit bones onto the body's joints (directions and rolls kept)
 old = {n: (b.head_local.copy(), b.tail_local.copy()) for n, b in kb.items()}
+# Weapons hang from the hand slots (and the quiver from the chest): remember where each sits against its bone at rest.
+WEAPON_SCALE = float(argv[2]) if len(argv) > 2 else .8   # realistic hands: the chibi's weapons scaled down a little
+rig.animation_data_create(); rig.animation_data.action = None
+for pb in rig.pose.bones:
+    pb.matrix_basis = Matrix.Identity(4)
+bpy.context.view_layer.update()
+held = {o.name: (o.parent_bone, kb[o.parent_bone].matrix_local.copy(), o.matrix_world.copy()) for o in weapons if o.parent_bone in kb}
+sword = bpy.data.objects.get('1H_Sword')
+if sword:
+    pts = [sword.matrix_world @ Vector(c) for c in sword.bound_box]
+    report['swordLengthBefore'] = max((p - q).length for p in pts for q in pts)
 leg_old = (old['upperleg.l'][0] - old['foot.l'][0]).length
 leg_new = (joint['LeftUpperLeg'][0] - joint['LeftFoot'][0]).length
 arm_old = (old['upperarm.l'][0] - old['hand.l'][1]).length
@@ -161,6 +172,16 @@ for n, b in list(eb.items()):
     place(n, head, (ot - oh).length * k)
 bpy.ops.object.mode_set(mode='OBJECT')
 report['bonesPlaced'] = len(placed)
+bpy.context.view_layer.update()
+for name, (bone, old_m, old_w) in held.items():
+    o = bpy.data.objects[name]
+    new_m = rig.data.bones[bone].matrix_local
+    o.matrix_world = rig.matrix_world @ new_m @ Matrix.Scale(WEAPON_SCALE, 4) @ old_m.inverted() @ rig.matrix_world.inverted() @ old_w
+bpy.context.view_layer.update()
+report['weaponScale'] = WEAPON_SCALE
+if sword:
+    pts = [sword.matrix_world @ Vector(c) for c in sword.bound_box]
+    report['swordLengthAfter'] = max((p - q).length for p in pts for q in pts)
 
 # ---- the clips: bone rotations carry over; translations (hips bob, IK targets) scale with the limbs
 loc_scale = {}
@@ -262,4 +283,4 @@ bpy.ops.export_scene.fbx(filepath=str(dest / ('Hunter_' + NAME + '.fbx')), use_s
 report['actions'] = len(bpy.data.actions)
 (r / 'Docs/Assets').mkdir(parents=True, exist_ok=True)
 (r / 'Docs/Assets' / ('hunter-variant-%s.json' % NAME)).write_text(json.dumps(report, indent=2))
-print('HUNTER_VARIANT', json.dumps({k: report[k] for k in ('name', 'scale', 'legRatio', 'armRatio', 'unweighted', 'bonesPlaced', 'actions')}), flush=True)
+print('HUNTER_VARIANT', json.dumps({k: report.get(k) for k in ('name', 'scale', 'legRatio', 'armRatio', 'unweighted', 'bonesPlaced', 'actions', 'kaykitHeight', 'swordLengthBefore', 'swordLengthAfter')}), flush=True)
