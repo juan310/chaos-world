@@ -6,7 +6,11 @@ argv = sys.argv[sys.argv.index('--') + 1:]
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=argv[0])
 body = max((o for o in bpy.data.objects if o.type == 'MESH' and o.vertex_groups), key=lambda o: len(o.data.vertices))
-bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table()
+bm = bmesh.new(); bm.from_mesh(body.data)
+# glTF splits vertices along UV seams: weld them (in this copy only) so pieces of one surface are one island.
+orig = {v: v.index for v in bm.verts}
+welded = bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=1e-4)
+bm.verts.ensure_lookup_table()
 seen = set(); islands = []
 for v in bm.verts:
     if v.index in seen:
@@ -23,12 +27,14 @@ for v in bm.verts:
 names = {g.index: g.name for g in body.vertex_groups}
 out = []
 for part in sorted(islands, key=len, reverse=True)[:40]:
-    co = [body.matrix_world @ body.data.vertices[i].co for i in part]
+    co = [body.matrix_world @ bm.verts[i].co for i in part]
     lo = [min(c[k] for c in co) for k in range(3)]; hi = [max(c[k] for c in co) for k in range(3)]
     w = defaultdict(float)
+    layer = bm.verts.layers.deform.active
     for i in part:
-        for g in body.data.vertices[i].groups:
-            w[names[g.group]] += g.weight
+        if layer:
+            for gi, wt in bm.verts[i][layer].items():
+                w[names[gi]] += wt
     tot = sum(w.values()) or 1
     out.append({'verts': len(part), 'lo': [round(x, 3) for x in lo], 'hi': [round(x, 3) for x in hi],
                 'bones': {k: round(v / tot, 2) for k, v in sorted(w.items(), key=lambda kv: -kv[1])[:4]}})
