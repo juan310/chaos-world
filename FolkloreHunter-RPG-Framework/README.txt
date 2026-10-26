@@ -1,6 +1,13 @@
-FOLKLORE HUNTER: RISE OF THE ESTATE - RPG FRAMEWORK BUILD 0.6.0 (PROVING GROUNDS)
+FOLKLORE HUNTER: RISE OF THE ESTATE - RPG FRAMEWORK BUILD 0.7.0 (PROVING GROUNDS: LANCE AND BOW)
 Isolated Unity 6 (6000.6.7f1) project built from the approved 3D sample. The sample, its two review
 builds, the 2D project and Astralwilds are untouched.
+
+NEW IN 0.7.0 - details: Docs\WEAPONS.md
+Two more Monster Hunter-style weapons in the Proving Grounds, picked at the ledger (Weapon):
+ - Lance: mid/high thrusts in strings of three, wide sweep, tower-shield guard, guard thrust and guard dash,
+   counter stance (a blocked blow becomes a Retribution Thrust), dash attack with finishing thrust, hops.
+ - Bow: hold to draw through three charge levels, quick follow-up shots rise a level, charging sidestep,
+   power shot, arc shot, Dragon Piercer, over-the-shoulder aim with a crosshair.
 
 NEW IN 0.6.0 (test area first, not yet in the valley) - details: Docs\PROVING-GROUNDS.md
 Title menu -> "Proving Grounds (combat test)": a walled ring that is never saved and gives no rewards.

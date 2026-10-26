@@ -52,6 +52,7 @@ namespace FH.Game
         {
             S = s;
             cc = GetComponent<CharacterController>();
+            if (s.Hunter && s.Hunter.Body) Physics.IgnoreCollision(cc, s.Hunter.Body);   // a companion never body-blocks its hunter
             Visual = CharacterFactory.Create(Model, transform, Height);
             foreach (var r in Visual.GetComponentsInChildren<Renderer>(true).Where(r => r.name.Contains("Eye_")))
                 r.sharedMaterial = WorldKit.Glow(new Color(.55f, 1f, .72f), 3);

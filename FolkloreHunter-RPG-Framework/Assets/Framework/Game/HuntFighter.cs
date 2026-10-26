@@ -312,7 +312,9 @@ namespace FH.Game
             Vector3 aim = dir;
             if (aim.sqrMagnitude < .05f)
             {
-                var target = H.LockTarget && H.LockTarget.Alive ? H.LockTarget : S.NearestMonster(H.transform.position, move.shot != null ? 30 : 3.2f, H.transform.forward, move.shot != null ? 40 : 100);
+                // Ranged moves look 30 m ahead, a charging move (dash attack, guard dash) 10 m, a swing 3.2 m.
+                float range = move.shot != null ? 30 : move.travel > 0 ? 10 : 3.2f;
+                var target = H.LockTarget && H.LockTarget.Alive ? H.LockTarget : S.NearestMonster(H.transform.position, range, H.transform.forward, move.shot != null ? 40 : move.travel > 0 ? 60 : 100);
                 if (target) { aim = target.transform.position - H.transform.position; aim.y = 0; }
             }
             if (Aiming) aim = Flat(S.CameraRig.Camera.transform.forward);

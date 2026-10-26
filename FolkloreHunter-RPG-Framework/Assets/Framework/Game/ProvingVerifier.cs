@@ -282,7 +282,7 @@ namespace FH.Game
             Release();
             yield return Wait(1.6f);
             yield return Snap("p14-lance-dash");
-            Check("charging into a monster strikes it again and again", H.SwingsLanded - landed >= 3, (H.SwingsLanded - landed) + " hits in 1.6 s");
+            Check("charging into a monster strikes it again and again", H.SwingsLanded - landed >= 3, (H.SwingsLanded - landed) + " hits in 1.6 s, " + Vector3.Distance(H.transform.position, m.transform.position).ToString("0.0") + " m from it");
             yield return Tap(PadButton.Y);
             yield return Until(() => CurrentId == "dash_finisher", .6f);
             Check("Y during the charge: finishing thrust", CurrentId == "dash_finisher", CurrentId);
