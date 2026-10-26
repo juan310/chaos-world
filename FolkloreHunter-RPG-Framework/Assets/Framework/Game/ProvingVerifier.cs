@@ -408,11 +408,13 @@ namespace FH.Game
             Face(w, 5); yield return Frames(2);
             yield return Force(w, "ground_slam");
             var slam = NewArea("ground_slam");
+            bool had = slam; int hits = 0;
             yield return Until(() => slam == null || slam.Fired, 2);
             yield return Wait(.25f);
+            if (slam) hits = slam.HunterHits;
             yield return Snap("b02-shockwave");
-            yield return Wait(.6f);
-            Check("ground slam: the shockwave ring travels out and strikes the hunter 5 m away", slam && slam.HunterHits > 0, slam ? slam.HunterHits + " hits" : "no area");
+            for (float t0 = Time.time; slam && Time.time - t0 < .6f; ) { hits = slam.HunterHits; yield return null; }   // a single wave is gone in 0.8 s
+            Check("ground slam: the shockwave ring travels out and strikes the hunter 5 m away", had && hits > 0, had ? hits + " hits" : "no area");
             yield return UntilNeutral(4);
             // ... and a roll through the wave front evades it.
             Face(w, 5); yield return Frames(2);
@@ -421,9 +423,10 @@ namespace FH.Game
             float dist = Vector3.Distance(Flat(H.transform.position), Flat(w.transform.position));
             yield return Until(() => slam == null || (slam.Fired && slam.WaveRadius >= dist - 1.5f), 3);
             float evadedBefore = H.LastDodgeEvade;
+            had = slam; hits = 0;
             yield return Tap(PadButton.A, 2);
-            yield return Wait(.8f);
-            Check("rolling through the shockwave's front evades it", slam && slam.HunterHits == 0 && H.LastDodgeEvade > evadedBefore, slam ? slam.HunterHits + " hits, evade " + (H.LastDodgeEvade > evadedBefore) : "no area");
+            for (float t0 = Time.time; Time.time - t0 < .8f; ) { if (slam) hits = slam.HunterHits; yield return null; }
+            Check("rolling through the shockwave's front evades it", had && hits == 0 && H.LastDodgeEvade > evadedBefore, had ? hits + " hits, evade " + (H.LastDodgeEvade > evadedBefore) : "no area");
             yield return UntilNeutral(4);
             // Eruptions: three circles, one under the hunter; moving away in time avoids them.
             Face(w, 7); yield return Frames(2);
