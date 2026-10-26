@@ -245,7 +245,12 @@ namespace FH.Game
                 if (attackBuffered && Attack.InChainWindow) { attackBuffered = false; StartNextAttack(); }
                 if (attackBuffered && Time.time > bufferExpires) attackBuffered = false;
             }
-            else if (attackBuffered) { attackBuffered = false; TryAttack(); }
+            else if (attackBuffered)
+            {
+                // A press made during a lock (cast, potion, flinch, dodge) waits only briefly for it to end.
+                if (Time.time > bufferExpires) attackBuffered = false;
+                else if (!(Time.time < lockUntil || Time.time < hurtUntil || Dodging)) { attackBuffered = false; TryAttack(); }
+            }
 
             if (castAt > 0 && Time.time >= castAt) { castAt = -1; Launch(); }
 
@@ -314,8 +319,8 @@ namespace FH.Game
                 Stamina.Drain(hm.staminaPerSecond, dt);
                 if (Stamina.Current <= .5f) { Attack.EndActive(); return; }
             }
-            if (hm.travel <= 0) return;
-            if (dir.sqrMagnitude > .05f)
+            if (hm.travel == 0) return;
+            if (hm.travel > 0 && dir.sqrMagnitude > .05f)                // a charge steers; a backward slide (Fade Slash) does not
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), hm.steer * dt);
             Move(transform.forward * hm.travel, dt);
             stepClock -= dt;
@@ -615,6 +620,22 @@ namespace FH.Game
         }
 
         // ---------- taking damage ----------
+        /// <summary>Riding, the hunter's own collider is off (the mount carries them): does a blow swept from a to b
+        /// (radius r) reach the rider or the mount's body? (A blow on the mount throws the rider.)</summary>
+        public bool RiddenHitBy(Vector3 a, Vector3 b, float r)
+        {
+            if (!Riding || !Mount) return false;
+            var rider = transform.position + Vector3.up * 1.1f;
+            var mount = Mount.transform.position + Vector3.up * .9f * HoundCompanion.Size;
+            return SegmentDistance(rider, a, b) <= r + .45f || SegmentDistance(mount, a, b) <= r + .7f * HoundCompanion.Size;
+        }
+
+        static float SegmentDistance(Vector3 p, Vector3 a, Vector3 b)
+        {
+            var ab = b - a; float t = ab.sqrMagnitude < 1e-6f ? 0 : Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude);
+            return Vector3.Distance(p, a + ab * t);
+        }
+
         public bool Overlaps(Vector3 center, float radius)
         {
             Vector3 p = transform.position; p.y = 0; center.y = 0;
@@ -628,13 +649,14 @@ namespace FH.Game
             {
                 LastDodgeEvade = Time.time;
                 // Hunt combat: dodged at the last moment is a perfect evade (once per evasion).
-                if (HuntStyle && Dodging && LastPerfectEvade < evadeStartAt && PerfectEvade.Is(Time.time - evadeStartAt, true)) { PerfectDodge(); return; }
+                if (HuntStyle && Dodging && LastPerfectEvade < evadeStartAt && Time.time - LastPerfectEvade >= PerfectEvade.Cooldown && PerfectEvade.Is(Time.time - evadeStartAt, true)) { PerfectDodge(); return; }
                 session.Hud?.Flash("Evaded!");
                 return;
             }
             if (Time.time < hurtUntil - .2f) return;
             if (Riding) Mount.RiderHit();   // thrown from the saddle, then hit as usual
             if (HuntStyle && Hunt.TryGuard(attack, from)) return;
+            dodgeUntil = 0;                    // struck after the i-frames: the evasion's slide ends with the blow
             var core = session.Core;
             float dmg = DamageMath.MonsterHit(attack, Stats[Stat.Defense], core.Stats.PlayerResistances());
             Health -= dmg;
@@ -677,12 +699,13 @@ namespace FH.Game
             if (Invulnerable)
             {
                 LastDodgeEvade = Time.time;
-                if (HuntStyle && Dodging && LastPerfectEvade < evadeStartAt && PerfectEvade.Is(Time.time - evadeStartAt, true)) { PerfectDodge(); return; }
+                if (HuntStyle && Dodging && LastPerfectEvade < evadeStartAt && Time.time - LastPerfectEvade >= PerfectEvade.Cooldown && PerfectEvade.Is(Time.time - evadeStartAt, true)) { PerfectDodge(); return; }
                 session.Hud?.Flash("Evaded the roar!");
                 return;
             }
             if (Riding) { Mount.RiderHit(); }
             if (HuntStyle && Hunt.TryGuard(roar, from)) return;
+            dodgeUntil = 0;
             CancelActions();
             if (HuntStyle) { Hunt.React(HitReaction.Roar, Vector3.zero, roar.roarTime); return; }
             hurtUntil = Time.time + roar.roarTime;
@@ -692,7 +715,11 @@ namespace FH.Game
         public void TakeVenomDamage(float damage) {
             if (Dead || damage <= 0) return;
             Health = Mathf.Max(0, Health - damage);
-            if (Health <= 0) { Dead = true; deathAt = Time.time; LockTarget = null; Attack.Cancel(); Anim.Play("Death_A", false, 1, true, .05f); }
+            if (Health <= 0)
+            {
+                if (Mount) Mount.Dismount();       // dying in the saddle: off the mount, so the defeat runs as anywhere else
+                Dead = true; deathAt = Time.time; LockTarget = null; Attack.Cancel(); Anim.Play("Death_A", false, 1, true, .05f);
+            }
         }
 
         public void Revive(Vector3 position, float yaw)

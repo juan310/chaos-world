@@ -96,6 +96,8 @@ namespace FH.Game
             float now = Time.time;
             if (!Fired)
             {
+                // The boss frozen in hitstop: its wind-up waits, so the area goes off with the swing, not before it.
+                if (Owner && now < Owner.HitstopUntil) { FireAt += Time.deltaTime; startedAt += Time.deltaTime; return; }
                 // Interrupted before it went off (flinched, toppled, killed): no blow.
                 bool winding = Owner && Owner.Alive && Owner.Brain.CurrentAttack == Attack && (Owner.Brain.Mode == MonsterMode.Telegraph || Owner.Brain.Mode == MonsterMode.Attack);
                 if (!winding && Attack.Shape != AoeShape.Burst && Attack.Shape != AoeShape.Leap) { Destroy(gameObject); return; }
@@ -139,16 +141,18 @@ namespace FH.Game
         void Strike(int pulse, float t)
         {
             var h = S.Hunter;
+            // Eruptions and a leap's landing come up under the hunter: a guard must face the monster that made them.
+            var from = (Attack.Shape == AoeShape.Burst || Attack.Shape == AoeShape.Leap) && Owner ? Owner.transform.position : Origin;
             if (h && !h.Dead && !hunterPulses.Contains(pulse) && Hit(h.transform.position, t))
             {
                 hunterPulses.Add(pulse);
-                StrikeHunter(h, () => h.ReceiveHit(Attack, Origin));
+                StrikeHunter(h, () => h.ReceiveHit(Attack, from));
             }
             var hound = S.Hound;
             if (hound && !hound.Ridden && !houndPulses.Contains(pulse) && Hit(hound.transform.position, t))
             {
                 houndPulses.Add(pulse); HoundHits++;
-                hound.TakeBlow(Attack, Origin);
+                hound.TakeBlow(Attack, from);
             }
         }
 

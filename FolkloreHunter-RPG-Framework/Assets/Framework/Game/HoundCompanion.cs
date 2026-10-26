@@ -98,6 +98,7 @@ namespace FH.Game
         {
             if (!CanMount) return;
             var h = S.Hunter;
+            if (h.Hunt) h.Hunt.CancelStates();           // no aim, draw or guard carried into the saddle
             h.Hunt?.SetSheathed(true);
             h.LockTarget = null;
             h.BeginRide(this);

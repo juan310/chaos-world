@@ -138,7 +138,9 @@ namespace FH.Game
             LastEvent = "equipped " + set.name;
         }
 
-        void CancelStates()
+        /// <summary>Drops every held state (guard, charge, stances, aim and draw, buffered input): on a weapon swap and
+        /// when the hunter mounts.</summary>
+        public void CancelStates()
         {
             Guarding = Charging = CounterStance = Aiming = IaiStance = false;
             bow?.CancelDraw();
@@ -220,7 +222,9 @@ namespace FH.Game
             // Knocked down: lie there; a roll after half a second is a wake-up roll (invulnerable on the way up).
             if (Downed)
             {
-                if (InputRouter.Down(GameAction.Dodge) && now - downStart > .5f) { downUntil = 0; H.InvulnerableFor(.45f); H.Roll(dir, false); LastEvent = "wake-up roll"; }
+                // the roll first (it sets its own i-frames), then the wake-up's longer ones on top; no stamina, no roll:
+                // the hunter stays down and gets up with its own invulnerability
+                if (InputRouter.Down(GameAction.Dodge) && now - downStart > .5f && H.Roll(dir, false)) { downUntil = 0; H.InvulnerableFor(.45f); LastEvent = "wake-up roll"; }
                 return;
             }
             if (getUpUntil > 0 && now >= getUpUntil) getUpUntil = 0;
@@ -241,6 +245,17 @@ namespace FH.Game
             // the move allows it.
             if (InputRouter.Down(GameAction.Dodge) && !skipDodge) TryDodge(dir, now);
 
+            // B then Y inside the window: the charge (or lance counter stance) that B just began becomes the Y+B special.
+            bool swapped = false;
+            if (Class != WeaponClass.Bow && instantAt > 0 && instantInput == HuntInput.Heavy && now - instantAt <= SimultaneousWindow
+                && InputRouter.Down(GameAction.Attack) && ((Charging && chargeStart >= instantAt) || (CounterStance && counterStart >= instantAt)))
+            {
+                Charging = false; CounterStance = false; Guarding = instantGuarding;
+                instantAt = -1; pendingLight = pendingHeavy = -1;
+                Queue(HuntInput.LightHeavy);
+                LastEvent = "B then Y: special";
+                swapped = true;                                   // this Y press is used up
+            }
             if (CounterStance) { UpdateCounter(dir, now); return; }
             if (IaiStance) { UpdateIai(dir, now); return; }
 
@@ -256,7 +271,7 @@ namespace FH.Game
                 if (buffered == instantInput || buffered == HuntInput.ForwardLight && instantInput == HuntInput.Light) Queue(HuntInput.LightHeavy);
                 else if (moveSerial == instantSerial + 1 && H.Attack.Running && H.Attack.Phase == AttackPhase.Windup) SwapToSpecial(dir);
             }
-            if (InputRouter.Down(GameAction.Attack) && pendingLight < 0) pendingLight = now;
+            if (InputRouter.Down(GameAction.Attack) && pendingLight < 0 && !swapped) pendingLight = now;
             if (InputRouter.Down(GameAction.HeavyAttack) && pendingHeavy < 0 && !skipHeavy) pendingHeavy = now;
             if (pendingLight >= 0 && pendingHeavy >= 0) { Queue(HuntInput.LightHeavy); pendingLight = pendingHeavy = -1; instantAt = -1; }
             else if (pendingLight >= 0 && (instant || now - pendingLight >= SimultaneousWindow))
@@ -294,7 +309,8 @@ namespace FH.Game
         void HandleGuard(float now)
         {
             // Guard: hold RB / Left Ctrl. Raising it from sheathed draws the weapon at once.
-            bool wantGuard = InputRouter.Held(GameAction.Guard) && !H.Attack.Running && !H.Dodging && !Charging && !CounterStance && !Locked && !H.Hurt;
+            // Reeling from a blocked blow keeps the shield up (no fresh perfect-guard window from lowering and raising it).
+            bool wantGuard = InputRouter.Held(GameAction.Guard) && !H.Attack.Running && !H.Dodging && !Charging && !CounterStance && (!Locked || now < blockStunUntil) && !H.Hurt;
             if (wantGuard && Sheathed) Draw();
             if (wantGuard && !Guarding) { guardRaisedAt = now; H.Anim.Play("Block", false, 1.6f, true, .05f); LastEvent = "guard"; }
             if (!wantGuard && Guarding && !CounterStance) H.Anim.Play("Idle", true, 1, false, .12f);
@@ -447,6 +463,8 @@ namespace FH.Game
             return true;
         }
 
+        float moveStartedAt = -99, blockStunUntil = -1;
+
         void Execute(HuntMoveDef move, Vector3 dir)
         {
             // Aim: the stick if pushed, else the locked target, else the nearest monster ahead.
@@ -461,7 +479,7 @@ namespace FH.Game
             if (Aiming) aim = Flat(S.CameraRig.Camera.transform.forward);
             if (aim.sqrMagnitude > .01f) H.transform.rotation = Quaternion.LookRotation(aim);
             if (Spirit != null) move = SpiritMove(move);
-            if (H.StartMove(move)) { moveSerial++; LastMove = move.name ?? move.id; LastEvent = LastMove + (spiritShort ? " (gauge short)" : ""); }
+            if (H.StartMove(move)) { moveSerial++; moveStartedAt = Time.time; LastMove = move.name ?? move.id; LastEvent = LastMove + (spiritShort ? " (gauge short)" : ""); }
         }
 
         /// <summary>Katana: a spirit move spends gauge (short of it, the move is weaker and a roundslash does not level
@@ -812,7 +830,9 @@ namespace FH.Game
                 LastEvent = "retribution";
                 return true;
             }
-            float since = guardPoint ? 0 : Time.time - guardRaisedAt;
+            // A guard point (shield bash, guard thrust, guard dash) is perfect only when the blow meets it early in the
+            // move, as a raised guard is only perfect just after it goes up.
+            float since = guardPoint ? Time.time - moveStartedAt : Time.time - guardRaisedAt;
             var r = GuardMath.Resolve(Set, attack.damage, angle, since, H.Stamina.Current);
             if (!r.Blocked) return false;
             if (r.Perfect)
@@ -830,7 +850,7 @@ namespace FH.Game
             H.Stamina.TrySpend(Mathf.Min(r.Stamina, H.Stamina.Current));
             var away = -to.normalized;
             H.Push(away * (r.Pushback / .25f) * 2, .25f);
-            if (!guardPoint) { H.Anim.Play("Block_Hit", false, 1.4f, true, .04f); reactionUntil = Time.time + .25f; }
+            if (!guardPoint) { H.Anim.Play("Block_Hit", false, 1.4f, true, .04f); reactionUntil = blockStunUntil = Time.time + .25f; }
             WorldKit.Burst(spark, new Color(1f, .85f, .5f), 10);
             WorldKit.Sound(spark, "hit", .3f);
             GamePad.Rumble(.5f, .3f, .15f);

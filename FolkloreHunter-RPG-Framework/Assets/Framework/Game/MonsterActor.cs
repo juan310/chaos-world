@@ -382,6 +382,7 @@ namespace FH.Game
         }
 
         bool CreatureTouches(HunterController hero) {
+            if (hero.Riding) return hero.RiddenHitBy(previousAttackCenter, AttackCenter, Brain.CurrentAttack.radius);
             foreach (var col in Physics.OverlapCapsule(previousAttackCenter, AttackCenter, Brain.CurrentAttack.radius, 1 << Layers.Actor, QueryTriggerInteraction.Ignore))
                 if (col == hero.Body) return true;
             return false;

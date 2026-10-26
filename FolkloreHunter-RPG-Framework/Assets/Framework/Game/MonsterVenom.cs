@@ -20,6 +20,9 @@ namespace FH.Game {
   void Update() {
    if(session==null||!session.Simulating)return;float dt=Time.deltaTime;age+=dt;var from=transform.position;var to=from+velocity*dt;
    if(Physics.Linecast(from,to,Layers.WorldMask,QueryTriggerInteraction.Ignore)){Destroy(gameObject);return;}
+   // a mounted hunter has no collider of their own: test the rider and the mount
+   var rider=session.Hunter;
+   if(rider&&rider.Riding&&rider.RiddenHitBy(from,to,.2f)){rider.ReceiveHit(attack,from);WorldKit.Burst(to,colour,12);Destroy(gameObject);return;}
    foreach(var c in Physics.OverlapCapsule(from,to,.20f,1<<Layers.Actor,QueryTriggerInteraction.Ignore)) {
     var hero=c.GetComponent<HunterController>();if(!hero)continue;
     float before=hero.Health;hero.ReceiveHit(attack,from);

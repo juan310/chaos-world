@@ -277,7 +277,8 @@ namespace FH.Core
         {
             if (attack == null || !Alive) return;
             forced = attack;
-            if (Mode == MonsterMode.Chase || Mode == MonsterMode.Alert || Mode == MonsterMode.Idle || Mode == MonsterMode.Patrol) StartForced();
+            // free to act now (and not in the grace after a menu or a respawn): at once; otherwise when it is
+            if (Grace <= 0 && (Mode == MonsterMode.Chase || Mode == MonsterMode.Alert || Mode == MonsterMode.Idle || Mode == MonsterMode.Patrol)) StartForced();
         }
 
         void StartForced() { CurrentAttack = forced; forced = null; HitDelivered = false; Set(MonsterMode.Telegraph); }
@@ -329,7 +330,7 @@ namespace FH.Core
                 case MonsterMode.Recover:
                     if (ModeTime >= CurrentAttack.recovery)
                     {
-                        var next = forced == null ? FollowUp?.Invoke(CurrentAttack) : null;
+                        var next = forced == null && Grace <= 0 ? FollowUp?.Invoke(CurrentAttack) : null;
                         if (next != null) { CurrentAttack = next; HitDelivered = false; Set(MonsterMode.Telegraph); break; }   // combo: straight into the next move
                         cooldown = CurrentAttack.cooldown * CooldownScale; Set(MonsterMode.Chase);
                     }
@@ -364,6 +365,7 @@ namespace FH.Core
         public void Flinch(float seconds = .6f)
         {
             if (!Alive || Mode == MonsterMode.Downed) return;
+            if (Mode == MonsterMode.Stagger && StaggerLeft >= seconds) return;   // a longer stagger already running keeps going
             staggerFor = seconds;
             if (Mode == MonsterMode.Stagger) { Mode = MonsterMode.Chase; }   // restart the stagger timer
             Set(MonsterMode.Stagger);
@@ -388,7 +390,18 @@ namespace FH.Core
             return false;
         }
 
-        public void ForceStagger() { if (Alive) Set(MonsterMode.Stagger); }
+        /// <summary>A part broken: staggered (a topple keeps the monster down; a longer stagger keeps running).</summary>
+        public void ForceStagger()
+        {
+            if (!Alive || Mode == MonsterMode.Downed) return;
+            if (Mode == MonsterMode.Stagger && StaggerLeft >= Def.staggerTime) return;
+            staggerFor = -1;
+            if (Mode == MonsterMode.Stagger) Mode = MonsterMode.Chase;      // restart the stagger timer
+            Set(MonsterMode.Stagger);
+        }
+
+        /// <summary>Seconds left of the current stagger (0 when not staggered).</summary>
+        public float StaggerLeft => Mode == MonsterMode.Stagger ? Math.Max(0, (staggerFor > 0 ? staggerFor : Def.staggerTime) - ModeTime) : 0;
     }
 
     /// <summary>Tracks breakable parts of one monster instance.</summary>

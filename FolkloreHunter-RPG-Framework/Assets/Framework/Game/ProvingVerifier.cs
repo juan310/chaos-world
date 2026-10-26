@@ -463,6 +463,7 @@ namespace FH.Game
         IEnumerator Force(MonsterActor m, string id)
         {
             yield return Until(() => m.Brain.Mode == MonsterMode.Chase || m.Brain.Mode == MonsterMode.Idle || m.Brain.Mode == MonsterMode.Alert, 4);   // the previous move finished
+            yield return Until(() => m.Brain.Grace <= 0, 4);              // and its grace is over (a forced move waits for it)
             int started = m.AttacksStarted;
             m.Brain.ForceNext(m.Def.attacks.First(a => a.id == id));   // fixture: this move now, to check it deterministically
             yield return Until(() => m.AttacksStarted > started && m.Brain.CurrentAttack != null && m.Brain.CurrentAttack.id == id, 3);   // a new wind-up, not an earlier one
