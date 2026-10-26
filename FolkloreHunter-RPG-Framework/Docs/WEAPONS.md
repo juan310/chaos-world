@@ -96,15 +96,17 @@ a brisk walk. On top of that every attack waited 70 ms (to see whether Y+B was c
 (about 0.2 s behind). In Rise full stick is a run, R a clearly faster dash with stamina, the weapon drawn a slower run,
 and attacks come out on the press ([Nintendo's Rise basics](https://www.nintendo.co.uk/News/2021/March/MONSTER-HUNTER-RISE-Guide-The-Basics-1945194.html)).
 Now, in the Proving Grounds and the Training Range (the valley's classic movement and its foot-planting checks are unchanged):
-- **Light stick walks; full stick jogs at 3.9 m/s; RT sprints at 5.6 m/s** (stamina). Weapon drawn: the jog at the
-  weapon's pace (sword ×0.85 = 3.3 m/s, katana ×0.8, bow ×0.75, lance ×0.6).
+- **Light stick walks; full stick jogs at 3.6 m/s; RT sprints at 5.2 m/s** (stamina). Weapon drawn: the jog at the
+  weapon's pace (sword ×0.85 = 3.1 m/s, katana ×0.8, bow ×0.75, lance ×0.6).
 - **New stride clips** `Hunt_Jog` and `Hunt_Sprint` (`Tools/hunter_weapons.py`, `stride_clip`): KayKit's run with each
-  leg and arm bone's swing enlarged about its own average pose (×1.45 / ×1.75), a forward lean (8° / 16°), and the hips
-  kept on the planted foot every frame. Played at the rate their measured stride needs (capped at 3.2×).
+  leg and arm bone's swing enlarged about its own average pose (×1.8 / ×2.1), a forward lean (10° / 17°), and the hips
+  kept on the planted foot every frame. Played at the rate the planted foot's measured sweep needs (capped at 3.6×).
+  Honest limit: the chibi knight's legs are very short, so at a hunter's pace the planted foot still slides a little
+  (checked in the player: under half the body speed).
 - **Attacks start on the press.** If the other button follows within 70 ms while the move is still winding up, it
   becomes the Y+B move instead (the bow keeps its window: tap or hold decides a quick shot or a draw).
 - Turning is quicker (22/s vs 15/s) and the camera follows tightly in the hunt combat.
-- The Briarhound's ridden gallop stays well above the hunter's sprint (7.4 vs 5.6 m/s).
+- The Briarhound's ridden gallop stays well above the hunter's sprint (7.4 vs 5.2 m/s).
 
 ## Claude Eyes: what it caught, what was fixed
 The inspector now reviews the hunter too (`Tools/review_hunter_sightforge.py`): 20 clips with the weapon in hand

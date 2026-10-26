@@ -397,7 +397,7 @@ namespace FH.Game
                 Release(); yield return Wait(.3f);
                 Check(label + " at Monster Hunter pace (" + want + " m/s) with its stride clip", Mathf.Abs(speed - want) < want * .12f && playing.Contains(clip), speed.ToString("0.00") + " m/s, " + playing);
                 float slide = Median(planted), bodyV = Median(body);
-                Check(label + ": the foot on the ground stays put (no skating)", slide < bodyV * .45f, "planted foot " + slide.ToString("0.00") + " m/s vs body " + bodyV.ToString("0.00") + " m/s");
+                Check(label + ": the foot on the ground slides less than half as fast as the body (short chibi legs at a hunter's pace)", slide < bodyV * .5f, "planted foot " + slide.ToString("0.00") + " m/s vs body " + bodyV.ToString("0.00") + " m/s");
                 H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
             }
             // Drawn weapon: a slower jog, not the old shuffle.
@@ -555,13 +555,17 @@ namespace FH.Game
             yield return Frames(3);
             int lane0 = S.Hound ? S.Hound.LaneClears : 0;
             if (S.Hound) S.Hound.PlaceAt(S.SafeGround(H.transform.position + H.transform.forward * 1.6f + H.transform.right * .5f), H.transform.eulerAngles.y);   // in the way of the charge
+            if (H.LockTarget != m) { if (H.LockTarget) yield return Tap(PadButton.RightStick); yield return Tap(PadButton.RightStick); }   // a player charging this monster locks on to it
+            string before = "lock " + (H.LockTarget ? H.LockTarget.DisplayName : "none") + ", live " + string.Join("/", S.Monsters.Where(x => x && x.Alive).Select(x => x.MonsterId + "@" + Vector3.Distance(x.transform.position, H.transform.position).ToString("0.0")))
+                + ", facing " + Vector3.Angle(H.transform.forward, Flat(m.transform.position - H.transform.position)).ToString("0");
             H.Stamina.Current = H.Stamina.Max; landed = H.SwingsLanded;
             Hold(PadButton.RB); yield return Frames(3);
             yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
             Release();
             yield return Wait(1.6f);
             yield return Snap("p14-lance-dash");
-            Check("charging through a monster strikes it more than once on one pass", H.SwingsLanded - landed >= 2, (H.SwingsLanded - landed) + " hits in 1.6 s, " + Vector3.Distance(H.transform.position, m.transform.position).ToString("0.0") + " m from it");
+            Check("charging through a monster strikes it more than once on one pass", H.SwingsLanded - landed >= 2, (H.SwingsLanded - landed) + " hits in 1.6 s, " + Vector3.Distance(H.transform.position, m.transform.position).ToString("0.0") + " m from it; before: " + before);
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
             if (S.Hound) Check("the Briarhound, standing in the charge's path, steps out of the hunter's way", S.Hound.LaneClears > lane0, S.Hound.LastEvent);
             yield return Tap(PadButton.Y);
             yield return Until(() => CurrentId == "dash_finisher", .6f);

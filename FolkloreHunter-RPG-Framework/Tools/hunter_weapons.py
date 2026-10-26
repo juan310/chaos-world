@@ -454,6 +454,6 @@ def stride_clip(rig, name, base, k_leg, k_arm, lean):
 def locomotion_clips(rig):
     """Hunt_Jog (full stick) and Hunt_Sprint (RT) from KayKit's Running_A, with the stride a hunter needs to cover
     ground at Monster Hunter pace without the feet sliding (the chibi stock run moves each foot only about 0.2 m)."""
-    return [stride_clip(rig, 'Hunt_Jog', 'Running_A', 1.45, 1.3, 8),
-            stride_clip(rig, 'Hunt_Sprint', 'Running_A', 1.75, 1.6, 16)]
+    return [stride_clip(rig, 'Hunt_Jog', 'Running_A', 1.8, 1.5, 10),
+            stride_clip(rig, 'Hunt_Sprint', 'Running_A', 2.1, 1.8, 17)]
 
