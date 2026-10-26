@@ -168,6 +168,8 @@ bpy.data.objects.remove(cam, do_unlink=True)
 bpy.ops.export_scene.fbx(filepath=str(dest / 'Hunter.fbx'), use_selection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
                          add_leaf_bones=False, apply_scale_options='FBX_SCALE_ALL', bake_anim=True, bake_anim_use_nla_strips=False,
                          bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward='-Z', axis_up='Y', path_mode='COPY', embed_textures=False)
+for act in bpy.data.actions:            # unused actions are dropped when a .blend is saved; Hunter.blend is the source
+    act.use_fake_user = True             # of the 0.9 hunters (build_hunter_variant.py), so every clip must stay in it
 bpy.ops.wm.save_as_mainfile(filepath=str(source / 'Hunter.blend'))
 result = {'source': str(src), 'output': 'Hunter.fbx', 'license': 'CC0 (KayKit Character Pack: Adventures); Hunt_* weapons are original geometry made for this project',
           'spread': SPREAD, 'drop': DROP, 'weapons': sorted(weapons), 'derivedClips': [a.name for a in derived], 'armBones': arm_bones,
