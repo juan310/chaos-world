@@ -8,7 +8,7 @@ namespace FH.Core
 
     public enum ItemKind { Material, Consumable, Weapon, Armor, Charm, Gift, Key }
     public enum Rarity { Common, Uncommon, Rare, Epic, Legendary }
-    public enum DamageType { Slash, Blunt, Pierce, Fire, Holy, Poison }
+    public enum DamageType { Slash, Blunt, Pierce, Fire, Holy, Poison, Arcane }
     public enum EquipSlot { None, Weapon, Head, Body, Charm }
     public enum Stat { MaxHealth, MaxStamina, MaxMagic, Attack, Defense, SpellPower, StaminaRegen, PoiseDamage, CritChance, MoveSpeed, DodgeWindow }
 
@@ -86,6 +86,8 @@ namespace FH.Core
     {
         public string id, anim;
         public string hitBone;
+        /// <summary>A shot instead of a swing: "grave_bolt" (the Gravebound Mage's spell) flies at the hunter.</summary>
+        public string projectile;
         public float minRange, minAngle, maxAngle = 180, lungeSpeed;
         public string reaction;          // Flinch, Knockback or Knockdown; empty = by damage
         public float telegraph = .55f, active = .2f, recovery = .7f;

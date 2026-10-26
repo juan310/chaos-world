@@ -21,7 +21,7 @@ if ($Stage -in 'all', 'bodies') {
 if ($Stage -in 'all', 'props') {
     & $py Tools\forge_queue.py static WardenGreatsword (Item 'items_GraveWardenWeapons_*' 'greatsword') "huge rusty greatsword, spiked gold cross-guard, red-wrapped grip" 1.9
     & $py Tools\forge_queue.py static KnightGreatsword (Item 'items_SkeletonKnightWeapons_*' 'greatsword') "rusty greatsword, ornate gold cross-guard" 1.7
-    & $py Tools\forge_queue.py static WarriorSword (Item 'items_SkeletonWarriorWeapons_*' 'longsword') "rusty one-handed longsword, gold cross-guard, leather grip" 1.0
+    & $py Tools\forge_queue.py static WarriorSword (Item 'items_SkeletonWarriorWeapons_*' 'one_handed') "rusty one-handed longsword, gold cross-guard, leather grip" 1.0
     & $py Tools\forge_queue.py static WarriorShield (Item 'items_SkeletonWarriorWeapons_*' 'shield') "round red wooden shield, steel rim and boss, gold star" .8
     & $py Tools\forge_queue.py static MageStaff (Item 'items_SkeletonMageWeapons_*' 'staff') "gnarled dark wooden staff with a glowing purple crystal and chains" 1.9
     & $py Tools\forge_queue.py static SkullPedestal (Item 'items_LairProps_*' 'pedestal') "dark stone pedestal with a carved skull, iron fire brazier bowl on top" 1.9

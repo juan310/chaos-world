@@ -76,7 +76,7 @@
   ],
 
   "monsters": [
-    { "id": "gravebound", "name": "Gravebound", "model": "Gravebound", "family": "undead", "height": 1.8,
+    { "id": "gravebound", "name": "Gravebound", "model": "Gravebound_Warrior", "fallbackModel": "Gravebound", "ownWeapons": true, "family": "undead", "height": 1.8,
       "huntHealth": 2, "huntPoise": 1.3, "huntDamage": 1.1,
       "huntAttacks": [{"id": "lunge_chop", "anim": "1H_Melee_Attack_Chop", "telegraph": 0.7, "active": 0.3, "recovery": 1.0, "damage": 15, "range": 4.5, "minRange": 2, "radius": 0.9, "lungeSpeed": 5, "gapCloser": true, "maxAngle": 60, "cooldown": 1.3, "damageType": "Slash"}, {"id": "frenzy_slice", "anim": "1H_Melee_Attack_Slice_Diagonal", "telegraph": 0.45, "active": 0.2, "recovery": 0.5, "damage": 12, "range": 2, "radius": 1, "phase": 2, "follow": "frenzy_chop", "followChance": 0.9, "cooldown": 1.2, "damageType": "Slash"}, {"id": "frenzy_chop", "anim": "1H_Melee_Attack_Chop", "telegraph": 0.4, "active": 0.2, "recovery": 0.9, "damage": 14, "range": 2.2, "radius": 0.9, "phase": 2, "weight": -1, "cooldown": 1.4, "damageType": "Slash"}],
       "maxHealth": 95, "poise": 34, "poiseRegen": 6, "staggerTime": 1.2, "walkSpeed": 0.9, "chaseSpeed": 1.35,
@@ -94,7 +94,40 @@
       ],
       "lootTable": "lt_gravebound", "weaponVisual": "1H_Sword", "xp": 30, "gold": 9 },
 
-    { "id": "grave_warden", "name": "Grave Warden", "model": "Gravebound", "family": "undead", "height": 2.4, "boss": true,
+    { "id": "gravebound_knight", "name": "Gravebound Knight", "model": "Gravebound_Knight", "fallbackModel": "Gravebound", "ownWeapons": true, "family": "undead", "height": 2.05,
+      "huntHealth": 2, "huntPoise": 1.4, "huntDamage": 1.1,
+      "huntAttacks": [{"id": "knight_slam", "anim": "1H_Melee_Attack_Chop", "animSpeed": 0.7, "aoe": "Circle", "aoeRadius": 3.2, "aoeDelay": 0.1, "telegraph": 1.0, "active": 0.4, "recovery": 1.2, "damage": 22, "reaction": "Knockback", "range": 3, "cooldown": 1.8, "damageType": "Blunt"}],
+      "maxHealth": 150, "poise": 55, "poiseRegen": 6, "staggerTime": 1.3, "walkSpeed": 0.85, "chaseSpeed": 1.2,
+      "perceptionRadius": 10, "fieldOfView": 150, "hearingRadius": 3.5, "leashRadius": 16, "loseInterestTime": 6, "spawnGrace": 1.5,
+      "resistances": [ { "type": "Fire", "multiplier": 1.2 }, { "type": "Holy", "multiplier": 1.5 }, { "type": "Slash", "multiplier": 0.8 }, { "type": "Pierce", "multiplier": 0.7 } ],
+      "attacks": [
+        { "id": "heavy_cleave", "anim": "1H_Melee_Attack_Chop", "animSpeed": 0.85, "telegraph": 0.85, "active": 0.25, "recovery": 1.0, "damage": 20, "range": 2.4, "radius": 1.1, "cooldown": 1.5, "reaction": "Knockback", "damageType": "Slash" },
+        { "id": "wide_sweep", "anim": "1H_Melee_Attack_Slice_Diagonal", "animSpeed": 0.9, "telegraph": 0.7, "active": 0.25, "recovery": 1.0, "damage": 16, "range": 2.5, "radius": 1.35, "cooldown": 1.6, "damageType": "Slash" }
+      ],
+      "parts": [
+        { "id": "skull", "name": "Skull", "bone": "head", "radius": 0.32, "damageMultiplier": 1.4, "weakPoint": true },
+        { "id": "body", "name": "Breastplate", "bone": "chest", "radius": 0.38, "height": 1.0, "damageMultiplier": 0.8 },
+        { "id": "legs", "name": "Legs", "bone": "hips", "radius": 0.32, "height": 1.0, "damageMultiplier": 0.9 }
+      ],
+      "lootTable": "lt_gravebound", "weaponVisual": "1H_Sword", "xp": 55, "gold": 16 },
+
+    { "id": "gravebound_mage", "name": "Gravebound Mage", "model": "Gravebound_Mage", "fallbackModel": "Gravebound", "ownWeapons": true, "family": "undead", "height": 1.85,
+      "huntHealth": 2, "huntPoise": 1.2, "huntDamage": 1.1,
+      "huntAttacks": [{"id": "bone_nova", "anim": "Spellcast_Shoot", "animSpeed": 0.8, "aoe": "Circle", "aoeRadius": 3.6, "aoeDelay": 0.15, "telegraph": 1.0, "active": 0.35, "recovery": 1.0, "damage": 16, "reaction": "Knockback", "range": 3, "cooldown": 1.8, "damageType": "Arcane"}, {"id": "grave_curse", "anim": "Spellcast_Shoot", "animSpeed": 0.8, "aoe": "Burst", "aoeRadius": 1.5, "aoeCount": 2, "aoeSpread": 2.4, "aoeDelay": 0.3, "telegraph": 1.0, "active": 0.4, "recovery": 1.1, "damage": 16, "reaction": "Knockdown", "range": 12, "minRange": 3, "phase": 2, "cooldown": 2, "damageType": "Arcane"}],
+      "maxHealth": 70, "poise": 25, "poiseRegen": 6, "staggerTime": 1.2, "walkSpeed": 0.8, "chaseSpeed": 1.1,
+      "perceptionRadius": 13, "fieldOfView": 160, "hearingRadius": 4, "leashRadius": 16, "loseInterestTime": 6, "spawnGrace": 1.5,
+      "resistances": [ { "type": "Fire", "multiplier": 1.3 }, { "type": "Holy", "multiplier": 1.7 } ],
+      "attacks": [
+        { "id": "grave_bolt", "anim": "Spellcast_Shoot", "telegraph": 0.9, "active": 0.3, "recovery": 1.0, "damage": 14, "range": 10, "radius": 0.4, "cooldown": 1.6, "projectile": "grave_bolt", "damageType": "Arcane" }
+      ],
+      "parts": [
+        { "id": "skull", "name": "Skull", "bone": "head", "radius": 0.30, "damageMultiplier": 1.6, "weakPoint": true },
+        { "id": "body", "name": "Ribcage", "bone": "chest", "radius": 0.34, "height": 0.9, "damageMultiplier": 1.0 },
+        { "id": "legs", "name": "Legs", "bone": "hips", "radius": 0.30, "height": 0.9, "damageMultiplier": 0.9 }
+      ],
+      "lootTable": "lt_gravebound", "weaponVisual": "", "xp": 45, "gold": 14 },
+
+    { "id": "grave_warden", "name": "Grave Warden", "model": "GraveWarden", "fallbackModel": "Gravebound", "ownWeapons": true, "family": "undead", "height": 2.4, "boss": true,
       "huntHealth": 2.5, "huntPoise": 1.5, "huntDamage": 1.1, "roarAttack": "warden_roar",
       "huntAttacks": [{"id": "warden_roar", "anim": "Spellcast_Shoot", "animSpeed": 0.7, "aoe": "Roar", "aoeRadius": 9, "roarTime": 1.1, "telegraph": 0.7, "active": 0.35, "recovery": 0.8, "damage": 0, "range": 12, "weight": 0.25, "cooldown": 1.4}, {"id": "ground_slam", "anim": "1H_Melee_Attack_Chop", "animSpeed": 0.7, "aoe": "Ring", "aoeRadius": 8, "aoeSpeed": 11, "aoeWidth": 1.1, "telegraph": 1.15, "active": 0.8, "recovery": 1.3, "damage": 22, "reaction": "Knockback", "range": 7, "cooldown": 1.6, "damageType": "Blunt"}, {"id": "grave_burst", "anim": "Spellcast_Shoot", "animSpeed": 0.8, "aoe": "Burst", "aoeRadius": 1.6, "aoeCount": 3, "aoeSpread": 2.6, "aoeDelay": 0.35, "telegraph": 1.1, "active": 0.4, "recovery": 1.2, "damage": 20, "reaction": "Knockdown", "range": 14, "minRange": 3, "cooldown": 1.8, "damageType": "Blunt"}, {"id": "leap_smash", "anim": "1H_Melee_Attack_Chop", "animSpeed": 0.75, "aoe": "Leap", "aoeRadius": 3, "telegraph": 0.9, "active": 0.75, "recovery": 1.4, "damage": 28, "reaction": "Knockdown", "range": 13, "minRange": 4, "gapCloser": true, "phase": 2, "cooldown": 2, "damageType": "Blunt"}, {"id": "cataclysm", "anim": "1H_Melee_Attack_Chop", "animSpeed": 0.6, "aoe": "Ring", "aoeRadius": 10, "aoeSpeed": 9, "aoeWidth": 1.2, "pulses": 3, "pulseGap": 0.55, "telegraph": 1.3, "active": 2.3, "recovery": 1.6, "damage": 24, "reaction": "Knockback", "range": 9, "phase": 3, "cooldown": 2, "damageType": "Blunt"}],
       "maxHealth": 300, "poise": 80, "poiseRegen": 7, "staggerTime": 1.6, "walkSpeed": 0.8, "chaseSpeed": 1.2, "turnSpeed": 5,
@@ -358,7 +391,11 @@
     { "id": "sp_night_1", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 17, "z": 27, "patrolRadius": 4, "respawnHours": 6, "nightOnly": true },
     { "id": "sp_warden", "areaId": "crypt", "monsterId": "grave_warden", "x": 0, "z": 9, "patrolRadius": 1.5, "respawnHours": 72 },
     {"id": "sp_thornback", "areaId": "thornwood", "monsterId": "thornback", "x": -25, "z": 14, "patrolRadius": 2, "respawnHours": 24},
-    {"id": "sp_mirejaw", "areaId": "mirebank", "monsterId": "mirejaw", "x": 30, "z": 8, "patrolRadius": 2, "respawnHours": 24}
+    {"id": "sp_mirejaw", "areaId": "mirebank", "monsterId": "mirejaw", "x": 30, "z": 8, "patrolRadius": 2, "respawnHours": 24},
+    {"id": "sp_graves_knight", "areaId": "ashen_fields", "monsterId": "gravebound_knight", "x": 30, "z": 36, "patrolRadius": 2, "respawnHours": 24},
+    {"id": "sp_night_mage", "areaId": "ashen_fields", "monsterId": "gravebound_mage", "x": 33, "z": 18, "patrolRadius": 2, "respawnHours": 12, "nightOnly": true},
+    {"id": "sp_crypt_guard_l", "areaId": "crypt", "monsterId": "gravebound", "x": -2.2, "z": -14, "patrolRadius": 0.8, "respawnHours": 72},
+    {"id": "sp_crypt_guard_r", "areaId": "crypt", "monsterId": "gravebound", "x": 2.2, "z": -14, "patrolRadius": 0.8, "respawnHours": 72}
   ],
 
   "huntMovesets": [

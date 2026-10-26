@@ -341,7 +341,14 @@ namespace FH.Game
                 }
                 case MonsterMode.Attack:
                     UpdateRing();
-                    if (IsCreature && Brain.CurrentAttack.id == "venom_spray") {
+                    if (Brain.CurrentAttack.projectile == "grave_bolt") {
+                        if (!Brain.HitDelivered) {
+                            Brain.HitDelivered = true;
+                            var from = hand ? hand.position : transform.position + Vector3.up * Def.height * .7f;
+                            var at = hero.transform.position + Vector3.up * 1.1f;
+                            MonsterVenom.GraveBolt(session, Brain.CurrentAttack, from, at - from);
+                        }
+                    } else if (IsCreature && Brain.CurrentAttack.id == "venom_spray") {
                         if (!Brain.HitDelivered) {
                             Brain.HitDelivered = true;
                             MonsterVenom.Fire(session, Brain.CurrentAttack, AttackCenter, transform.forward, Parts.Broken.Count(x => x.StartsWith("gland_")) == 1 ? .6f : 1f);

@@ -39,7 +39,8 @@ namespace FH.Game
         {
             if (WorldKit.Materials.TryGetValue(name, out var m) && m) return m;
             m = new Material(Shader.Find("Standard")) { name = name, color = tint ?? Color.white };
-            m.mainTexture = Resources.Load<Texture2D>(Tex + tex);
+            // a picture made from the concept art on this PC (Models/Lair/<name>_art, e.g. the banner) wins over the drawn one
+            m.mainTexture = Resources.Load<Texture2D>("Models/Lair/" + tex + "_art") ?? Resources.Load<Texture2D>(Tex + tex);
             m.SetFloat("_Glossiness", gloss);
             if (cutout)
             {
