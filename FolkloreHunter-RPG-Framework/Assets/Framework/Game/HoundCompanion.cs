@@ -437,6 +437,8 @@ namespace FH.Game
             bool danger = Danger(target);
             PincerAngle = HoundTactics.PincerAngle(target.transform.position.x, target.transform.position.z, h.x, h.z, transform.position.x, transform.position.z);
             Action = HoundTactics.Choose(gap, open ? reach + 1.2f * Size : reach, danger, now >= evadeReadyAt, now >= comboReadyAt, now >= pounceReadyAt, atFlank);
+            string why = Action + " gap " + gap.ToString("0.0") + (now >= comboReadyAt ? " ready" : " wait " + (comboReadyAt - now).ToString("0.0")) + (open ? " OPEN" : "") + (atFlank ? " flank" : "") + " " + target.Brain.Mode;
+            if (DecisionLog.Count == 0 || !DecisionLog[DecisionLog.Count - 1].EndsWith(why)) { DecisionLog.Add(now.ToString("0.00") + " " + why); if (DecisionLog.Count > 40) DecisionLog.RemoveAt(0); }
             if (Action != HoundAction.Evade && ClearOfHuntersLane(dt)) return;
             switch (Action)
             {
@@ -495,6 +497,8 @@ namespace FH.Game
         }
 
         public float PincerAngle { get; private set; }
+        /// <summary>The companion's recent decisions (time, action, gap, readiness, opening, monster mode) for diagnosis.</summary>
+        public readonly List<string> DecisionLog = new List<string>();
         public int LaneClears { get; private set; }
         public int Circles { get; private set; }
         bool inLane; float laneAt;
