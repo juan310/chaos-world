@@ -10,6 +10,9 @@ namespace FH.Game
         public float Yaw = 32, Pitch = 34, Distance = 11;
         public Transform Follow;
         public bool Manual;               // menus and reviews position the camera themselves
+        /// <summary>Bow aim: close over the right shoulder, the centre of the screen is where arrows go.</summary>
+        public bool Aiming;
+        float aimBlend;
         Vector3 target;
         float shake;
 
@@ -27,12 +30,19 @@ namespace FH.Game
             if (Manual || !Follow || !Camera) return;
             var look = InputRouter.Look();
             Yaw += look.x;
-            Pitch = Mathf.Clamp(Pitch - look.y, 8, 70);
+            Pitch = Mathf.Clamp(Pitch - look.y, Aiming ? -10 : 8, 70);
             Distance = Mathf.Clamp(Distance - InputRouter.Zoom() * 1.2f, 5, 20);
             var session = GameSession.I;
             var hunter = session ? session.Hunter : null;
+            aimBlend = Mathf.MoveTowards(aimBlend, Aiming ? 1 : 0, Time.unscaledDeltaTime * 5);
+            if (Aiming) Pitch = Mathf.Clamp(Pitch, -10, 45);
             Vector3 desired = Follow.position + Vector3.up * 1.2f;
-            if (hunter && hunter.LockTarget && hunter.LockTarget.Alive)
+            if (aimBlend > 0)
+            {
+                Vector3 shoulder = Follow.position + Vector3.up * 1.65f + Camera.transform.right * .7f;
+                desired = Vector3.Lerp(desired, shoulder, aimBlend);
+            }
+            if (hunter && hunter.LockTarget && hunter.LockTarget.Alive && !Aiming)
             {
                 var t = hunter.LockTarget.transform.position;
                 desired = Vector3.Lerp(desired, t + Vector3.up * 1.2f, .35f);
@@ -51,8 +61,8 @@ namespace FH.Game
         {
             float y = Yaw * Mathf.Deg2Rad, p = Pitch * Mathf.Deg2Rad;
             Vector3 dir = new Vector3(Mathf.Sin(y) * Mathf.Cos(p), Mathf.Sin(p), -Mathf.Cos(y) * Mathf.Cos(p));
-            float d = Distance;
-            if (Physics.SphereCast(target, .3f, dir, out var hit, Distance, Layers.WorldMask, QueryTriggerInteraction.Ignore))
+            float d = Mathf.Lerp(Distance, 2.6f, aimBlend);
+            if (Physics.SphereCast(target, .3f, dir, out var hit, d, Layers.WorldMask, QueryTriggerInteraction.Ignore))
                 d = Mathf.Max(1.5f, hit.distance - .2f);
             Vector3 pos = target + dir * d;
             if (shake > 0) { pos += Random.insideUnitSphere * shake * .15f; shake = Mathf.Max(0, shake - Time.unscaledDeltaTime * 1.5f); }

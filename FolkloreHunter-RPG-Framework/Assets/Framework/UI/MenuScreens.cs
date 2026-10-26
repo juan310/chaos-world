@@ -216,7 +216,7 @@ namespace FH.UI
     public class ControlsScreen : UiScreen
     {
         public override string Title => "Controls";
-        public override Vector2 Size => new Vector2(980, 760);
+        public override Vector2 Size => new Vector2(1180, 860);
         public override void Build()
         {
             var col = UiKit.Column("Controls", Body, 8);
@@ -227,12 +227,15 @@ namespace FH.UI
                 "<b>Dodge</b> Space / A   <b>Spell</b> Q / LT   <b>Change spell</b> F / D-pad down   <b>Lock-on</b> Tab, middle mouse / R3\n" +
                 "<b>Interact</b> E / X   <b>Items</b> 1-4, R / LB   <b>Camera</b> hold right mouse / right stick   <b>Zoom</b> wheel\n" +
                 "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n\n" +
-                "<color=#f5d68c>Proving Grounds (Monster Hunter-style)</color>   the mouse turns the camera\n" +
-                "<b>Light</b> Left mouse / Y  (diagonal, horizontal, overhead; forward + light lunges)\n" +
-                "<b>Heavy</b> Right mouse / B  (hold to charge: level 1 heavy chop, level 2 spinning slash)\n" +
-                "<b>Shield bash</b> both together / Y + B  (stuns toward a topple)   <b>Guard</b> Left Ctrl / RB  (perfect guard, then light: counter)\n" +
-                "<b>Roll</b> Space / A  (cancels a move late in its swing; light right after: roll slash)   <b>Sprint</b> Shift / RT (sheathes)\n" +
-                "<b>Sheathe</b> X key / X   <b>Use item</b> 1-4 / LB, choose with D-pad left/right   <b>Whistle</b> G / D-pad up\n\n" +
+                "<color=#f5d68c>Proving Grounds (Monster Hunter-style)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
+                "<b>All weapons</b>  Roll / hop / sidestep Space, A   Sprint Shift, RT (sheathes)   Sheathe X   Items 1-4, LB (D-pad picks)   Whistle G, D-pad up\n" +
+                "<b>Sword and shield</b>  Light LMB, Y (slash, slash, overhead; forward: lunge)   Heavy RMB, B (hold: charge, level 2 spins)\n" +
+                "    Y+B shield bash (stun)   Guard Ctrl, RB (perfect guard, then light: counter)   light right after a roll: roll slash\n" +
+                "<b>Lance</b>  Y mid thrust, B high thrust (mix up to three)   Y+B wide sweep   A hop (three in a row, the last is long)\n" +
+                "    Guard RB (wide, little chip)  then Y guard thrust (stick: guard dash), B counter stance (a blocked blow: Retribution Thrust),\n" +
+                "    Y+B dash attack (Y during it: finishing thrust)\n" +
+                "<b>Bow</b>  Hold Y to draw (three charge levels), release to shoot; quick follow-up shots rise a level   A charging sidestep (+1 level)\n" +
+                "    B after a shot: power shot   B: arc shot (arrows rain on the target)   Y+B Dragon Piercer   RB aim over the shoulder\n\n" +
                 "<color=#f5d68c>Hunting tips</color>  Watch the raised weapon, red eyes and warning ring; roll through the blow, then punish.\n" +
                 "Orange numbers mean a soft hitzone. Shield bashes and overheads build stun: a toppled monster is wide open.", 19);
             UiKit.Button(col, "Back", () => Ui.Close(this));

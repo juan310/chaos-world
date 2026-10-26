@@ -147,8 +147,17 @@ namespace FH.UI
         {
             bool pad = InputRouter.PadActive;
             if (S.Proving)
+            {
+                var cls = S.Hunter.Hunt ? S.Hunter.Hunt.Class : FH.Core.WeaponClass.SwordShield;
+                if (cls == FH.Core.WeaponClass.Lance)
+                    return pad ? "Y mid thrust   B high thrust   Y+B wide sweep   A hop   RB guard: +Y guard thrust/dash, +B counter, +Y+B dash attack   R3 lock-on   LB item   Menu ledger"
+                               : "LMB mid thrust   RMB high thrust   both: wide sweep   Space hop   Ctrl guard: +LMB guard thrust, +RMB counter, +both dash attack   Tab lock-on   1-4 items";
+                if (cls == FH.Core.WeaponClass.Bow)
+                    return pad ? "Y hold: draw, release: shoot   B power shot / arc shot   Y+B Dragon Piercer   A charging sidestep   RB aim   R3 lock-on   LB item   Menu ledger"
+                               : "LMB hold: draw, release: shoot   RMB power shot / arc shot   both: Dragon Piercer   Space sidestep   Ctrl aim   Tab lock-on   1-4 items";
                 return pad ? "Y light   B heavy (hold: charge)   Y+B shield bash   A roll   RB guard   RT sprint   X sheathe   R3 lock-on   LB item   D-pad item   Menu ledger"
                            : "LMB light   RMB heavy (hold: charge)   both: shield bash   Space roll   Ctrl guard   Shift sprint   X sheathe   Tab lock-on   1-4 items   E ledger   Esc menu";
+            }
             return pad ? "Left stick move   RT run   Y attack   A dodge   LT spell   R3 lock-on   X interact   LB item   View map   Menu"
                        : "WASD move   Shift run   LMB attack   Space dodge   Q spell   Tab lock-on   E interact   1-4 items   I pack   J hunts   K hunter   M map   Esc menu";
         }

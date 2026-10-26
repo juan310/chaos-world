@@ -7,12 +7,12 @@ namespace FH.UI
     public class ProvingScreen : UiScreen
     {
         public override string Title => "Proving Grounds";
-        public override Vector2 Size => new Vector2(980, 760);
+        public override Vector2 Size => new Vector2(980, 900);
 
         public override void Build()
         {
             var rig = S.ProvingRig;
-            var row = UiKit.Row("Columns", Body, 24, 640);
+            var row = UiKit.Row("Columns", Body, 24, 780);
             row.Stretch();
             var left = UiKit.Column("Monsters", row, 8);
             UiKit.Paragraph(left, "Spawn a monster", 22, UiKit.Gold);
@@ -23,6 +23,13 @@ namespace FH.UI
             }
             UiKit.Button(left, "Clear monsters", () => { rig.ClearMonsters(); rig.RefreshVolumes(); Refresh(); });
             UiKit.Paragraph(left, rig.Spawned.Count + " monster(s) in the ring. Monsters here use the hunt rules: flinch, topple and enrage.", 16, UiKit.Muted);
+
+            UiKit.Paragraph(left, "Weapon", 22, UiKit.Gold);
+            foreach (var (id, label) in ProvingGrounds.Weapons)
+            {
+                bool on = S.Hunter.Hunt && S.Hunter.Hunt.Set != null && S.Hunter.Hunt.Set.id == id;
+                UiKit.Button(left, label + (on ? "  (in hand)" : ""), () => { rig.SetWeapon(id); Ui.Close(this); }).Active(on);
+            }
 
             var right = UiKit.Column("Options", row, 8);
             UiKit.Paragraph(right, "Options", 22, UiKit.Gold);

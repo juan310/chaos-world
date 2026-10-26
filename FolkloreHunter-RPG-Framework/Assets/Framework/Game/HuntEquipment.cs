@@ -12,7 +12,7 @@ namespace FH.Game {
    bool armor=state.inventory.Any(i=>i.uid==state.equipment.body&&i.itemId=="thornback_set"&&!string.IsNullOrEmpty(i.uid));
    cleaver=session.Core.Stats.EquippedWeapon()?.id=="tusk_cleaver";
    root.SetActive(armor||cleaver);
-   foreach(var r in original)if(r) {
+   foreach(var r in original)if(r&&!r.name.StartsWith("Hunt_")) {
     if(r.name=="Knight_Head")r.enabled=true;
     else if(r.name=="1H_Sword")r.enabled=!cleaver;
     else r.enabled=!armor;

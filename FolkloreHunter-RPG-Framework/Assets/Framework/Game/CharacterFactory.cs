@@ -27,7 +27,7 @@ namespace FH.Game
             o.transform.localPosition = Vector3.zero;
             o.transform.localRotation = Quaternion.identity;
             var renderers = o.GetComponentsInChildren<Renderer>();
-            var body = renderers.Where(x => !x.name.Contains("Sword") && !x.name.Contains("Shield") && !x.name.Contains("Staff") && !x.name.Contains("Wand")).ToArray();
+            var body = renderers.Where(x => !x.name.Contains("Sword") && !x.name.Contains("Shield") && !x.name.Contains("Staff") && !x.name.Contains("Wand") && !x.name.StartsWith("Hunt_")).ToArray();
             Bounds b = body[0].bounds;
             foreach (var rr in body.Skip(1)) b.Encapsulate(rr.bounds);
             float k = targetHeight / Mathf.Max(.1f, b.size.y);

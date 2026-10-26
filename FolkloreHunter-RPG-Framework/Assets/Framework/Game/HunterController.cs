@@ -39,17 +39,23 @@ namespace FH.Game
         public bool Riding => Mount;
         Transform rideParent;
         float rideHipsHeight;
-        /// <summary>Raised when the blade registers a hit: (monster, damage dealt).</summary>
+        /// <summary>Raised when the blade (or an arrow) registers a hit: (monster, damage dealt).</summary>
         public event System.Action<MonsterActor, HitInfo> BladeHit;
+        /// <summary>A ranged hunt move reached its active window: the weapon layer looses its arrows.</summary>
+        public event System.Action<HuntMoveDef> ShotLoosed;
+        /// <summary>True while the hit being reported came from an arrow (no hitstop on the archer).</summary>
+        public bool ReportingRangedHit { get; private set; }
 
         GameSession session;
-        Transform hand, footL, footR, sword;
+        Transform hand, footL, footR, sword, blade;
         Vector3 swordLocalA, swordLocalB;
+        float rehitClock;
         WeaponDef weapon;
         int comboIndex;
         bool attackBuffered;
         float bufferExpires, dodgeUntil, invulnFrom, invulnUntil, lockUntil, hurtUntil, castAt = -1, deathAt = -1, vertical, stepClock;
         Vector3 dodgeDir, prevTip;
+        float dodgeSpeed = 7.2f;
         bool prevTipValid;
         readonly SwingHits swingHits = new SwingHits();
         float walkNatural, runNatural;
@@ -76,6 +82,10 @@ namespace FH.Game
                     swordLocalA = b.center - axis; swordLocalB = b.center + axis;
                 }
             }
+            blade = sword;
+            // Lance, bow, tower shield, quiver and arrow ride in the hunter model for the Proving Grounds weapons;
+            // the weapon layer shows the ones in use. Hidden everywhere else.
+            foreach (var r in Visual.GetComponentsInChildren<Renderer>(true)) if (r.name.StartsWith("Hunt_")) r.enabled = false;
             walkNatural = Anim.NaturalSpeed("Walking_A", footL, footR, transform);
             runNatural = Anim.NaturalSpeed("Running_A", footL, footR, transform);
             // Travel speed follows the authored stride so planted feet do not slide; playback runs slightly fast for pace.
@@ -174,14 +184,22 @@ namespace FH.Game
             // Attack timeline drives damage windows; animation merely follows it.
             if (Attack.Running)
             {
+                var hm = Attack.Def as HuntMoveDef;
+                bool ranged = hm != null && hm.shot != null;
                 foreach (var phase in Attack.Tick(dt))
                 {
-                    if (phase == AttackPhase.Active) { prevTipValid = false; WorldKit.Sound(transform.position, "swish", .16f); }
+                    if (phase == AttackPhase.Active)
+                    {
+                        prevTipValid = false; rehitClock = 0;
+                        WorldKit.Sound(transform.position, "swish", .16f);
+                        if (ranged) ShotLoosed?.Invoke(hm);
+                    }
                     if (phase == AttackPhase.None) comboIndex = 0;
                 }
                 if (Attack.Phase == AttackPhase.Windup && Attack.Def.forwardStep > 0)
                     Move(transform.forward * Attack.Def.forwardStep / Mathf.Max(.05f, Attack.Def.windup), dt);
-                if (Attack.DamageWindowOpen) SweepBlade();
+                if (Attack.Phase == AttackPhase.Active && hm != null) TravelMove(hm, dir, dt);
+                if (Attack.DamageWindowOpen && !ranged) SweepBlade();
                 if (attackBuffered && Attack.InChainWindow) { attackBuffered = false; StartNextAttack(); }
                 if (attackBuffered && Time.time > bufferExpires) attackBuffered = false;
             }
@@ -192,7 +210,7 @@ namespace FH.Game
             bool locked = Time.time < lockUntil || Time.time < hurtUntil || Attack.Committed || (HuntStyle && Hunt.Locked);
             float speed = 0;
             Vector3 moveDir = Vector3.zero;
-            if (Dodging) { moveDir = dodgeDir; speed = 7.2f; }
+            if (Dodging) { moveDir = dodgeDir; speed = dodgeSpeed; }
             else if (Attack.Running && Attack.Phase == AttackPhase.Recovery) { moveDir = dir; speed = WalkSpeed * .3f; }
             else if (!locked && dir.sqrMagnitude > .01f)
             {
@@ -223,6 +241,24 @@ namespace FH.Game
             Gravity(dt);
         }
 
+        /// <summary>Moves that carry the hunter during their active window (lance dash attack, guard dash): forward at the
+        /// move's speed, steered by the stick, striking again every `rehit` seconds, paid for in stamina per second.</summary>
+        void TravelMove(HuntMoveDef hm, Vector3 dir, float dt)
+        {
+            if (hm.rehit > 0 && (rehitClock += dt) >= hm.rehit) { rehitClock = 0; Attack.NewSwing(); prevTipValid = false; }
+            if (hm.staminaPerSecond > 0)
+            {
+                Stamina.Drain(hm.staminaPerSecond, dt);
+                if (Stamina.Current <= .5f) { Attack.EndActive(); return; }
+            }
+            if (hm.travel <= 0) return;
+            if (dir.sqrMagnitude > .05f)
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), hm.steer * dt);
+            Move(transform.forward * hm.travel, dt);
+            stepClock -= dt;
+            if (stepClock <= 0) { stepClock = .2f; WorldKit.Sound(transform.position, "step", .1f); }
+        }
+
         void Gravity(float dt)
         {
             vertical = Body.isGrounded ? -2 : Mathf.Max(-20, vertical - dt * 24);
@@ -243,6 +279,28 @@ namespace FH.Game
         public void CancelActions() { Attack.Cancel(); attackBuffered = false; comboIndex = 0; castAt = -1; }
         public Transform Hand => hand;
         public Transform SwordTransform => sword;
+
+        /// <summary>The mesh whose length is swept for hits (the sword, or the lance in the Proving Grounds).</summary>
+        public void SetBlade(Transform t)
+        {
+            blade = t ? t : sword;
+            var mesh = blade ? blade.GetComponent<MeshFilter>()?.sharedMesh ?? blade.GetComponent<SkinnedMeshRenderer>()?.sharedMesh : null;
+            if (!mesh) return;
+            var b = mesh.bounds;
+            var axis = b.size.x > b.size.y && b.size.x > b.size.z ? Vector3.right * b.extents.x : b.size.y > b.size.z ? Vector3.up * b.extents.y : Vector3.forward * b.extents.z;
+            swordLocalA = b.center - axis; swordLocalB = b.center + axis;
+        }
+
+        /// <summary>The weapon whose damage a hit uses: the hunt weapon's own when it has one, else the equipped one.</summary>
+        public WeaponDef CurrentWeapon => HuntStyle && Hunt.Set != null && Hunt.Set.weapon != null && Hunt.Set.weapon.baseDamage > 0 ? Hunt.Set.weapon : weapon;
+
+        /// <summary>An arrow struck: counted and reported like a blade hit, flagged as ranged.</summary>
+        public void ReportRangedHit(MonsterActor monster, HitInfo hit)
+        {
+            ReportingRangedHit = true;
+            try { BladeHit?.Invoke(monster, hit); } finally { ReportingRangedHit = false; }
+            SwingsLanded++;
+        }
         float actualSpeed, blockedFor;
 
         void Move(Vector3 velocity, float dt)
@@ -294,10 +352,15 @@ namespace FH.Game
 
         /// <summary>Hunt roll: in the stick direction; locked on it keeps facing the target and uses the matching
         /// directional roll (left, right, back). Cancels a move once the move allows it (checked by the caller).</summary>
-        public bool Roll(Vector3 dir, bool keepFacing)
+        public bool Roll(Vector3 dir, bool keepFacing) => Roll(dir, keepFacing, 7.2f * .42f, .42f, 25, -1, 1.35f);
+
+        /// <summary>Roll, lance hop or bow sidestep: <paramref name="distance"/> over <paramref name="time"/>, with
+        /// <paramref name="iframes"/> seconds of invulnerability (negative: the hunter's dodge stat).</summary>
+        public bool Roll(Vector3 dir, bool keepFacing, float distance, float time, float stamina, float iframes, float clipSpeed)
         {
             if (Dead || Dodging) return false;
-            if (!Stamina.TrySpend(25)) { session.Hud?.Flash("Too tired to roll."); return false; }
+            if (!Stamina.TrySpend(stamina)) { session.Hud?.Flash("Too tired to roll."); return false; }
+            dodgeSpeed = distance / Mathf.Max(.05f, time);
             CancelActions(); knock = Vector3.zero;
             dodgeDir = dir.sqrMagnitude > .1f ? dir.normalized : (keepFacing ? -transform.forward : transform.forward);
             string clip = "Dodge_Forward";
@@ -307,10 +370,10 @@ namespace FH.Game
                 clip = Mathf.Abs(side) > Mathf.Abs(front) ? (side > 0 ? "Dodge_Right" : "Dodge_Left") : front < 0 ? "Dodge_Backward" : "Dodge_Forward";
             }
             else transform.rotation = Quaternion.LookRotation(dodgeDir);
-            dodgeUntil = Time.time + .42f;
+            dodgeUntil = Time.time + time;
             invulnFrom = Time.time + .03f;
-            invulnUntil = invulnFrom + Stats[Stat.DodgeWindow];
-            Anim.Play(clip, false, 1.35f, true, .05f);
+            invulnUntil = invulnFrom + (iframes >= 0 ? iframes : Stats[Stat.DodgeWindow]);
+            Anim.Play(clip, false, clipSpeed, true, .05f);
             return true;
         }
 
@@ -334,11 +397,11 @@ namespace FH.Game
 
         void UpdateBlade()
         {
-            if (!sword) { BladeBase = transform.position + Vector3.up; BladeTip = BladeBase + transform.forward; return; }
-            Vector3 a = sword.TransformPoint(swordLocalA), b = sword.TransformPoint(swordLocalB);
+            if (!blade) { BladeBase = transform.position + Vector3.up; BladeTip = BladeBase + transform.forward; return; }
+            Vector3 a = blade.TransformPoint(swordLocalA), b = blade.TransformPoint(swordLocalB);
             var equipment = GetComponent<HuntEquipment>();
             Vector3 equippedA, equippedB;
-            if (equipment && equipment.TryBlade(out equippedA, out equippedB)) { a = equippedA; b = equippedB; }
+            if (blade == sword && equipment && equipment.TryBlade(out equippedA, out equippedB)) { a = equippedA; b = equippedB; }
             Vector3 grip = hand ? hand.position : a;
             if (Vector3.Distance(a, grip) > Vector3.Distance(b, grip)) { var t = a; a = b; b = t; }
             float reach = Attack.Def != null ? Attack.Def.reach : 1;
@@ -374,7 +437,8 @@ namespace FH.Game
                 bool crit = Random.value * 100 < Stats[Stat.CritChance];
                 HitInfo dealt = default;
                 if (monster.HuntRules && atk is HuntMoveDef hm) monster.PendingStun = hm.koDamage;
-                monster.ReceiveHit(box, point, (part, broken) => dealt = DamageMath.PlayerHit(weapon, atk, Stats, monster.Def, part, broken, crit));
+                var w = CurrentWeapon;
+                monster.ReceiveHit(box, point, (part, broken) => dealt = DamageMath.PlayerHit(w, atk, Stats, monster.Def, part, broken, crit));
                 BladeHit?.Invoke(monster, dealt);
                 SwingsLanded++;
                 HitLog.Add((Attack.SwingId, monster.InstanceKey));
@@ -401,6 +465,7 @@ namespace FH.Game
             Attack.Cancel(); attackBuffered = false; comboIndex = 0; castAt = -1;
             dodgeDir = dir.sqrMagnitude > .1f ? dir.normalized : transform.forward;
             transform.rotation = Quaternion.LookRotation(dodgeDir);
+            dodgeSpeed = 7.2f;
             dodgeUntil = Time.time + .42f;
             invulnFrom = Time.time + .03f;
             invulnUntil = invulnFrom + Stats[Stat.DodgeWindow];

@@ -18,10 +18,23 @@ namespace FH.Game
         public string LastHitText { get; private set; } = "-";
         GameSession S;
         RectTransform panel;
-        Text overlay;
+        Text overlay, reticle;
         LineRenderer blade;
         readonly List<GameObject> markers = new List<GameObject>();
         float overlayClock;
+
+        public static readonly (string id, string label)[] Weapons = { ("sword_shield", "Sword and Shield"), ("lance", "Lance"), ("bow", "Bow") };
+
+        /// <summary>Puts another weapon in the hunter's hands (sheathed): its moveset, its pieces, its controls.</summary>
+        public void SetWeapon(string id)
+        {
+            if (!S.Db.HuntMovesets.TryGetValue(id, out var set) || !S.Hunter.Hunt) return;
+            S.Hunter.CancelActions();
+            S.Hunter.Hunt.Equip(set);
+            S.Hud?.Flash(set.name + " in hand");
+            S.Hud?.Notify(set.name + ": " + (set.Class == WeaponClass.Lance ? "thrust, guard, counter and charge; hop instead of rolling." :
+                set.Class == WeaponClass.Bow ? "draw and charge shots, sidestep to charge, power shot, arc shot, Dragon Piercer; RB aims." : "fast slashes, charged heavy, shield bash, guard."), NoticeKind.Story);
+        }
 
         public static readonly (string id, string label)[] Monsters =
             { ("gravebound", "Gravebound"), ("grave_warden", "Grave Warden"), ("thornback", "Thornback"), ("mirejaw", "Mirejaw") };
@@ -53,6 +66,7 @@ namespace FH.Game
             if (S && S.Hound) { Destroy(S.Hound.gameObject); S.Hound = null; }
             ClearMonsters();
             if (panel) Destroy(panel.gameObject);
+            if (reticle) Destroy(reticle.gameObject);
             if (blade) Destroy(blade.gameObject);
             ClearMarkers();
         }
@@ -117,8 +131,22 @@ namespace FH.Game
             Cursor.lockState = play ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !play;
             UpdateVolumes();
+            UpdateReticle();
             overlayClock -= Time.unscaledDeltaTime;
             if (overlayClock <= 0) { overlayClock = .1f; UpdateOverlay(); }
+        }
+
+        /// <summary>Bow: a crosshair while aiming or drawing, with one pip per charge level (gold at full).</summary>
+        void UpdateReticle()
+        {
+            var f = S.Hunter.Hunt;
+            bool show = f && f.Class == WeaponClass.Bow && (f.Aiming || f.Drawing) && S.Simulating;
+            reticle.gameObject.SetActive(show);
+            if (!show) return;
+            int level = f.BowLevel, max = f.Set.MaxLevel;
+            var pips = new StringBuilder();
+            for (int i = 1; i <= max; i++) pips.Append(i <= level ? (level >= max ? "<color=#ffb347>●</color>" : "<color=#fff2c0>●</color>") : "<color=#ffffff55>○</color>");
+            reticle.text = (f.Aiming ? "<size=40>+</size>\n" : "\n") + "<size=20>" + pips + "</size>";
         }
 
         void BuildOverlay()
@@ -128,6 +156,9 @@ namespace FH.Game
             overlay = UiKit.Label("Proving overlay text", panel, "", 16, UiKit.Text, TextAnchor.UpperLeft);
             overlay.rectTransform.Stretch(10);
             overlay.supportRichText = true;
+            reticle = UiKit.Label("Bow reticle", S.Ui.HudLayer, "", 34, Color.white, TextAnchor.MiddleCenter);
+            reticle.rectTransform.Box(new Vector2(.5f, .5f), Vector2.zero, new Vector2(320, 90));
+            reticle.supportRichText = true;
         }
 
         void UpdateOverlay()
@@ -140,7 +171,10 @@ namespace FH.Game
             if (f)
             {
                 sb.Append("Weapon ").Append(f.Set.name).Append(f.Sheathed ? "  sheathed" : "  drawn").Append(f.Guarding ? "  GUARD" : "")
-                  .Append(f.Charging ? "  CHARGING " + f.ChargeHeld.ToString("0.0") + " s  level " + f.ChargeLevel : "").Append('\n');
+                  .Append(f.Charging ? "  CHARGING " + f.ChargeHeld.ToString("0.0") + " s  level " + f.ChargeLevel : "")
+                  .Append(f.CounterStance ? "  <color=#9cf>COUNTER STANCE</color>" : "")
+                  .Append(f.Class == WeaponClass.Bow ? "  charge level " + f.BowLevel + (f.Drawing ? " (drawing)" : "") + (f.Aiming ? "  AIMING" : "") + "   last shot L" + f.LastShotLevel + " x" + f.LastShotArrows + "   arrows fired " + ArrowShot.Fired + ", hits " + ArrowShot.Landed : "")
+                  .Append(f.Class == WeaponClass.Lance ? "  retributions " + f.Retributions + (f.ChainedDodges > 0 ? "  hops " + f.ChainedDodges : "") : "").Append('\n');
                 var cur = f.Current;
                 if (cur != null)
                     sb.Append("Move <b>").Append(cur.name ?? cur.id).Append("</b>  ").Append(h.Attack.Phase).Append("  ").Append(h.Attack.Time.ToString("0.00")).Append(" / ").Append(cur.Total.ToString("0.00"))
