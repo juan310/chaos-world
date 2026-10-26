@@ -1,7 +1,10 @@
 # Blender (headless): a new hunter body from a SightForge Forge model job (local TripoSG, picture -> rigged mesh) on the
 # game's KayKit hunter skeleton, so every clip the game plays (sword, lance, bow, katana, evasions, riding: all of
 # Hunter.blend's actions) and every weapon socket works unchanged.
-#   blender -b SourceArt/Hunter.blend --python Tools/build_hunter_variant.py -- <forge job dir> <Name>
+#   blender -b SourceArt/Hunter.blend --python Tools/build_hunter_variant.py -- <forge job dir> <Name> [weapon scale]
+#   blender -b SourceArt/Gravebound.blend --python Tools/build_hunter_variant.py -- <forge job dir> <Resource> 1 --monster
+# (--monster: a KayKit skeleton's clips for a monster body whose weapons are part of the painted mesh; writes
+# Models/<Resource>.fbx. Without it: Models/Hunter_<Name>.fbx with the hunter's weapons re-seated in the new hands.)
 # Steps: the Forge body is scaled to the KayKit hunter's height (weapons keep their size in the game); each Forge bone
 # is turned to point the way its KayKit bone points at rest (A-pose -> the KayKit T-pose) and that pose is applied to
 # the mesh; the KayKit bones are moved onto the body's joints, keeping their directions and rolls (so the clips' bone
@@ -13,7 +16,10 @@ from pathlib import Path
 from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:]
+MONSTER = '--monster' in argv
+argv = [a for a in argv if a != '--monster']
 JOB, NAME = Path(argv[0]), argv[1]
+OUT = NAME if MONSTER else 'Hunter_' + NAME
 r = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
 dest = r / 'Assets/Resources/Models'
 preview = r / 'Captures/HunterVariants'
@@ -22,8 +28,8 @@ report = {'name': NAME, 'job': str(JOB)}
 
 rig = bpy.data.objects['Rig']
 kb = {b.name: b for b in rig.data.bones}
-old_meshes = [o for o in bpy.data.objects if o.type == 'MESH' and o.name.startswith('Knight_')]
-weapons = [o for o in bpy.data.objects if o.type == 'MESH' and not o.name.startswith('Knight_')]
+old_meshes = [o for o in bpy.data.objects if o.type == 'MESH' and (MONSTER or o.name.startswith('Knight_'))]
+weapons = [o for o in bpy.data.objects if o.type == 'MESH' and o not in old_meshes]
 
 
 def world_bounds(objs):
@@ -37,6 +43,7 @@ def world_bounds(objs):
 
 
 k_lo, k_hi = world_bounds([o for o in old_meshes if o.name != 'Knight_Cape'])
+report['monster'] = MONSTER
 report['kaykitHeight'] = k_hi - k_lo
 
 # ---- the Forge model
@@ -52,6 +59,9 @@ f_lo, f_hi = world_bounds([body])
 s = (k_hi - k_lo) / (f_hi - f_lo)
 F.scale = (s, s, s)
 F.location.z -= f_lo * s
+bpy.context.view_layer.update()
+hip = F.matrix_world @ F.data.bones['Hips'].head_local          # the hips over the origin, as on the KayKit rig
+F.location.x -= hip.x; F.location.y -= hip.y
 bpy.context.view_layer.update()
 report['forgeHeight'] = f_hi - f_lo; report['scale'] = s
 
@@ -229,7 +239,7 @@ for v, ws in zip(body.data.vertices, acc):
         groups[k] = g
         g.add([v.index], w / tot, 'REPLACE')
 report['unweighted'] = unweighted
-body.name = 'Hunter_' + NAME + '_Body'
+body.name = OUT + '_Body'
 body.parent = rig
 arm = body.modifiers.new('Armature', 'ARMATURE'); arm.object = rig
 
@@ -239,7 +249,7 @@ for o in old_meshes:
 # The body's texture (Forge paints one picture for the whole mesh).
 img = next((n.image for m in body.data.materials if m and m.use_nodes for n in m.node_tree.nodes if n.type == 'TEX_IMAGE' and n.image), None)
 if img:
-    img.filepath_raw = str(dest / ('Hunter_' + NAME + '_texture.png')); img.file_format = 'PNG'; img.save()
+    img.filepath_raw = str(dest / (OUT + '_texture.png')); img.file_format = 'PNG'; img.save()
 report['texture'] = bool(img)
 
 # ---- previews (front and side, a few clips) to check by eye before Unity
@@ -251,7 +261,7 @@ cam_data = bpy.data.cameras.new('PreviewCam'); cam_data.type = 'ORTHO'; cam_data
 cam = bpy.data.objects.new('PreviewCam', cam_data); scene.collection.objects.link(cam); scene.camera = cam
 rig.animation_data_create()
 shots = []
-SHOW = {'Idle': ('1H_Sword', 'Round_Shield'), '1H_Melee_Attack_Chop': ('1H_Sword', 'Round_Shield'), 'Hunt_Jog': ('1H_Sword', 'Round_Shield'),
+SHOW = {a.name: () for a in bpy.data.actions} if MONSTER else {'Idle': ('1H_Sword', 'Round_Shield'), '1H_Melee_Attack_Chop': ('1H_Sword', 'Round_Shield'), 'Hunt_Jog': ('1H_Sword', 'Round_Shield'),
         'Dodge_Forward': ('1H_Sword', 'Round_Shield'), '2H_Melee_Attack_Chop': ('Hunt_Katana',), 'Bow_Draw': ('Hunt_Bow', 'Hunt_NockedArrow', 'Hunt_Quiver'),
         'Lance_Charge': ('Hunt_Lance', 'Hunt_TowerShield'), 'Ride_Idle': ()}
 for clip, show in SHOW.items():
@@ -277,10 +287,10 @@ for o in weapons:
 bpy.data.objects.remove(cam, do_unlink=True)
 report['previews'] = shots
 
-bpy.ops.export_scene.fbx(filepath=str(dest / ('Hunter_' + NAME + '.fbx')), use_selection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
+bpy.ops.export_scene.fbx(filepath=str(dest / (OUT + '.fbx')), use_selection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
                          add_leaf_bones=False, apply_scale_options='FBX_SCALE_ALL', bake_anim=True, bake_anim_use_nla_strips=False,
                          bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward='-Z', axis_up='Y', path_mode='COPY', embed_textures=False)
 report['actions'] = len(bpy.data.actions)
 (r / 'Docs/Assets').mkdir(parents=True, exist_ok=True)
-(r / 'Docs/Assets' / ('hunter-variant-%s.json' % NAME)).write_text(json.dumps(report, indent=2))
+(r / 'Docs/Assets' / ('model-variant-%s.json' % OUT)).write_text(json.dumps(report, indent=2))
 print('HUNTER_VARIANT', json.dumps({k: report.get(k) for k in ('name', 'scale', 'legRatio', 'armRatio', 'unweighted', 'bonesPlaced', 'actions', 'kaykitHeight', 'swordLengthBefore', 'swordLengthAfter')}), flush=True)
