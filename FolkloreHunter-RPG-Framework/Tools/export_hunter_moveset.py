@@ -146,7 +146,7 @@ for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spi
     bare = name in ('Ride_Idle', 'Sit_Chair_Idle')      # legs must be visible: hide sword, shield and cape for these
     show = LOADOUT[CLIP_LOADOUT.get(name, 'sns')]
     for o in props + hunt_props:
-        o.hide_render = bare or (o.name in ('1H_Sword', 'Round_Shield') + tuple(n for k in LOADOUT.values() for n in k) and o.name not in show)
+        o.hide_render = bare or o.name == 'Hunt_Arrow' or (o.name in ('1H_Sword', 'Round_Shield') + tuple(n for k in LOADOUT.values() for n in k) and o.name not in show)
     if name in CLIP_LOADOUT and name not in ('Blocking',):
         views_now = views[:2] + views[3:]
         if name.startswith('Bow_') and name not in ('Bow_Draw',): views_now = views[1:2] + views[3:]
