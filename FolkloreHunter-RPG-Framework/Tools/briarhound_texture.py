@@ -46,7 +46,7 @@ sign = 1 if sharp_pos > sharp_neg else -1
 # fur shows. It is refilled by diffusion over the surface from the fur around it (charcoal mane above, grey-cream
 # below), then given fur grain (the high-pass of the flank fur a little lower and behind) so it does not look airbrushed.
 pic = sign * N[:, 0] > .15
-shadow = (sign * X[:, 0] > .05) & (sign * X[:, 0] < .37) & (X[:, 1] > -.52) & (X[:, 1] < -.06) & (X[:, 2] > 1.26) & (X[:, 2] < 1.58) & (sign * N[:, 0] > -.2)
+shadow = (sign * X[:, 0] > .05) & (sign * X[:, 0] < .4) & (X[:, 1] > -.56) & (X[:, 1] < -.02) & (X[:, 2] > 1.22) & (X[:, 2] < 1.62) & (sign * N[:, 0] > -.2)
 near = (X[:, 1] > -.7) & (X[:, 1] < .12) & (X[:, 2] > 1.1) & (sign * X[:, 0] > -.05)
 ring = near & ~shadow
 grid = np.nonzero(shadow | ring)[0]; known = ~shadow[grid]
