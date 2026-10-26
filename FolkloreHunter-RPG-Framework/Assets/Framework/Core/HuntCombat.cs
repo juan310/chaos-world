@@ -10,8 +10,11 @@ namespace FH.Core
     // it: sword and shield, lance (guard, counter stance, hops, dash attack) and bow (charge levels, charging
     // sidestep, power shot, arc shot, dragon piercer). Engine-independent.
 
-    public enum HuntInput { None, Light, Heavy, LightHeavy, ForwardLight }
-    public enum WeaponClass { SwordShield, Lance, Bow }
+    public enum HuntInput { None, Light, Heavy, LightHeavy, ForwardLight, Spirit }
+    public enum WeaponClass { SwordShield, Lance, Bow, Katana }
+    /// <summary>Evasions: roll (any direction), side slide and back-step (drawn: the hunter keeps facing forward),
+    /// dive (sprinting away from a monster: long, with a big invulnerable window), lance hop, bow charging sidestep.</summary>
+    public enum EvadeKind { Roll, SideSlide, Backstep, Dive, Hop, Sidestep }
     public enum DodgeStyle { Roll, Hop, Sidestep }
 
     /// <summary>What a ranged move fires. Arrows fan out by <see cref="spread"/> degrees; pierce passes through and hits
@@ -56,6 +59,11 @@ namespace FH.Core
         public float rehit;                 // > 0: the active window strikes again every rehit seconds (multi-hit)
         public float staminaPerSecond;      // drained during the active window; empty stamina ends it early
         public ShotDef shot;                // ranged: what the move fires at the start of its active window
+        public string onSpirit;             // katana: next move on the spirit button (RB)
+        public float spiritCost;            // katana: spirit gauge spent (short of it: the move is weaker)
+        public bool spiritLevelUp;          // katana: landing it raises the spirit level (Spirit Roundslash)
+        public bool spiritCounter;          // katana: a blow caught in its windup is countered (Iai Spirit Slash)
+        public float iaiBuff;               // katana: seconds the gauge refills on its own after this move lands (Iai Slash)
         public HuntMoveDef Clone() => (HuntMoveDef)MemberwiseClone();
     }
 
@@ -65,7 +73,7 @@ namespace FH.Core
         public string id, name;
         public string weaponClass = "SwordShield";
         public WeaponDef weapon;                                // own damage (null: the equipped weapon's)
-        public string light, heavy, lightHeavy, forwardLight;   // openers from neutral
+        public string light, heavy, lightHeavy, forwardLight, spirit;   // openers from neutral (spirit: RB, katana)
         public string drawAttack, rollAttack, counter;          // special openers
         public float rollAttackWindow = .4f, counterWindow = .6f, perfectGuardWindow = .15f;
         public float guardAngle = 70, guardChip = .12f, guardStaminaPerDamage = 1.1f, guardPushback = .45f;
@@ -78,6 +86,10 @@ namespace FH.Core
         public float dodgeDistance = 3f, dodgeTime = .42f, dodgeStamina = 25, dodgeInvulnerable = .25f;
         public int maxChainedDodges = 1;
         public float chainedDodgeWindow = .35f;
+
+        // Katana: spirit gauge and its special moves.
+        public string foresightCounter, foresightSlash, iaiSlash, iaiSpiritSlash, lateralFade;
+        public float spiritPerHit = 9, iaiStanceTime = 3;
 
         // Lance: guard moves.
         public string guardAttack, guardDash, counterRelease, retribution, dashAttack, dashFinisher;
@@ -165,6 +177,77 @@ namespace FH.Core
         }
     }
 
+    /// <summary>Distance, duration, invulnerability and stamina of one evasion, and whether the hunter keeps facing.</summary>
+    public struct EvadeSpec
+    {
+        public EvadeKind Kind;
+        public float Distance, Time, Invulnerable, Stamina, ClipSpeed, Recover;
+        public bool KeepFacing;
+    }
+
+    public static class Evade
+    {
+        /// <summary>Which evasion a press of evade makes. <paramref name="side"/> and <paramref name="front"/> are the
+        /// stick relative to the hunter's facing (right and forward positive); <paramref name="fleeing"/>: sprinting
+        /// away from a nearby monster.</summary>
+        public static EvadeKind Choose(HuntMovesetDef set, bool drawn, bool sprinting, bool fleeing, float side, float front)
+        {
+            if (sprinting && fleeing && !drawn) return EvadeKind.Dive;
+            if (drawn && set.Dodge == DodgeStyle.Hop) return EvadeKind.Hop;
+            if (drawn && set.Dodge == DodgeStyle.Sidestep) return EvadeKind.Sidestep;
+            if (drawn && Math.Abs(side) > .35f && Math.Abs(side) > Math.Abs(front) * 1.2f) return EvadeKind.SideSlide;
+            if (drawn && front < -.35f && -front >= Math.Abs(side)) return EvadeKind.Backstep;
+            return EvadeKind.Roll;
+        }
+
+        public static EvadeSpec Spec(HuntMovesetDef set, EvadeKind kind, float rollInvulnerable)
+        {
+            switch (kind)
+            {
+                case EvadeKind.SideSlide: return new EvadeSpec { Kind = kind, Distance = 2.3f, Time = .3f, Invulnerable = .2f, Stamina = 18, ClipSpeed = 1.8f, KeepFacing = true };
+                case EvadeKind.Backstep: return new EvadeSpec { Kind = kind, Distance = 1.8f, Time = .28f, Invulnerable = .18f, Stamina = 15, ClipSpeed = 1.9f, KeepFacing = true };
+                case EvadeKind.Dive: return new EvadeSpec { Kind = kind, Distance = 4.6f, Time = .55f, Invulnerable = .6f, Stamina = 30, ClipSpeed = .95f, Recover = .45f };
+                case EvadeKind.Hop:
+                case EvadeKind.Sidestep: return new EvadeSpec { Kind = kind, Distance = set.dodgeDistance, Time = set.dodgeTime, Invulnerable = set.dodgeInvulnerable, Stamina = set.dodgeStamina, ClipSpeed = kind == EvadeKind.Hop ? 1.9f : 1.7f, KeepFacing = true };
+                default: return new EvadeSpec { Kind = kind, Distance = 7.2f * .42f, Time = .42f, Invulnerable = rollInvulnerable, Stamina = 25, ClipSpeed = 1.35f };
+            }
+        }
+    }
+
+    /// <summary>Long-sword spirit: normal hits fill the gauge, spirit moves spend it (weaker when short), a landed
+    /// Spirit Roundslash raises the level white -> yellow -> red (more damage), each level fading after a while; the gauge
+    /// drains slowly when not hitting; an Iai Slash makes it refill on its own for a few seconds; a successful
+    /// Foresight Slash fills it.</summary>
+    public class SpiritGauge
+    {
+        public const float Max = 100;
+        public float Value { get; private set; }
+        public int Level { get; private set; }
+        public float LevelDuration = 45, DecayDelay = 4, DecayPerSecond = 5, IaiFillPerSecond = 14;
+        float lastHit = -99, levelAt = -99, iaiUntil = -99;
+
+        public void Hit(float now, float amount) { Value = Math.Min(Max, Value + amount); lastHit = now; }
+        /// <summary>Spends <paramref name="cost"/>; false when the gauge was short (the move goes ahead, weaker).</summary>
+        public bool Spend(float now, float cost)
+        {
+            bool enough = Value >= cost - .001f;
+            Value = Math.Max(0, Value - cost); lastHit = now;
+            return enough;
+        }
+        public void Fill(float now) { Value = Max; lastHit = now; }
+        public void LevelUp(float now) { Level = Math.Min(3, Level + 1); levelAt = now; }
+        public void Iai(float now, float seconds) { iaiUntil = Math.Max(iaiUntil, now + seconds); }
+        public bool IaiActive(float now) => now < iaiUntil;
+        public void Tick(float now, float dt)
+        {
+            if (now < iaiUntil) Value = Math.Min(Max, Value + IaiFillPerSecond * dt);
+            else if (now - lastHit > DecayDelay) Value = Math.Max(0, Value - DecayPerSecond * dt);
+            if (Level > 0 && now - levelAt > LevelDuration) { Level--; levelAt = now; }
+        }
+        public float DamageMultiplier => Level >= 3 ? 1.2f : Level == 2 ? 1.1f : Level == 1 ? 1.05f : 1f;
+        public void Reset() { Value = 0; Level = 0; lastHit = levelAt = iaiUntil = -99; }
+    }
+
     /// <summary>Lance hops / bow sidesteps / rolls: consecutive dodges (inside the chain window) up to a limit.</summary>
     public class DodgeChain
     {
@@ -201,6 +284,7 @@ namespace FH.Core
                 case HuntInput.ForwardLight: return set.Move(set.forwardLight) ?? set.Move(set.light);
                 case HuntInput.Heavy: return set.Move(set.heavy);
                 case HuntInput.LightHeavy: return set.Move(set.lightHeavy);
+                case HuntInput.Spirit: return set.Move(set.spirit);
                 default: return null;
             }
         }
@@ -214,6 +298,7 @@ namespace FH.Core
                 case HuntInput.Light: case HuntInput.ForwardLight: return set.Move(current.onLight);
                 case HuntInput.Heavy: return set.Move(current.onHeavy);
                 case HuntInput.LightHeavy: return set.Move(current.onLightHeavy) ?? set.Move(set.lightHeavy);
+                case HuntInput.Spirit: return set.Move(current.onSpirit) ?? set.Move(set.spirit);
                 default: return null;
             }
         }

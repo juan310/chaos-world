@@ -136,13 +136,14 @@ namespace FH.Core
                 var ids = new HashSet<string>(set.moves.Select(x => x.id));
                 foreach (var opener in new[] { set.light, set.heavy, set.lightHeavy, set.forwardLight, set.drawAttack, set.rollAttack, set.counter,
                                                set.guardAttack, set.guardDash, set.counterRelease, set.retribution, set.dashAttack, set.dashFinisher,
-                                               set.shot, set.chargedShot, set.powerShot, set.arcShot, set.dragonPiercer })
+                                               set.shot, set.chargedShot, set.powerShot, set.arcShot, set.dragonPiercer, set.spirit,
+                                               set.foresightCounter, set.foresightSlash, set.iaiSlash, set.iaiSpiritSlash, set.lateralFade })
                     if (!string.IsNullOrEmpty(opener) && !ids.Contains(opener)) Errors.Add("Hunt moveset " + set.id + " opener '" + opener + "' is not one of its moves");
                 foreach (var mv in set.moves)
                 {
                     if (string.IsNullOrEmpty(mv.anim)) Errors.Add("Hunt move " + set.id + "." + mv.id + " has no animation");
                     if (mv.windup < 0 || mv.active <= 0 || mv.recovery < 0) Errors.Add("Hunt move " + set.id + "." + mv.id + " has invalid timing");
-                    foreach (var next in new[] { mv.onLight, mv.onHeavy, mv.onLightHeavy })
+                    foreach (var next in new[] { mv.onLight, mv.onHeavy, mv.onLightHeavy, mv.onSpirit })
                         if (!string.IsNullOrEmpty(next) && !ids.Contains(next)) Errors.Add("Hunt move " + set.id + "." + mv.id + " routes to unknown move '" + next + "'");
                 }
                 if (set.chargeMultipliers.Count < 3) Errors.Add("Hunt moveset " + set.id + " needs three charge multipliers");
@@ -156,6 +157,8 @@ namespace FH.Core
                     foreach (var id in new[] { set.shot, set.powerShot, set.arcShot, set.dragonPiercer })
                         if (set.Move(id) != null && set.Move(id).shot == null) Errors.Add("Hunt move " + set.id + "." + id + " is a bow shot without a shot definition");
                 }
+                if (wc == WeaponClass.Katana && (set.Move(set.spirit) == null || set.Move(set.foresightCounter) == null || set.Move(set.iaiSpiritSlash) == null || !set.moves.Any(m => m.spiritLevelUp)))
+                    Errors.Add("Hunt moveset " + set.id + " (katana) needs a spirit opener, foresight counter, iai spirit slash and a level-up move");
                 if (set.weapon != null && set.weapon.baseDamage <= 0) Errors.Add("Hunt moveset " + set.id + " weapon needs base damage");
                 foreach (var mv in set.moves)
                     if (mv.shot != null && (mv.shot.arrows < 1 || mv.shot.speed <= 0)) Errors.Add("Hunt move " + set.id + "." + mv.id + " has an invalid shot");

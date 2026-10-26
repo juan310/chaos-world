@@ -11,14 +11,14 @@ namespace FH.Tests
         static HuntMovesetDef Bow() => TestSupport.Db().HuntMovesets["bow"];
 
         [Test]
-        public void ThreeWeaponClassesShipAndEveryRouteResolves()
+        public void FourWeaponClassesShipAndEveryRouteResolves()
         {
             var db = TestSupport.Db();
             Assert.That(db.Errors, Is.Empty);
-            Assert.That(db.HuntMovesets.Values.Select(s => s.Class), Is.EquivalentTo(new[] { WeaponClass.SwordShield, WeaponClass.Lance, WeaponClass.Bow }));
+            Assert.That(db.HuntMovesets.Values.Select(s => s.Class), Is.EquivalentTo(new[] { WeaponClass.SwordShield, WeaponClass.Lance, WeaponClass.Bow, WeaponClass.Katana }));
             foreach (var set in db.HuntMovesets.Values)
                 foreach (var m in set.moves)
-                    foreach (var next in new[] { m.onLight, m.onHeavy, m.onLightHeavy, m.maxChargeMove }.Where(x => !string.IsNullOrEmpty(x)))
+                    foreach (var next in new[] { m.onLight, m.onHeavy, m.onLightHeavy, m.maxChargeMove, m.onSpirit }.Where(x => !string.IsNullOrEmpty(x)))
                         Assert.That(set.Move(next), Is.Not.Null, set.id + "." + m.id + " -> " + next);
         }
 
