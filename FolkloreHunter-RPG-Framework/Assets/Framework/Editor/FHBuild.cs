@@ -75,6 +75,7 @@ public static class FHBuild
     [MenuItem("Folklore Hunter/Build Windows player")]
     public static void Build()
     {
+        ReferenceMonsterAssets.PrepareCompanion();
         GenerateScene();
         PlayerSettings.companyName = "Folklore Hunter";
         PlayerSettings.productName = "Folklore Hunter - Rise of the Estate";

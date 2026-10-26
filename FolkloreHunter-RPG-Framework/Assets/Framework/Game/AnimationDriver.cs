@@ -128,22 +128,35 @@ namespace FH.Game
             var st = State(name);
             if (st == null || footL == null || footR == null) return 0;
             var saved = SavePose();
-            float minL = 1e9f, maxL = -1e9f, minR = 1e9f, maxR = -1e9f;
+            const int N = 48;
+            var z = new float[2, N + 1]; var y = new float[2, N + 1];
             st.enabled = true; st.weight = 1;
-            for (int i = 0; i <= 32; i++)
+            for (int i = 0; i <= N; i++)
             {
-                st.time = st.length * i / 32f;
+                st.time = st.length * i / N;
                 Anim.Sample();
-                float zl = space.InverseTransformPoint(footL.position).z * space.lossyScale.z;
-                float zr = space.InverseTransformPoint(footR.position).z * space.lossyScale.z;
-                minL = Mathf.Min(minL, zl); maxL = Mathf.Max(maxL, zl);
-                minR = Mathf.Min(minR, zr); maxR = Mathf.Max(maxR, zr);
+                for (int f = 0; f < 2; f++)
+                {
+                    var p = space.InverseTransformPoint((f == 0 ? footL : footR).position);
+                    z[f, i] = p.z * space.lossyScale.z; y[f, i] = p.y * space.lossyScale.y;
+                }
             }
             st.enabled = false;
             RestorePose(saved);
-            // Each foot sweeps its stride backwards while planted, about half the cycle.
-            float stride = ((maxL - minL) + (maxR - minR)) * .5f;
-            float speed = stride / (st.length * .5f);
+            // Planted feet (within 2 cm of their lowest point) sweep backwards at the ground speed the clip was authored
+            // for; that is exact for IK-planted clips whatever share of the cycle a foot is down (a gallop's is short).
+            float sum = 0; int n = 0, dt = 0;
+            float stride = 0;
+            for (int f = 0; f < 2; f++)
+            {
+                float low = 1e9f, min = 1e9f, max = -1e9f;
+                for (int i = 0; i <= N; i++) { low = Mathf.Min(low, y[f, i]); min = Mathf.Min(min, z[f, i]); max = Mathf.Max(max, z[f, i]); }
+                stride += (max - min) * .5f;
+                for (int i = 0; i < N; i++)
+                    if (y[f, i] < low + .02f && y[f, i + 1] < low + .02f && z[f, i + 1] < z[f, i]) { sum += z[f, i] - z[f, i + 1]; dt++; n++; }
+            }
+            // Fallback for clips without a clean planted phase: each foot sweeps its stride over about half the cycle.
+            float speed = n >= 6 ? sum / (dt * st.length / N) : stride / (st.length * .5f);
             strideCache[name] = speed;
             return speed;
         }

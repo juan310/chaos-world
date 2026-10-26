@@ -44,7 +44,7 @@ def smooth(v, a, b):
 hsel = (V[:, 2] > 1.5) & (V[:, 1] > -.95) & (V[:, 1] < -.4) & (V[:, 0] > -.3) & (V[:, 0] < .35)
 HC = V[hsel].mean(0)
 blade_rear = (V[:, 0] > .36) & (V[:, 1] > -.5) & (V[:, 1] < -.1) & (V[:, 2] > 1.28) & (V[:, 2] < 1.56)
-w = smooth(V[:, 2], 1.05, 1.35) * (1 - smooth(V[:, 1], -.45, -.15))
+w = smooth(V[:, 2], .95, 1.4) * (1 - smooth(V[:, 1], -.6, 0))     # wide falloff: the mane twists gently
 w[blade_rear] = 1
 a = -math.radians(TURN) * w
 rel = V[:, :2] - HC[:2]
@@ -277,8 +277,8 @@ def walk(t):
 def gallop(t):
     gait(t, GALLOP, .36, .94, .2)
     flex = s(t, .1)
-    move_root((0, 0, .03 * s(t * 2, .2)))
-    rot('hips', (1, 0, 0), 4 * flex); rot('spine', (1, 0, 0), -2 * flex); rot('chest', (1, 0, 0), -3 * flex)
+    move_root((0, 0, .018 * s(t * 2, .2)))
+    rot('hips', (1, 0, 0), 2.2 * flex); rot('spine', (1, 0, 0), -1.2 * flex); rot('chest', (1, 0, 0), -2 * flex)
     rot('neck', (1, 0, 0), 4 * flex - 4); rot('head', (1, 0, 0), -3 * flex + 4)           # counter-pitch: steady head
     for e in ('ear.l', 'ear.r'): rot(e, (1, 0, 0), 25)
     tail_sway(t, 3, lift=-8 + 4 * flex)
@@ -303,13 +303,15 @@ def bite(t):
 
 
 def sit_pose(a):
-    move_root((0, .1 * a, -.36 * a))
-    rot('hips', (1, 0, 0), -24 * a); rot('spine', (1, 0, 0), -4 * a); rot('chest', (1, 0, 0), 6 * a)
-    rot('neck', (1, 0, 0), 10 * a)
-    for k in ('hind.l', 'hind.r'): paw(k, -.18 * a, 0, -20 * a)
-    for k in ('fore.l', 'fore.r'): paw(k, -.05 * a)
-    for n in ('tail_1',):
-        if n in pb: rot(n, (1, 0, 0), 30 * a)
+    # The whole body pitches nose-up about the shoulders (they stay put, so the straight front legs keep their paws
+    # planted) and the rump drops; the hind legs fold until the hocks rest on the ground with the hind paws flat.
+    th = 17 * a
+    shoulder = Vector((0, fy, zc))
+    R = Matrix.Rotation(math.radians(-th), 3, 'X')
+    rot('root', (1, 0, 0), -th); move_root(shoulder - R @ shoulder)
+    rot('chest', (1, 0, 0), 5 * a); rot('neck', (1, 0, 0), 8 * a)
+    for k in ('hind.l', 'hind.r'): paw(k, -.12 * a, -.21 * a, -48 * a)
+    if 'tail_1' in pb: rot('tail_1', (1, 0, 0), 28 * a)
 
 
 def sit(t):
@@ -388,7 +390,7 @@ scene.render.resolution_x = 640; scene.render.resolution_y = 480; scene.render.f
 cd = bpy.data.cameras.new('PreviewCam'); cd.type = 'ORTHO'; cd.ortho_scale = 3.6
 cam = bpy.data.objects.new('PreviewCam', cd); scene.collection.objects.link(cam); scene.camera = cam
 views = {'side': ((6, 0, 1.0), (math.radians(90), 0, math.radians(90))), 'front': ((0, -6, 1.0), (math.radians(90), 0, 0)),
-         'threequarter': ((4.2, -4.2, 3.2), (math.radians(62), 0, math.radians(45))), 'top': ((0, 0, 7), (0, 0, 0))}
+         'threequarter': ((4.2, -4.2, 2.7), (math.radians(64), 0, math.radians(45))), 'top': ((0, 0, 7), (0, 0, 0))}
 shots = []
 for a in actions:
     arm.animation_data.action = a; n = int(a.frame_range[1])

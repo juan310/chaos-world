@@ -1,7 +1,8 @@
 """Step 2 of the Briarhound build: the studio texture is sharp only on the side the concept art shows (about 30% of what
 can be seen); the far side was guessed and comes out smeared. A wolf-dog is close to mirror-symmetric, so each texel on
 the far side takes its colour from the mirrored point on the picture side (same height, same place along the body,
-other flank), when that point lies on the surface and faces the mirrored way. Texels without a good match (the blade's
+other flank), when that point lies on the surface and faces the mirrored way. First, the neck fur the art hides
+behind the blade's rear half (painted blade-grey) is repainted from the mane above it. Texels without a good match (the blade's
 back, the turned head's far cheek) keep the studio's colours. Writes Assets/Resources/Monsters/Briarhound_basecolor.png.
   python Tools/briarhound_texture.py"""
 from pathlib import Path
@@ -41,6 +42,14 @@ flank = np.abs(N[:, 0]) > .5
 sharp_pos = detail[flank & (N[:, 0] > 0)].mean(); sharp_neg = detail[flank & (N[:, 0] < 0)].mean()
 sign = 1 if sharp_pos > sharp_neg else -1
 
+# The art paints the blade's rear half onto the neck behind it; once the head is turned forward (rig step) that neck
+# fur shows, so it takes the colour of the mane just above it (nearest picture-side texel, 20 cm higher).
+pic = sign * N[:, 0] > .15
+shadow = (sign * X[:, 0] > .05) & (sign * X[:, 0] < .37) & (X[:, 1] > -.52) & (X[:, 1] < -.06) & (X[:, 2] > 1.26) & (X[:, 2] < 1.58) & (sign * N[:, 0] > -.2)
+donor = pic & ~shadow & (X[:, 1] > -.6) & (X[:, 1] < .05) & (X[:, 2] > 1.2)
+dd, dn = cKDTree(X[donor]).query(X[shadow] + [0, 0, .2], k=6)
+dw = np.exp(-dd / .03); dcol = (tex[ys[donor], xs[donor]].astype(np.float32)[dn] * dw[..., None]).sum(1) / dw.sum(1)[:, None]
+tex = tex.copy(); tex[ys[shadow], xs[shadow]] = np.clip(dcol, 0, 255).astype(np.uint8)
 src = (sign * N[:, 0] > .15) & (sign * X[:, 0] > -.02 * H)
 dst = (sign * N[:, 0] < -.05) & (sign * X[:, 0] < .02 * H)
 tree = cKDTree(X[src])
@@ -76,6 +85,6 @@ cv2.imwrite(str(dest / 'Briarhound_basecolor.png'), out)
 cv2.imwrite(str(work / 'texture_mirrored_preview.png'), cv2.resize(np.hstack([tex, out]), (2048, 1024)))
 rep = {'pictureSide': '+X (animal left)' if sign > 0 else '-X (animal right)', 'detailPictureSide': float(max(sharp_pos, sharp_neg)),
        'detailGuessedSide': float(min(sharp_pos, sharp_neg)), 'texelsCovered': int(len(ids)), 'farSideTexels': int(dst.sum()),
-       'mirrored': int(ok.sum()), 'mirroredShare': float(ok.sum() / max(1, dst.sum()))}
+       'mirrored': int(ok.sum()), 'bladeShadowRepainted': int(shadow.sum()), 'mirroredShare': float(ok.sum() / max(1, dst.sum()))}
 (work / 'texture.json').write_text(json.dumps(rep, indent=2))
 print('BRIARHOUND_TEXTURE', json.dumps(rep), flush=True)
