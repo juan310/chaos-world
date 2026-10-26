@@ -5,6 +5,8 @@
 #   blender -b --python Tools/export_hunter_moveset.py -- [legSpread] [legDrop]
 import bpy, json, math, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hunter_weapons
 from mathutils import Quaternion, Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
@@ -27,9 +29,12 @@ wanted = [
     # locomotion while locked on, sprinting, items, riding base poses
     'Running_B', 'Running_Strafe_Left', 'Running_Strafe_Right', 'Walking_Backwards', 'Walking_B',
     'Use_Item', 'PickUp', 'Cheer', 'Throw', 'Spellcast_Raise', 'Jump_Start', 'Jump_Idle', 'Jump_Land', 'Jump_Full_Short',
-    'Sit_Chair_Idle', 'Sit_Floor_Idle']
+    'Sit_Chair_Idle', 'Sit_Floor_Idle',
+    # lance and bow (0.7): thrusts, guard thrust, aiming and shooting
+    '1H_Ranged_Aiming', '1H_Ranged_Shoot', '1H_Ranged_Shooting', '1H_Ranged_Reload', '2H_Ranged_Aiming', '2H_Ranged_Shoot',
+    '2H_Melee_Attack_Stab', '2H_Melee_Attack_Spinning', 'Spellcast_Long']
 keep_meshes = ['Knight_ArmLeft', 'Knight_ArmRight', 'Knight_Body', 'Knight_Cape', 'Knight_Head', 'Knight_Helmet',
-               'Knight_LegLeft', 'Knight_LegRight', '1H_Sword', 'Round_Shield']
+               'Knight_LegLeft', 'Knight_LegRight', '1H_Sword', 'Round_Shield', 'Rectangle_Shield']
 
 
 def fcurves(action):
@@ -90,6 +95,12 @@ for side, sign in (('l', 1), ('r', -1)):
             curves[i].keyframe_points[k].handle_left[1] = q2[i]
             curves[i].keyframe_points[k].handle_right[1] = q2[i]
 
+# Lance and bow (0.7): new weapon meshes on the hand/back slots, and the clips derived for them.
+atlas = next(im for im in bpy.data.images if im.size[0] > 0 and im.name not in ('Render Result', 'Viewer Node'))
+weapons = hunter_weapons.build_weapons(rig, bpy.data.objects['1H_Sword'], bpy.data.objects['Rectangle_Shield'], atlas)
+bpy.data.objects.remove(bpy.data.objects['Rectangle_Shield'], do_unlink=True)   # only its enlarged copy ships
+derived, arm_bones = hunter_weapons.derive_clips(rig)
+
 for im in bpy.data.images:
     if im.name in ['Render Result', 'Viewer Node']:
         continue
@@ -108,9 +119,13 @@ cam = bpy.data.objects.new('PreviewCam', cam_data); scene.collection.objects.lin
 rig.animation_data_create()
 shots = []
 props = [o for o in bpy.data.objects if o.name in ('1H_Sword', 'Round_Shield', 'Knight_Cape')]
+hunt_props = [o for o in bpy.data.objects if o.name.startswith('Hunt_')]
+LOADOUT = {'sns': ('1H_Sword', 'Round_Shield'), 'lance': ('Hunt_Lance', 'Hunt_TowerShield'), 'bow': ('Hunt_Bow', 'Hunt_Quiver')}
 views = (('front', (0, -6, 1.0), (math.radians(90), 0, 0)), ('side', (6, 0, 1.0), (math.radians(90), 0, math.radians(90))),
          ('right', (-6, 0, 1.0), (math.radians(90), 0, math.radians(-90))), ('threequarter', (4.2, -4.2, 2.6), (math.radians(68), 0, math.radians(45))))
-for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spin', 'Lie_Down', 'Use_Item']:
+CLIP_LOADOUT = {'1H_Melee_Attack_Stab': 'lance', 'Lance_High_Thrust': 'lance', 'Lance_Charge': 'lance', 'Blocking': 'lance',
+                '1H_Ranged_Aiming': 'bow', '1H_Ranged_Shoot': 'bow', 'Bow_Aim_Walk': 'bow'}
+for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spin', 'Lie_Down', 'Use_Item'] + list(CLIP_LOADOUT):
     act = bpy.data.actions.get(name)
     if not act:
         continue
@@ -123,16 +138,21 @@ for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spi
     f0, f1 = act.frame_range
     scene.frame_set(int(f0 + (f1 - f0) * .5))
     bare = name in ('Ride_Idle', 'Sit_Chair_Idle')      # legs must be visible: hide sword, shield and cape for these
-    for o in props:
-        o.hide_render = bare
-    for view, loc, rot in (views if bare else views[:2]):
+    show = LOADOUT[CLIP_LOADOUT.get(name, 'sns')]
+    for o in props + hunt_props:
+        o.hide_render = bare or (o.name in ('1H_Sword', 'Round_Shield') + tuple(n for k in LOADOUT.values() for n in k) and o.name not in show)
+    if name in CLIP_LOADOUT and name not in ('Blocking',):
+        views_now = views[:2] + views[3:]
+    else:
+        views_now = views if bare else views[:2]
+    for view, loc, rot in views_now:
         cam.location = loc; cam.rotation_euler = rot
         out = preview / ('%s_%s.png' % (name, view))
         scene.render.filepath = str(out)
         bpy.ops.render.render(write_still=True)
         shots.append(str(out))
 rig.animation_data.action = None
-for o in props:
+for o in props + hunt_props:
     o.hide_render = False
 
 bpy.data.objects.remove(cam, do_unlink=True)
@@ -140,7 +160,8 @@ bpy.ops.export_scene.fbx(filepath=str(dest / 'Hunter.fbx'), use_selection=False,
                          add_leaf_bones=False, apply_scale_options='FBX_SCALE_ALL', bake_anim=True, bake_anim_use_nla_strips=False,
                          bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward='-Z', axis_up='Y', path_mode='COPY', embed_textures=False)
 bpy.ops.wm.save_as_mainfile(filepath=str(source / 'Hunter.blend'))
-result = {'source': str(src), 'output': 'Hunter.fbx', 'license': 'CC0 (KayKit Character Pack: Adventures)', 'spread': SPREAD, 'drop': DROP,
+result = {'source': str(src), 'output': 'Hunter.fbx', 'license': 'CC0 (KayKit Character Pack: Adventures); Hunt_* weapons are original geometry made for this project',
+          'spread': SPREAD, 'drop': DROP, 'weapons': sorted(weapons), 'derivedClips': [a.name for a in derived], 'armBones': arm_bones,
           'actions': sorted(a.name for a in bpy.data.actions), 'missing': missing,
           'meshes': sorted(o.name for o in bpy.data.objects if o.type == 'MESH'), 'previews': shots}
 (r / 'Docs/Assets/hunter-moveset-export.json').write_text(json.dumps(result, indent=2))
