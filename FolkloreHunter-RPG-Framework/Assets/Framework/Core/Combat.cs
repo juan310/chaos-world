@@ -24,6 +24,15 @@ namespace FH.Core
 
         public void Cancel() { Phase = AttackPhase.None; ChainBuffered = false; }
 
+        /// <summary>Multi-hit moves: a new swing id, so every target may be struck again.</summary>
+        public void NewSwing() => SwingId++;
+
+        /// <summary>Ends the active window now (a travelling move that ran out of stamina): straight to recovery.</summary>
+        public void EndActive()
+        {
+            if (Phase == AttackPhase.Windup || Phase == AttackPhase.Active) { Time = Def.windup + Def.active; Phase = AttackPhase.Recovery; }
+        }
+
         /// <summary>Advances time; returns the phase transitions crossed (in order) so short frames never skip an active window.</summary>
         public List<AttackPhase> Tick(float dt)
         {

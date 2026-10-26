@@ -134,7 +134,9 @@ namespace FH.Core
             foreach (var set in HuntMovesets.Values)
             {
                 var ids = new HashSet<string>(set.moves.Select(x => x.id));
-                foreach (var opener in new[] { set.light, set.heavy, set.lightHeavy, set.forwardLight, set.drawAttack, set.rollAttack, set.counter })
+                foreach (var opener in new[] { set.light, set.heavy, set.lightHeavy, set.forwardLight, set.drawAttack, set.rollAttack, set.counter,
+                                               set.guardAttack, set.guardDash, set.counterRelease, set.retribution, set.dashAttack, set.dashFinisher,
+                                               set.shot, set.chargedShot, set.powerShot, set.arcShot, set.dragonPiercer })
                     if (!string.IsNullOrEmpty(opener) && !ids.Contains(opener)) Errors.Add("Hunt moveset " + set.id + " opener '" + opener + "' is not one of its moves");
                 foreach (var mv in set.moves)
                 {
@@ -144,6 +146,19 @@ namespace FH.Core
                         if (!string.IsNullOrEmpty(next) && !ids.Contains(next)) Errors.Add("Hunt move " + set.id + "." + mv.id + " routes to unknown move '" + next + "'");
                 }
                 if (set.chargeMultipliers.Count < 3) Errors.Add("Hunt moveset " + set.id + " needs three charge multipliers");
+                if (!Enum.TryParse(set.weaponClass, true, out WeaponClass wc)) Errors.Add("Hunt moveset " + set.id + " has unknown weapon class '" + set.weaponClass + "'");
+                if (!Enum.TryParse(set.dodge, true, out DodgeStyle _)) Errors.Add("Hunt moveset " + set.id + " has unknown dodge '" + set.dodge + "'");
+                if (wc == WeaponClass.Bow)
+                {
+                    if (set.shotLevels.Count < 2) Errors.Add("Hunt moveset " + set.id + " (bow) needs at least two charge levels");
+                    if (set.chargeTimes.Count < set.shotLevels.Count - 1 || set.chargeTimes.Zip(set.chargeTimes.Skip(1), (x, y) => y <= x).Any(b => b))
+                        Errors.Add("Hunt moveset " + set.id + " (bow) charge times must rise, one per level after the first");
+                    foreach (var id in new[] { set.shot, set.powerShot, set.arcShot, set.dragonPiercer })
+                        if (set.Move(id) != null && set.Move(id).shot == null) Errors.Add("Hunt move " + set.id + "." + id + " is a bow shot without a shot definition");
+                }
+                if (set.weapon != null && set.weapon.baseDamage <= 0) Errors.Add("Hunt moveset " + set.id + " weapon needs base damage");
+                foreach (var mv in set.moves)
+                    if (mv.shot != null && (mv.shot.arrows < 1 || mv.shot.speed <= 0)) Errors.Add("Hunt move " + set.id + "." + mv.id + " has an invalid shot");
             }
             foreach (var m in Monsters.Values)
             {
