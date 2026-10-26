@@ -24,6 +24,12 @@ namespace FH.Game
         public bool Unkillable;
         public float HitstopUntil;
         public MonsterReactions Reactions { get; private set; }
+        /// <summary>Hunt rules: 1 normal, 2 enraged, 3 desperate (HuntBoss).</summary>
+        public int Phase { get; private set; } = 1;
+        public int MaxPhase { get; private set; } = 1;
+        public string LastAttackId { get; private set; } = "";
+        System.Random bossRng;
+        Vector3 leapFrom, leapTo; float leapHeight;
         float getUpUntil;
         public Vector3 Home;
         public Vector3 AttackCenter {
@@ -142,11 +148,69 @@ namespace FH.Game
             else Brain.Settle();   // never wanders home (which would heal it to full)
         }
 
+        /// <summary>The Proving Grounds and Training Range: Monster Hunter rules (flinch, topple, enrage) and the boss
+        /// version of the monster: tougher, with its area attacks, phases, situational choice and combos (HuntBoss).</summary>
+        public void EnableHuntRules()
+        {
+            if (HuntRules) return;
+            HuntRules = true;
+            float frac = Def.maxHealth > 0 ? Brain.Health / Def.maxHealth : 1;
+            var hunt = HuntBoss.MakeHuntDef(Def);
+            var old = Brain;
+            old.ModeChanged -= OnMode;
+            Def = hunt;
+            Brain = new MonsterBrain(hunt) { Grace = old.Grace, AttackFilter = old.AttackFilter };
+            Brain.Health = hunt.maxHealth * frac;
+            Brain.ModeChanged += OnMode;
+            Reactions = new MonsterReactions(hunt);
+            bossRng = new System.Random(InstanceKey.GetHashCode());
+            Brain.Chooser = s => HuntBoss.Choose(Def.attacks, new BossSituation { Distance = s.distanceToPlayer, Angle = s.angleToPlayer, Phase = Phase, HunterHealing = s.playerHealing, Last = LastAttackId }, bossRng, Brain.AttackFilter);
+            Brain.FollowUp = done => HuntBoss.FollowUp(Def.attacks, done, Phase, bossRng);
+        }
+
+        /// <summary>Hunt rules: when it enrages or turns desperate it roars, and the new phase's moves open up.</summary>
+        void UpdatePhase()
+        {
+            Phase = HuntBoss.Phase(Def.maxHealth > 0 ? Brain.Health / Def.maxHealth : 1, Reactions.Enraged);
+            if (Phase <= MaxPhase) return;
+            MaxPhase = Phase;
+            var roar = Def.attacks.FirstOrDefault(a => a.id == Def.roarAttack);
+            if (roar != null && !Passive) Brain.ForceNext(roar);
+            if (Phase == 3) session.Hud?.Notify(DisplayName + " is desperate: its most dangerous attacks are coming!", NoticeKind.Warning);
+        }
+
+        /// <summary>A boss move's wind-up begins: its area (or areas) start telegraphing on the ground.</summary>
+        void BeginAreaAttack(MonsterAttackDef atk)
+        {
+            var hero = session.Hunter.transform.position;
+            switch (atk.Shape)
+            {
+                case AoeShape.Burst:
+                    foreach (var (x, z) in HuntBoss.BurstPoints(Mathf.Max(1, atk.aoeCount), atk.aoeSpread, hero.x, hero.z, bossRng ?? new System.Random()))
+                        MonsterAoe.Begin(session, this, atk, new Vector3(x, hero.y, z), transform.forward, atk.telegraph + atk.aoeDelay, false);
+                    break;
+                case AoeShape.Leap:
+                    leapFrom = transform.position; leapTo = hero; leapTo.y = transform.position.y;
+                    leapHeight = 1.6f + Vector3.Distance(leapFrom, leapTo) * .12f;
+                    MonsterAoe.Begin(session, this, atk, leapTo, transform.forward, atk.telegraph + atk.active, false);
+                    break;
+                default:
+                    MonsterAoe.Begin(session, this, atk, transform.position, transform.forward, atk.telegraph + atk.aoeDelay, true);
+                    break;
+            }
+        }
+
         void OnMode(MonsterMode m)
         {
+            if (m == MonsterMode.Telegraph && Brain.CurrentAttack != null)
+            {
+                LastAttackId = Brain.CurrentAttack.id;
+                if (HuntRules && Brain.CurrentAttack.Shape != AoeShape.None) BeginAreaAttack(Brain.CurrentAttack);
+            }
+            if (m != MonsterMode.Attack && Visual && Visual.localPosition.y != 0) Visual.localPosition = new Vector3(Visual.localPosition.x, 0, Visual.localPosition.z);   // a leap cut short lands
             if (lastMode == MonsterMode.Downed && m != MonsterMode.Dead) { Anim.PlayReverse("Death_A", 1.3f); getUpUntil = Time.time + Anim.Length("Death_A") / 1.3f; }
             lastMode = m;
-            ring.SetActive(m == MonsterMode.Telegraph || m == MonsterMode.Attack);
+            ring.SetActive((m == MonsterMode.Telegraph || m == MonsterMode.Attack) && (Brain.CurrentAttack == null || Brain.CurrentAttack.Shape == AoeShape.None || !HuntRules));
             previousAttackCenter = AttackCenter;
             if (eyes) eyes.sharedMaterial = m == MonsterMode.Telegraph || m == MonsterMode.Attack ? WorldKit.Glow(new Color(1f, .15f, .05f), 4) : eyesBase;
             switch (m)
@@ -205,8 +269,10 @@ namespace FH.Game
                 angleToPlayer = dist > .01f ? Vector3.Angle(transform.forward, to) : 0,
                 lineOfSight = los,
                 playerAlive = !hero.Dead,
-                playerHidden = session.PlayerInSafeArea(Def)
+                playerHidden = session.PlayerInSafeArea(Def),
+                playerHealing = Time.time - hero.LastItemAt < 1.5f
             };
+            if (HuntRules) UpdatePhase();
             float burn = Brain.Status.Tick(dt);
             if (burn > 0 && Brain.TakeStatusDamage(burn)) { OnKilled(); return; }
             Brain.Tick(dt, senses);
@@ -242,6 +308,21 @@ namespace FH.Game
                     if (Brain.ModeTime < Brain.CurrentAttack.telegraph * .6f && Brain.CurrentAttack.minAngle < 90) Face(to, dt * .7f);
                     UpdateRing();
                     break;
+                case MonsterMode.Attack when HuntRules && Brain.CurrentAttack.Shape != AoeShape.None:
+                {
+                    // Boss area attacks strike through MonsterAoe; here only the body moves (a leap's arc, a spin).
+                    var atk = Brain.CurrentAttack;
+                    Brain.HitDelivered = true;
+                    if (atk.Shape == AoeShape.Leap)
+                    {
+                        float u = Mathf.Clamp01(Brain.ModeTime / Mathf.Max(.05f, atk.active));
+                        var flat = Vector3.Lerp(leapFrom, leapTo, u) - transform.position; flat.y = 0;
+                        cc.Move(flat);
+                        if (Visual) Visual.localPosition = new Vector3(Visual.localPosition.x, Mathf.Sin(Mathf.PI * u) * leapHeight / Mathf.Max(.01f, transform.lossyScale.y), Visual.localPosition.z);
+                    }
+                    if (atk.spin) transform.Rotate(0, 360 * dt / Mathf.Max(.05f, atk.active), 0);
+                    break;
+                }
                 case MonsterMode.Attack:
                     UpdateRing();
                     if (IsCreature && Brain.CurrentAttack.id == "venom_spray") {

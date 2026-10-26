@@ -247,7 +247,14 @@ namespace FH.Game
             var atk = m.Brain.CurrentAttack;
             if (atk == null) return false;
             float d = Vector3.Distance(Flat(m.transform.position), Flat(transform.position));
-            return d < m.Def.bodyRadius + atk.range + atk.radius + HoundTactics.DangerMargin * Size;
+            switch (atk.Shape)
+            {
+                case AoeShape.None: return d < m.Def.bodyRadius + atk.range + atk.radius + HoundTactics.DangerMargin * Size;
+                case AoeShape.Burst: case AoeShape.Leap:
+                    // Aimed at the hunter: dangerous when the hound stands near them.
+                    return Vector3.Distance(Flat(S.Hunter.transform.position), Flat(transform.position)) < atk.aoeRadius + atk.aoeSpread + HoundTactics.DangerMargin * Size;
+                default: return d < HuntBoss.ThreatRadius(atk) + HoundTactics.DangerMargin * Size;
+            }
         }
 
         void Hop(Vector3 dir, float distance, float time, bool keepFacing)
@@ -664,6 +671,29 @@ namespace FH.Game
             // Playback rate keeps the paws planted: authored stride at the speed actually travelled.
             float natural = gallop ? GallopSpeed : WalkSpeed;
             Anim.Play(gallop ? "Gallop" : "Walk", true, Mathf.Clamp(speed / Mathf.Max(.1f, natural), .4f, 2f));
+        }
+
+        public int BlowsTaken { get; private set; }
+
+        /// <summary>A boss's area attack caught the hound (a hop's leap clears it): knocked back a step, then back to work.</summary>
+        public void TakeBlow(MonsterAttackDef atk, Vector3 from)
+        {
+            if (Anim.Current.EndsWith("Hop") && Acting) { LastEvent = "hopped over " + atk.id; return; }
+            BlowsTaken++;
+            Anim.Play("Hit", false, 1.2f, true, .05f);
+            var away = Flat(transform.position - from); if (away.sqrMagnitude < .01f) away = -transform.forward;
+            Travel(away, 1.4f * Size, 0, .3f, true);
+            actionEnd = Time.time + .55f; strikeAt = -1; comboStep = -1;
+            LastEvent = "hit by " + atk.id;
+        }
+
+        /// <summary>A roar: the hound flattens its ears and cowers for a moment.</summary>
+        public void Cower(float seconds)
+        {
+            if (Ridden) return;
+            Anim.Play("Hit", false, .7f, true, .05f);
+            actionEnd = Time.time + seconds * .8f; strikeAt = -1; comboStep = -1; travelUntil = 0;
+            LastEvent = "cowering (roar)";
         }
 
         /// <summary>A monster blow aimed at the hunter while riding: the hound shies and throws the rider.</summary>

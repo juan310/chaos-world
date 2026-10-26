@@ -366,6 +366,138 @@ namespace FH.Game
                  + ", ridden attacks " + hound.RideAttacks + ", sidesteps " + hound.RideHops + " (+" + hound.AutoEvades + " on its own), last part " + hound.LastPartStruck);
         }
 
+        // ---------------- boss monsters: tougher, area attacks, phases ----------------
+        MonsterAoe NewArea(string id) => MonsterAoe.Active.LastOrDefault(a => a && a.Attack.id == id);
+
+        IEnumerator Force(MonsterActor m, string id)
+        {
+            m.Brain.ForceNext(m.Def.attacks.First(a => a.id == id));   // fixture: this move now, to check it deterministically
+            yield return Until(() => m.Brain.CurrentAttack != null && m.Brain.CurrentAttack.id == id, 3);
+            yield return null;
+        }
+
+        IEnumerator BossChecks()
+        {
+            S.ProvingRig.ClearMonsters();
+            S.ProvingRig.SetWeapon("sword_shield");
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            yield return Frames(2);
+            var w = S.ProvingRig.Spawn("grave_warden", true);
+            var valley = S.Db.Monsters["grave_warden"];
+            Check("hunt rules make the Grave Warden a boss: 2.5x health and its area attacks", w.Def.maxHealth >= valley.maxHealth * 2.4f && w.Def.attacks.Count(a => a.Shape != AoeShape.None) >= 4 && valley.attacks.All(a => a.Shape == AoeShape.None),
+                  w.Def.maxHealth.ToString("0") + " vs " + valley.maxHealth.ToString("0") + " health, " + string.Join("/", w.Def.attacks.Select(a => a.id)));
+            w.Passive = false;
+            S.ProvingRig.Invulnerable = true;            // health refilled; blows still land (counted by the areas)
+            F.SetSheathed(true);
+            // Roar: ears covered, no damage.
+            Face(w, 5); yield return Frames(2);
+            yield return Force(w, "warden_roar");
+            var roar = NewArea("warden_roar");
+            Check("the roar telegraphs on the ground around the boss", roar && !roar.Fired);
+            yield return Until(() => F.LastReaction == HitReaction.Roar && F.LastEvent.Contains("roar"), 2.5f);
+            yield return Snap("b01-roar");
+            Check("caught in the roar the hunter covers their ears (no damage, rooted a moment)", F.LastReaction == HitReaction.Roar && roar && roar.HunterHits > 0, F.LastEvent);
+            yield return UntilNeutral(3);
+            // Shockwave: the ring's front reaches a hunter 5 m away...
+            Face(w, 5); yield return Frames(2);
+            if (S.Hound) S.Hound.PlaceAt(S.SafeGround(w.transform.position + w.transform.right * 4f), w.transform.eulerAngles.y);
+            int houndBefore = S.Hound ? S.Hound.BlowsTaken + S.Hound.Evades : 0;
+            yield return Force(w, "ground_slam");
+            var slam = NewArea("ground_slam");
+            yield return Until(() => slam == null || slam.Fired, 2);
+            yield return Wait(.25f);
+            yield return Snap("b02-shockwave");
+            yield return Wait(.6f);
+            Check("ground slam: the shockwave ring travels out and strikes the hunter 5 m away", slam && slam.HunterHits > 0, slam ? slam.HunterHits + " hits" : "no area");
+            if (S.Hound) Check("the Briarhound near the slam is caught by it or hops clear", S.Hound.BlowsTaken + S.Hound.Evades > houndBefore, S.Hound.LastEvent);
+            yield return UntilNeutral(4);
+            // ... and a roll through the wave front evades it.
+            Face(w, 5); yield return Frames(2);
+            yield return Force(w, "ground_slam");
+            slam = NewArea("ground_slam");
+            float dist = Vector3.Distance(Flat(H.transform.position), Flat(w.transform.position));
+            yield return Until(() => slam == null || (slam.Fired && slam.WaveRadius >= dist - 1.5f), 3);
+            float evadedBefore = H.LastDodgeEvade;
+            yield return Tap(PadButton.A, 2);
+            yield return Wait(.8f);
+            Check("rolling through the shockwave's front evades it", slam && slam.HunterHits == 0 && H.LastDodgeEvade > evadedBefore, slam ? slam.HunterHits + " hits, evade " + (H.LastDodgeEvade > evadedBefore) : "no area");
+            yield return UntilNeutral(4);
+            // Eruptions: three circles, one under the hunter; moving away in time avoids them.
+            Face(w, 7); yield return Frames(2);
+            yield return Force(w, "grave_burst");
+            var bursts = MonsterAoe.Active.Where(a => a && a.Attack.id == "grave_burst").ToList();
+            bool under = bursts.Any(b => Vector3.Distance(Flat(b.Origin), Flat(H.transform.position)) < .4f);
+            yield return Snap("b03-eruptions-telegraph");
+            Hold(PadButton.None, new Vector2(1, 0));
+            yield return Wait(1.4f);
+            Release();
+            yield return Wait(.5f);
+            Check("grave burst: three eruptions telegraph, one under the hunter; moving away in time avoids them", bursts.Count == 3 && under && bursts.All(b => b == null || b.HunterHits == 0),
+                  bursts.Count + " eruptions, under the hunter " + under + ", hits " + bursts.Sum(b => b ? b.HunterHits : 0));
+            yield return UntilNeutral(4);
+            // Leap: from 9 m the boss jumps onto where the hunter stood.
+            Face(w, 9); yield return Frames(2);
+            Vector3 w0 = w.transform.position, stood = H.transform.position;
+            yield return Force(w, "leap_smash");
+            var leap = NewArea("leap_smash");
+            yield return Wait(.6f);
+            yield return Snap("b04-leap");
+            yield return Until(() => leap == null || leap.Fired, 2);
+            yield return Wait(.3f);
+            float jumped = Vector3.Distance(Flat(w0), Flat(w.transform.position)), landedOff = Vector3.Distance(Flat(w.transform.position), Flat(stood));
+            Check("leap smash: from 9 m it jumps onto where the hunter stood and the landing strikes", jumped > 5 && landedOff < 3f && leap && leap.HunterHits > 0, jumped.ToString("0.0") + " m jumped, landed " + landedOff.ToString("0.0") + " m off, hits " + (leap ? leap.HunterHits : 0));
+            yield return UntilNeutral(4);
+            // Phases: enraged below half health (a roar opens its enraged moves); desperate below 30 % (another roar).
+            foreach (var (frac, phase) in new[] { (.47f, 2), (.28f, 3) })
+            {
+                w.Brain.Health = w.Def.maxHealth * frac;    // fixture: health set just above the threshold
+                Face(w, 1.8f); yield return Frames(2);
+                F.SetSheathed(false);
+                for (int i = 0; i < 6 && w.MaxPhase < phase; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.45f); }
+                yield return Until(() => w.Brain.CurrentAttack != null && w.Brain.CurrentAttack.id == "warden_roar", 3);
+                Check((phase == 2 ? "below half health it enrages" : "below 30 % it turns desperate") + " and roars (phase " + phase + ")", w.MaxPhase >= phase && w.LastAttackId == "warden_roar", "phase " + w.Phase + " (max " + w.MaxPhase + "), last attack " + w.LastAttackId);
+                yield return UntilNeutral(4);
+            }
+            Check("desperate: the cataclysm (three shockwaves) is in its choice", HuntBoss.Usable(w.Def.attacks.First(a => a.id == "cataclysm"), new BossSituation { Distance = 3, Angle = 0, Phase = w.Phase }));
+            yield return Force(w, "cataclysm");
+            var cata = NewArea("cataclysm");
+            yield return Until(() => cata == null || cata.Fired, 2);
+            yield return Wait(.7f);
+            yield return Snap("b05-cataclysm");
+            yield return Wait(1.2f);
+            Check("the cataclysm sends three shockwaves in a row", cata && cata.HunterHits >= 2, cata ? cata.HunterHits + " waves struck" : "no area");
+            yield return UntilNeutral(4);
+            // Thornback: a potion at mid range draws a charge.
+            S.ProvingRig.ClearMonsters(); yield return Frames(2);
+            var t = S.ProvingRig.Spawn("thornback", true); t.Passive = false;
+            F.SetSheathed(true);
+            S.ProvingRig.Invulnerable = false; H.Health = H.Stats[Stat.MaxHealth] * .6f;   // hurt, so the potion is drunk
+            Face(t, 7f); yield return Wait(.8f);
+            yield return Until(() => t.Brain.Mode == MonsterMode.Chase, 4);
+            yield return Tap(PadButton.LB, 2);           // drink the potion in the selected slot
+            yield return Until(() => t.Brain.Mode == MonsterMode.Telegraph, 4);
+            var answer = t.Brain.CurrentAttack;
+            Check("drinking a potion in front of the Thornback draws a gap closer (its charge)", H.LastItemAt > 0 && answer != null && answer.gapCloser, answer != null ? answer.id : "none");
+            yield return UntilNeutral(4);
+            // Mirejaw: the tail spin hits all round, even a hunter behind it.
+            S.ProvingRig.ClearMonsters(); yield return Frames(2);
+            var mj = S.ProvingRig.Spawn("mirejaw", true); mj.Passive = false;
+            var behind = mj.transform.position - mj.transform.forward * 3.2f;
+            H.Teleport(S.SafeGround(behind), Quaternion.LookRotation(Flat(mj.transform.position - behind)).eulerAngles.y); LookAlong(H.transform.eulerAngles.y);
+            yield return Frames(2);
+            float yaw0 = mj.transform.eulerAngles.y;
+            yield return Force(mj, "tail_spin");
+            var spin = NewArea("tail_spin");
+            yield return Until(() => spin == null || spin.Fired, 2);
+            yield return Wait(.5f);
+            Check("Mirejaw's tail spin strikes all round (a hunter behind it too)", spin && spin.HunterHits > 0, spin ? spin.HunterHits + " hits" : "no area");
+            yield return UntilNeutral(4);
+            S.ProvingRig.ClearMonsters();
+            S.ProvingRig.Invulnerable = false; H.Health = H.Stats[Stat.MaxHealth];
+            F.SetSheathed(true);
+            yield return Frames(3);
+        }
+
         // ---------------- movement feel (Monster Hunter pace) ----------------
         IEnumerator MovementChecks()
         {
@@ -492,6 +624,7 @@ namespace FH.Game
             S.ProvingRig.ClearMonsters();
             var warden = S.ProvingRig.Spawn("grave_warden", true);
             warden.Passive = false; warden.Calm(1);
+            warden.Brain.AttackFilter = a => a.Shape == AoeShape.None;   // fixture: melee swings only, for the guard checks (the boss moves have their own section)
             foreach (var a in warden.Def.attacks) a.reaction = "Knockback";
             H.Health = H.Stats[Stat.MaxHealth];
             Face(warden, 2.0f);
@@ -1105,6 +1238,7 @@ namespace FH.Game
             S.ProvingRig.ClearMonsters();
             var warden = S.ProvingRig.Spawn("grave_warden", true);
             warden.Passive = false; warden.Calm(1);
+            warden.Brain.AttackFilter = a => a.Shape == AoeShape.None;   // fixture: melee swings only, for the guard checks (the boss moves have their own section)
             H.Health = H.Stats[Stat.MaxHealth];
             Face(warden, 2.0f);
             Hold(PadButton.RB);
@@ -1263,6 +1397,7 @@ namespace FH.Game
             yield return MovementChecks();
             yield return LanceChecks();
             yield return BowChecks();
+            yield return BossChecks();
             yield return RangeChecks();
             yield return CaptureHunterPoses();
 

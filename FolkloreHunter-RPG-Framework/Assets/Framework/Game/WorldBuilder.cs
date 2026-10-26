@@ -655,6 +655,8 @@ namespace FH.Game
             lib.transform.SetParent(root);
             lib.Materials.Add(WorldKit.Transparent("Telegraph ring", new Color(.95f, .18f, .08f, .35f)));
             lib.Materials.Add(WorldKit.Transparent("Lock ring", new Color(1f, .82f, .3f, .55f)));
+            lib.Materials.Add(WorldKit.Transparent("Roar warning", new Color(1f, .7f, .15f, .22f)));
+            lib.Materials.Add(WorldKit.Transparent("Shockwave", new Color(1f, .5f, .15f, .6f)));
             lib.Materials.Add(WorldKit.Glow(new Color(1f, .15f, .05f), 4));
             lib.Materials.Add(WorldKit.Glow(new Color(1f, .8f, .3f)));
             lib.Materials.Add(WorldKit.Glow(new Color(.85f, .7f, .45f)));

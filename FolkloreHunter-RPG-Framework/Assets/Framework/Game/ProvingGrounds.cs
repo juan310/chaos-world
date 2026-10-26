@@ -121,7 +121,7 @@ namespace FH.Game
                 if (flat.magnitude > S.World.ProvingRadius - 4) { flat = flat.normalized * (S.World.ProvingRadius - 4); pos = new Vector3(o.x + flat.x, pos.y, o.z + flat.y); }
             }
             var m = S.SpawnForTest(id, pos);
-            m.HuntRules = true;
+            m.EnableHuntRules();         // flinch, topple, enrage, and the boss version: tougher, area attacks, phases
             m.Passive = MonstersPassive;
             m.transform.rotation = Quaternion.Euler(0, yaw, 0);
             m.Calm(2.5f);
@@ -233,7 +233,8 @@ namespace FH.Game
                 sb.Append("Target <b>").Append(m.DisplayName).Append("</b>  ").Append(m.Brain.Mode).Append(m.Passive ? " (passive)" : "").Append("  HP ").Append(m.Brain.Health.ToString("0")).Append('/').Append(m.Def.maxHealth.ToString("0"))
                   .Append("  flinch ").Append(r.FlinchBuild.ToString("0")).Append('/').Append(r.FlinchThreshold.ToString("0"))
                   .Append("  stun ").Append(r.StunBuild.ToString("0")).Append('/').Append(r.StunThreshold.ToString("0"))
-                  .Append(r.Enraged ? "  <color=#f66>ENRAGED</color>" : "").Append(r.Topples > 0 ? "  toppled x" + r.Topples : "").Append('\n');
+                  .Append(r.Enraged ? "  <color=#f66>ENRAGED</color>" : "").Append(r.Topples > 0 ? "  toppled x" + r.Topples : "")
+                  .Append(m.HuntRules ? "  phase " + m.Phase + (m.Phase == 3 ? " <color=#f66>DESPERATE</color>" : "") + "  last attack " + m.LastAttackId + "  areas live " + MonsterAoe.Active.Count : "").Append('\n');
             }
             if (S.InRange)
             {

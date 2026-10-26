@@ -37,7 +37,7 @@ namespace FH.Core
         public int arrows = 1;
         public float spread = 5, motionValue = .5f, poise = .4f;
     }
-    public enum HitReaction { None, Flinch, Knockback, Knockdown }
+    public enum HitReaction { None, Flinch, Knockback, Knockdown, Roar }
 
     /// <summary>One move. Timings, reach and multipliers come from <see cref="AttackDef"/>; the rest is hunt-specific.</summary>
     [Serializable]

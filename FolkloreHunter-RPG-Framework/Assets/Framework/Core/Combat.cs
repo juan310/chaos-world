@@ -255,6 +255,7 @@ namespace FH.Core
         {
             public float distanceToPlayer, distanceFromHome, angleToPlayer;
             public bool lineOfSight, playerAlive, playerHidden;
+            public bool playerHealing;          // drinking a potion or using an item (bosses punish it)
         }
 
         public bool CanPerceive(Senses s)
@@ -265,9 +266,25 @@ namespace FH.Core
         }
 
         public Func<MonsterAttackDef, bool> AttackFilter;
+        /// <summary>Hunt rules: a boss's own choice of attack (HuntBoss.Choose); null keeps the plain rotation.</summary>
+        public Func<Senses, MonsterAttackDef> Chooser;
+        /// <summary>Hunt rules: a combo follow-up after an attack recovers (skips the cooldown); null = none.</summary>
+        public Func<MonsterAttackDef, MonsterAttackDef> FollowUp;
+        MonsterAttackDef forced;
+
+        /// <summary>The next attack, as soon as the monster is free to act (a roar when it enrages or turns desperate).</summary>
+        public void ForceNext(MonsterAttackDef attack)
+        {
+            if (attack == null || !Alive) return;
+            forced = attack;
+            if (Mode == MonsterMode.Chase || Mode == MonsterMode.Alert || Mode == MonsterMode.Idle || Mode == MonsterMode.Patrol) StartForced();
+        }
+
+        void StartForced() { CurrentAttack = forced; forced = null; HitDelivered = false; Set(MonsterMode.Telegraph); }
 
         MonsterAttackDef ChooseAttack(Senses senses)
         {
+            if (Chooser != null) return Chooser(senses);
             var inRange = Def.attacks.Where(a => senses.distanceToPlayer <= a.range && senses.distanceToPlayer >= a.minRange && Math.Abs(senses.angleToPlayer) >= a.minAngle && Math.Abs(senses.angleToPlayer) <= a.maxAngle && (AttackFilter == null || AttackFilter(a))).ToList();
             if (inRange.Count == 0) return null;
             attackIndex++;
@@ -295,6 +312,7 @@ namespace FH.Core
                     if (ModeTime >= .45f) Set(MonsterMode.Chase);
                     break;
                 case MonsterMode.Chase:
+                    if (forced != null && Grace <= 0) { StartForced(); break; }
                     if (s.distanceFromHome > Def.leashRadius || !s.playerAlive || unseen > Def.loseInterestTime) { Set(MonsterMode.Return); break; }
                     if (Grace <= 0 && cooldown <= 0)
                     {
@@ -309,7 +327,12 @@ namespace FH.Core
                     if (ModeTime >= CurrentAttack.active) Set(MonsterMode.Recover);
                     break;
                 case MonsterMode.Recover:
-                    if (ModeTime >= CurrentAttack.recovery) { cooldown = CurrentAttack.cooldown * CooldownScale; Set(MonsterMode.Chase); }
+                    if (ModeTime >= CurrentAttack.recovery)
+                    {
+                        var next = forced == null ? FollowUp?.Invoke(CurrentAttack) : null;
+                        if (next != null) { CurrentAttack = next; HitDelivered = false; Set(MonsterMode.Telegraph); break; }   // combo: straight into the next move
+                        cooldown = CurrentAttack.cooldown * CooldownScale; Set(MonsterMode.Chase);
+                    }
                     break;
                 case MonsterMode.Stagger:
                     if (ModeTime >= (staggerFor > 0 ? staggerFor : Def.staggerTime)) { staggerFor = -1; cooldown = Math.Max(cooldown, .4f); Set(MonsterMode.Chase); }

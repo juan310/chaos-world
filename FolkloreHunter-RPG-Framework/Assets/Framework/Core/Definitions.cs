@@ -92,6 +92,19 @@ namespace FH.Core
         public float damage = 12, range = 2.2f, radius = .9f, cooldown = 1.6f, weight = 1, animSpeed = 1;
         public DamageType damageType = DamageType.Slash;
         public float Total => telegraph + active + recovery;
+
+        // Boss attacks (hunt rules, HuntBoss): an area instead of a hit volume, the phase that unlocks it, combos.
+        public string aoe;                  // Circle, Ring (shockwave), Cone, Line, Roar, Burst (eruptions at the hunter), Leap
+        public float aoeRadius, aoeWidth = 1, aoeAngle = 60, aoeLength, aoeSpeed = 10, aoeDelay, aoeSpread = 2.5f;
+        public int aoeCount = 1, pulses = 1;
+        public float pulseGap = .5f, roarTime = 1.1f;
+        public int phase = 1;               // 1 always, 2 once enraged, 3 when desperate (low health); weight < 0: only as a follow-up
+        public string follow;               // combo: the attack that may follow this one at once
+        public float followChance;
+        public bool gapCloser;              // charges / leaps: preferred when the hunter is far or healing
+        public bool spin;                   // the monster turns a full circle during the active window (tail spin)
+        public AoeShape Shape => Enum.TryParse(aoe, true, out AoeShape s) ? s : AoeShape.None;
+        public MonsterAttackDef Clone() => (MonsterAttackDef)MemberwiseClone();
     }
 
     [Serializable]
@@ -126,6 +139,11 @@ namespace FH.Core
         public int xp, gold;
         public bool boss;
         public string assetStatus = "ready";           // "ready" or a description of the missing dependency
+        // Hunt rules (Proving Grounds, Training Range): extra boss attacks and tougher stats; the valley is unchanged.
+        public List<MonsterAttackDef> huntAttacks = new List<MonsterAttackDef>();
+        public float huntHealth = 1, huntPoise = 1, huntDamage = 1;
+        public string roarAttack;                      // roared when it enrages and when it turns desperate
+        public MonsterDef CloneShallow() => (MonsterDef)MemberwiseClone();
     }
 
     [Serializable] public class LootEntry { public string itemId; public int min = 1, max = 1; public float chance = 1; }

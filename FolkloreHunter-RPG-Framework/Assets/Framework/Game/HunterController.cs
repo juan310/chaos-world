@@ -29,6 +29,8 @@ namespace FH.Game
         public bool Dodging => Time.time < dodgeUntil;
         public bool Invulnerable => Time.time >= invulnFrom && Time.time < invulnUntil;
         public float LastDodgeEvade { get; private set; } = -99;
+        /// <summary>When the hunter last used an item (a potion): bosses punish it.</summary>
+        public float LastItemAt { get; private set; } = -99;
         /// <summary>Perfect evades (a blow met at the very start of an evasion): stamina back and a moment of slow motion.</summary>
         public int PerfectEvades { get; private set; }
         public float LastPerfectEvade { get; private set; } = -99;
@@ -550,6 +552,7 @@ namespace FH.Game
             if (slot >= bar.Count || string.IsNullOrEmpty(bar[slot])) return;
             if (Attack.Committed || Dodging || Dead) return;
             var r = session.Core.Inventory.Use(bar[slot], this);
+            if (r.Ok) LastItemAt = Time.time;
             if (!r.Ok) session.Hud?.Flash(r.Reason);
         }
 
@@ -635,6 +638,26 @@ namespace FH.Game
             WorldKit.Sound(at, "chime", .45f);
             GamePad.Rumble(.25f, .6f, .12f);
             session.Hud?.Flash("Perfect evade!  Stamina +" + PerfectEvade.Stamina.ToString("0"));
+        }
+
+        /// <summary>A boss's roar: no damage, but a hunter caught in it covers their ears for a moment. A roll's i-frames
+        /// evade it (a well-timed one is a perfect evade), a raised shield guards it, the katana's counters catch it.</summary>
+        public void Roared(MonsterAttackDef roar, Vector3 from)
+        {
+            if (Dead) return;
+            if (Invulnerable)
+            {
+                LastDodgeEvade = Time.time;
+                if (HuntStyle && Dodging && LastPerfectEvade < evadeStartAt && PerfectEvade.Is(Time.time - evadeStartAt, true)) { PerfectDodge(); return; }
+                session.Hud?.Flash("Evaded the roar!");
+                return;
+            }
+            if (Riding) { Mount.RiderHit(); }
+            if (HuntStyle && Hunt.TryGuard(roar, from)) return;
+            CancelActions();
+            if (HuntStyle) { Hunt.React(HitReaction.Roar, Vector3.zero, roar.roarTime); return; }
+            hurtUntil = Time.time + roar.roarTime;
+            Anim.Play("Block", false, 1, true, .05f);
         }
 
         public void TakeVenomDamage(float damage) {

@@ -833,7 +833,7 @@ namespace FH.Game
         public float LastGuardDamage { get; private set; }
 
         // ---------------- reactions ----------------
-        public void React(HitReaction reaction, Vector3 away)
+        public void React(HitReaction reaction, Vector3 away, float seconds = 0)
         {
             LastReaction = reaction;
             Charging = false; Guarding = false; CounterStance = false; IaiStance = false; foresightAt = -1; buffered = HuntInput.None;
@@ -849,6 +849,12 @@ namespace FH.Game
                     H.HurtFor(1.25f);
                     GamePad.Rumble(1f, .6f, .35f);
                     LastEvent = "knocked down";
+                    break;
+                case HitReaction.Roar:
+                    // Ears covered: rooted and unable to act for a moment, no damage.
+                    H.Anim.Play("Block", false, 1.2f, true, .05f);
+                    reactionUntil = now + (seconds > 0 ? seconds : 1.1f); H.HurtFor(seconds > 0 ? seconds : 1.1f);
+                    LastEvent = "covering ears (roar)";
                     break;
                 case HitReaction.Knockback:
                     H.Anim.Play("Hit_B", false, 1.2f, true, .05f);
