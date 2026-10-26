@@ -88,6 +88,35 @@ with a three-hit attack on the rider's command ([Fextralife: Palamutes](https://
   leap and hops. Backup of the previous hound: `SourceArt/Backups/briarhound-before-palamute-20261026`.
 - Rules in `Assets/Framework/Core/HoundTactics.cs` (HoundTacticsTests).
 
+## Boss monsters (hunt rules: Proving Grounds and Training Range)
+Monster Hunter's large monsters are long fights against a few big, readable moves: wide sweeps and slams, roars that
+pin you, charges, area attacks with a clear wind-up, and an enraged state that makes them faster and nastier. Here,
+under the hunt rules (the valley's monsters are unchanged):
+- **Tougher:** Grave Warden ×2.5 health (750) and ×1.5 poise; Thornback, Mirejaw and the Gravebound ×2 health,
+  ×1.3–1.4 poise; damage ×1.1.
+- **Area attacks with ground telegraphs** (a red area grows on the ground during the wind-up; roars show amber):
+  - *Grave Warden:* **roar** (9 m: ears covered, rooted a moment, no damage); **ground slam**: a shockwave ring that
+    travels out to 8 m (only its front hits: roll through it); **grave burst**: three eruptions, one under you and two
+    around, after a short delay (move); **leap smash** (enraged): jumps onto where you stood; **cataclysm** (desperate):
+    three shockwaves in a row.
+  - *Thornback:* roar; **stomp** all around it; its **charge** becomes a **double charge** when enraged; **quake**
+    (desperate): two shockwaves.
+  - *Mirejaw:* roar; **tail spin** all around (it turns a full circle); bite into tail spin combos; **venom pools**
+    (enraged): four eruptions around you; **venom breath** (desperate): a cone.
+  - *Gravebound:* lunging chop; **frenzy** combo when enraged.
+- **Phases:** below half health it enrages (the old rule) and **roars**, opening its enraged moves; below 30 % it turns
+  **desperate**, roars again and its most dangerous moves come out (the overlay shows the phase).
+- **Smarter choice of attack** (weighted, `HuntBoss.Choose`): a hunter at its back meets the tail (×3), a hunter out of
+  reach gets charged or leapt on (×3), **drinking a potion invites a gap closer or eruptions (×5)**, a new phase shows off
+  its new moves (×2), and it rarely repeats a move. Combos chain without a pause.
+- **Against it:** roll i-frames evade every area (a last-moment roll is a perfect evade), a raised shield guards slams,
+  waves and roars, the lance's counter and the katana's Foresight and Iai Spirit Slash catch them; a flinch or topple
+  during the wind-up cancels the attack. The Briarhound hops clear of areas it is standing in (or is knocked back a
+  step) and cowers at a roar.
+- Rules and data: `Assets/Framework/Core/HuntBoss.cs` (HuntBossTests), `content.json` → `huntAttacks`, `huntHealth`;
+  runtime `MonsterAoe.cs`. The moves reuse the monsters' existing clips at boss timing plus motion (leap arcs, spins);
+  bespoke roar / slam animations for the quadrupeds are a next step.
+
 ## Movement feel (why it was sluggish, and Monster Hunter Rise's pace)
 Measured in the player before the change: in the hunt combat the hunter **walked at 1.6 m/s with full stick and
 "ran" at 2.4 m/s on RT**, and only 1.4 m/s with a weapon out. The speeds were derived from the stock KayKit clips so the
