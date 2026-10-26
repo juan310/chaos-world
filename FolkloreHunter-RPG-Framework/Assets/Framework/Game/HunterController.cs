@@ -235,7 +235,7 @@ namespace FH.Game
 
             if (HuntStyle && Hunt.FacesTarget(out var faceDir))
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceDir), 1 - Mathf.Exp(-dt * 12));
-            else if (moveDir.sqrMagnitude > .01f && !Attack.Committed && !(LockTarget && Attack.Running) && !(HuntStyle && Dodging && Hunt.KeepFacing))
+            else if (moveDir.sqrMagnitude > .01f && !Attack.Committed && !(LockTarget && Attack.Running) && !(HuntStyle && Dodging && (Hunt.KeepFacing || Hunt.StepDodging)))
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 1 - Mathf.Exp(-dt * 15));
             Move(moveDir * speed, dt);
             Gravity(dt);

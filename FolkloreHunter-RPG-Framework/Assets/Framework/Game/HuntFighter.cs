@@ -132,6 +132,8 @@ namespace FH.Game
         public bool Locked => Charging || CounterStance || Time.time < reactionUntil || Downed || Time.time < getUpUntil;
         public float SpeedScale => Guarding ? .3f : Drawing || Aiming ? .45f : Sheathed ? 1f : Set.drawnSpeed;
         public bool KeepFacing => H.LockTarget && H.LockTarget.Alive;
+        /// <summary>A lance hop or bow sidestep is under way: the hunter keeps facing forward (it is a step, not a roll).</summary>
+        public bool StepDodging => dodgeEndAt > 0 && H.Dodging;
         /// <summary>Guarding (raised shield), charging, the counter stance and the bow's draw own the idle pose.</summary>
         public bool OwnsIdlePose => Guarding || Charging || CounterStance || Drawing || Aiming || Downed || Time.time < getUpUntil;
 
@@ -381,7 +383,9 @@ namespace FH.Game
             bool wantAim = InputRouter.Held(GameAction.Guard) && !H.Hurt && !Locked;
             if (wantAim && Sheathed && !H.Attack.Running) Draw();
             SetAim(wantAim && !Sheathed);
-            if (Aiming && !Drawing && !H.Attack.Running && !H.Dodging) H.Anim.Play("1H_Ranged_Aiming", true, 1, false, .1f);
+            if (Aiming && !Drawing && !H.Attack.Running && !H.Dodging && !H.Anim.Current.EndsWith("Bow_Aim_Walk")) H.Anim.Play("1H_Ranged_Aiming", true, 1, false, .1f);
+            // Standing still while drawing or aiming: the held aim, not the aiming walk running in place.
+            if ((Aiming || Drawing) && H.Velocity.sqrMagnitude < .01f && H.Anim.Current.EndsWith("Bow_Aim_Walk")) H.Anim.Play("1H_Ranged_Aiming", true, 1, false, .1f);
             if (Aiming) LastAimPoint = AimPoint(out _);
         }
 

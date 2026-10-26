@@ -169,7 +169,13 @@ namespace FH.Game
             for (float t = 0; t < 2.5f; t += Time.unscaledDeltaTime)
             {
                 if (seen.LastOrDefault() != CurrentId && CurrentId != "-") seen.Add(CurrentId);
-                if (F.Current != null && HuntRoutes.CanChain(F.Current, H.Attack.Normalized) && presses.Count > 0) { yield return Tap(presses.Dequeue(), 2); continue; }
+                if (F.Current != null && HuntRoutes.CanChain(F.Current, H.Attack.Normalized) && presses.Count > 0)
+                {
+                    string before = CurrentId;
+                    yield return Tap(presses.Dequeue(), 2);
+                    yield return Until(() => CurrentId != before, .5f);       // one press per thrust (two within 70 ms are Y+B)
+                    continue;
+                }
                 yield return null;
             }
             Check("Y, B, Y: mid thrust, high thrust, mid thrust (the triple thrust)", seen.Take(3).SequenceEqual(new[] { "mid_1", "high_2", "mid_3" }), string.Join(">", seen));
@@ -183,6 +189,7 @@ namespace FH.Game
             // Hops: up to three in a row, the last one long; no roll while drawn.
             Face(m, 3f); yield return Frames(3);
             var dists = new List<float>();
+            Vector3 facing0 = H.transform.forward;
             for (int i = 0; i < 4; i++)
             {
                 Vector3 p0 = H.transform.position;
@@ -193,6 +200,7 @@ namespace FH.Game
             }
             Check("A hops instead of rolling: short (under 2.2 m), three in a row", dists[0] > .9f && dists[0] < 2.2f && dists[1] > .9f, string.Join(", ", dists.Select(d => d.ToString("0.00"))));
             Check("the third hop is the long one, and a fourth is refused until a pause", dists[2] > dists[0] * 1.3f && dists[3] < .3f, string.Join(", ", dists.Select(d => d.ToString("0.00"))));
+            Check("hopping back keeps the lance facing the monster", Vector3.Angle(facing0, H.transform.forward) < 10, Vector3.Angle(facing0, H.transform.forward).ToString("0") + " degrees turned");
             yield return Wait(.6f);
 
             // Guard: the tower shield against the Warden.
@@ -250,21 +258,31 @@ namespace FH.Game
 
             // Dash attack (RB+Y+B): charges forward striking repeatedly, Y finishes.
             S.ProvingRig.ClearMonsters();
-            m = Fresh(Target());
-            Face(m, 7f);
+            yield return Frames(2);
+            var spot = S.World.ProvingOrigin + new Vector3(0, 0, -14);
+            H.Teleport(S.SafeGround(spot), 0); S.CameraRig.Yaw = 0; S.CameraRig.Snap();     // facing the empty middle of the ring
             yield return Frames(3);
             H.Stamina.Current = H.Stamina.Max;
-            Vector3 d0 = H.transform.position; landed = H.SwingsLanded; float st0 = H.Stamina.Current;
+            Vector3 d0 = H.transform.position; float st0 = H.Stamina.Current;
             Hold(PadButton.RB); yield return Frames(3);
             yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
             Release();
             yield return Until(() => F.Current != null, .4f);
             string dash = CurrentId;
             yield return Wait(1.3f);
-            yield return Snap("p14-lance-dash");
             float travelled = Vector3.Distance(Flat(d0), Flat(H.transform.position));
-            Check("RB+Y+B: dash attack charges forward (over 4 m in 1.3 s)", dash == "dash_attack" && travelled > 4f, dash + ", " + travelled.ToString("0.0") + " m");
-            Check("the charge strikes repeatedly and costs stamina", H.SwingsLanded - landed >= 2 && H.Stamina.Current < st0 - 8, (H.SwingsLanded - landed) + " hits, stamina " + st0.ToString("0") + " -> " + H.Stamina.Current.ToString("0"));
+            Check("RB+Y+B: dash attack charges forward (over 4 m in 1.3 s) and costs stamina", dash == "dash_attack" && travelled > 4f && H.Stamina.Current < st0 - 8, dash + ", " + travelled.ToString("0.0") + " m, stamina " + st0.ToString("0") + " -> " + H.Stamina.Current.ToString("0"));
+            yield return UntilNeutral();
+            m = Fresh(Target());
+            Face(m, 3.5f);
+            yield return Frames(3);
+            H.Stamina.Current = H.Stamina.Max; landed = H.SwingsLanded;
+            Hold(PadButton.RB); yield return Frames(3);
+            yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
+            Release();
+            yield return Wait(1.6f);
+            yield return Snap("p14-lance-dash");
+            Check("charging into a monster strikes it again and again", H.SwingsLanded - landed >= 3, (H.SwingsLanded - landed) + " hits in 1.6 s");
             yield return Tap(PadButton.Y);
             yield return Until(() => CurrentId == "dash_finisher", .6f);
             Check("Y during the charge: finishing thrust", CurrentId == "dash_finisher", CurrentId);
@@ -315,10 +333,11 @@ namespace FH.Game
             Check("drawing costs stamina", drawStamina < H.Stamina.Max - 5, drawStamina.ToString("0"));
             yield return Wait(1.4f);
             // Charging sidestep: +1 level and a quick side step.
-            Vector3 s0 = H.transform.position;
+            Vector3 s0 = H.transform.position, sf = H.transform.forward;
             yield return Tap(PadButton.A, 2);
             yield return Until(() => !H.Dodging, .8f);
             float step = Vector3.Distance(Flat(s0), Flat(H.transform.position));
+            Check("the sidestep keeps the archer facing the target", Vector3.Angle(sf, H.transform.forward) < 10, Vector3.Angle(sf, H.transform.forward).ToString("0") + " degrees turned");
             Check("A with the bow drawn: charging sidestep (+1 level, about 2.4 m)", F.LastEvent.StartsWith("charging sidestep") && F.BowLevel == 2 && step > 1.5f && step < 3.2f, F.LastEvent + ", level " + F.BowLevel + ", " + step.ToString("0.00") + " m");
             int f2 = ArrowShot.Fired;
             yield return Tap(PadButton.Y, 2);
@@ -331,8 +350,11 @@ namespace FH.Game
             yield return Until(() => ArrowShot.Fired > f3, 1f);
             Check("B right after a shot: power shot (two extra arrows in a wider fan)", F.LastMove == "Power Shot" && F.LastShotArrows == Set().Level(lv).arrows + 2, F.LastMove + " x" + F.LastShotArrows + " at level " + lv);
             yield return Wait(1.4f);
-            // Arc shot: B on its own: arrows rain on the target after a moment and build stun.
+            // Arc shot: B on its own: arrows rain on the locked target after a moment and build stun.
             m = Fresh(m);
+            Face(m, 9f); yield return Frames(3);
+            yield return Tap(PadButton.RightStick);
+            Check("R3 locks on to the monster for the arc shot", H.LockTarget == m);
             float stun = m.Reactions.StunBuild; int h4 = ArrowShot.Landed;
             yield return Tap(PadButton.B, 2);
             yield return Until(() => F.Current != null, .4f);
@@ -355,6 +377,7 @@ namespace FH.Game
             yield return Wait(1.2f);
             Check("Y+B: Dragon Piercer pierces and hits several times with one bolt", dp == "dragon_piercer" && ArrowShot.Landed - h5 >= 3, dp + ", " + (ArrowShot.Landed - h5) + " hits");
             yield return UntilNeutral();
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);     // free aim next
             // Aim: RB brings the camera over the shoulder; arrows go to the centre of the screen.
             m = Fresh(m);
             Face(m, 9f); yield return Frames(3);
@@ -371,7 +394,9 @@ namespace FH.Game
             int h6 = ArrowShot.Landed;
             yield return Combo(PadButton.RB, PadButton.Y, 2);
             yield return Wait(.6f);
-            Check("a shot while aiming flies to the reticle and hits what it shows", ArrowShot.Landed > h6, "aim point " + F.LastAimPoint.ToString("0.0") + ", monster at " + m.transform.position.ToString("0.0"));
+            var camT = S.CameraRig.Camera.transform;
+            Check("a shot while aiming flies to the reticle and hits what it shows", ArrowShot.Landed > h6, "aim point " + F.LastAimPoint.ToString("0.0") + ", monster at " + m.transform.position.ToString("0.0")
+                  + ", hunter " + H.transform.position.ToString("0.0") + ", camera " + camT.position.ToString("0.0") + " fwd " + camT.forward.ToString("0.00") + " yaw " + S.CameraRig.Yaw.ToString("0") + " pitch " + S.CameraRig.Pitch.ToString("0") + " wanted " + toM.ToString("0.00"));
             Release();
             yield return Wait(.3f);
             Check("letting go of RB ends the aim", !F.Aiming && !S.CameraRig.Aiming);
