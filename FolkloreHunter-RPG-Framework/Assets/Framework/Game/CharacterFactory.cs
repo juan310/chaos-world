@@ -44,7 +44,11 @@ namespace FH.Game
             // A new hunter body (Hunter_<look>) has its own painted texture; its weapons keep the KayKit atlas.
             var weaponMat = resource.StartsWith("Hunter_") ? Atlas("Hunter") : mat;
             foreach (var rr in renderers)
-                rr.sharedMaterials = Enumerable.Repeat(IsWeapon(rr.name) ? weaponMat : mat, rr.sharedMaterials.Length).ToArray();
+            {
+                // A piece with a texture of its own (a weapon modelled from the concept art: Models/<piece>_texture) wears it.
+                var own = !creatureMat && Resources.Load<Texture2D>("Models/" + rr.name + "_texture") ? Atlas(rr.name) : null;
+                rr.sharedMaterials = Enumerable.Repeat(own ? own : IsWeapon(rr.name) ? weaponMat : mat, rr.sharedMaterials.Length).ToArray();
+            }
             foreach (var smr in o.GetComponentsInChildren<SkinnedMeshRenderer>()) smr.updateWhenOffscreen = true;
             return o.transform;
         }

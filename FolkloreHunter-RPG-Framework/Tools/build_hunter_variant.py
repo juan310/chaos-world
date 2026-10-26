@@ -17,7 +17,9 @@ from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 MONSTER = '--monster' in argv
-argv = [a for a in argv if a != '--monster']
+# --prop "<static job dir>|<bone>|<blade|staff|shield>|<length as a share of the body's height>|<grip share from the bottom>|<Name>"
+PROPS = [argv[i + 1] for i, a in enumerate(argv) if a == '--prop']
+argv = [a for i, a in enumerate(argv) if a not in ('--monster', '--prop') and (i == 0 or argv[i - 1] != '--prop')]
 JOB, NAME = Path(argv[0]), argv[1]
 OUT = NAME if MONSTER else 'Hunter_' + NAME
 r = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
@@ -246,8 +248,81 @@ arm = body.modifiers.new('Armature', 'ARMATURE'); arm.object = rig
 for o in old_meshes:
     bpy.data.objects.remove(o, do_unlink=True)
 
+# ---- held props (monsters): weapons modelled on their own (Forge static, from an item picture of the concept's weapon),
+# rigid on the hand slot, held the way the game's KayKit sword and shield are held (Tools/dump_hand_props.py).
+def axes_of(obj):
+    pts = [v.co for v in obj.data.vertices]
+    lo = Vector([min(p[k] for p in pts) for k in range(3)]); hi = Vector([max(p[k] for p in pts) for k in range(3)])
+    return lo, hi, hi - lo
+
+
+def basis(a, b):
+    a = a.normalized(); b = (b - a * a.dot(b)).normalized(); c = a.cross(b)
+    m = Matrix.Identity(3); m.col[0] = a; m.col[1] = b; m.col[2] = c
+    return m
+
+
+props_report = []
+if PROPS:
+    ref = json.loads((r / 'Docs/Assets/hand-props.json').read_text())
+    chest = rig.matrix_world @ rig.data.bones['chest'].head_local
+    for spec in PROPS:
+        pjob, bone, kind, frac, gripf, pname = spec.split('|')
+        frac, gripf = float(frac), float(gripf)
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=str(Path(pjob) / 'model.glb'))
+        parts = [o for o in bpy.data.objects if o not in before]
+        meshes = [o for o in parts if o.type == 'MESH']
+        for o in parts:
+            if o.type != 'MESH':
+                bpy.data.objects.remove(o, do_unlink=True)
+        for o in meshes:
+            o.data.transform(o.matrix_world); o.parent = None; o.matrix_world = Matrix.Identity(4)
+        prop = meshes[0]
+        if len(meshes) > 1:
+            with bpy.context.temp_override(active_object=prop, selected_editable_objects=meshes, selected_objects=meshes):
+                bpy.ops.object.join()
+        prop.name = OUT + '_' + pname
+        lo, hi, ext = axes_of(prop)
+        order = sorted(range(3), key=lambda k: -ext[k])
+        if kind == 'shield':
+            size = max(ext[order[0]], ext[order[1]])
+        else:
+            size = ext[order[0]]
+        k = frac * (k_hi - k_lo) / size
+        prop.data.transform(Matrix.Scale(k, 4))
+        lo, hi, ext = axes_of(prop)
+        centre = (lo + hi) / 2
+        R = ref['Round_Shield' if kind == 'shield' else '1H_Sword']
+        slot = rig.matrix_world @ rig.data.bones[bone].matrix_local
+        s3 = slot.to_3x3()
+        E = [Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))]
+        if kind == 'shield':
+            # the item picture faces the viewer: its face looks along -Y, its top is +Z
+            src = basis(-E[1], E[2]); n = s3 @ Vector(R['normalDirLocal'])
+            dst_c = slot @ Vector(R['centreLocal'])
+            if n.dot(dst_c - chest) < 0: n = -n
+            dst = basis(n, s3 @ Vector(R['widthDirLocal']))
+            anchor_src, anchor_dst = centre, dst_c
+        else:
+            # upright item, point (or crystal) up: its length runs along +Z, its width along the wider of X and Y
+            width = E[0] if ext[0] >= ext[1] else E[1]
+            src = basis(E[2], width)
+            dst = basis(s3 @ Vector(R['tipDirLocal']), s3 @ Vector(R['widthDirLocal']))
+            anchor_src = Vector((centre.x, centre.y, lo.z + gripf * ext[2]))
+            anchor_dst = slot @ Vector(R['gripLocal'])
+        rot = (dst @ src.transposed()).to_4x4()
+        M = Matrix.Translation(anchor_dst) @ rot @ Matrix.Translation(-anchor_src)
+        prop.parent = rig; prop.parent_type = 'BONE'; prop.parent_bone = bone
+        prop.matrix_world = M
+        img = next((n.image for m in prop.data.materials if m and m.node_tree for n in m.node_tree.nodes if n.type == 'TEX_IMAGE' and n.image), None)
+        if img:
+            img.filepath_raw = str(dest / (prop.name + '_texture.png')); img.file_format = 'PNG'; img.save()
+        props_report.append({'name': prop.name, 'bone': bone, 'kind': kind, 'scale': k, 'length': max(ext), 'texture': bool(img)})
+report['props'] = props_report
+
 # The body's texture (Forge paints one picture for the whole mesh).
-img = next((n.image for m in body.data.materials if m and m.use_nodes for n in m.node_tree.nodes if n.type == 'TEX_IMAGE' and n.image), None)
+img = next((n.image for m in body.data.materials if m and m.node_tree for n in m.node_tree.nodes if n.type == 'TEX_IMAGE' and n.image), None)
 if img:
     img.filepath_raw = str(dest / (OUT + '_texture.png')); img.file_format = 'PNG'; img.save()
 report['texture'] = bool(img)
