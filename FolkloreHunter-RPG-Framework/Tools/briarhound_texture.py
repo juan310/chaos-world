@@ -43,13 +43,24 @@ sharp_pos = detail[flank & (N[:, 0] > 0)].mean(); sharp_neg = detail[flank & (N[
 sign = 1 if sharp_pos > sharp_neg else -1
 
 # The art paints the blade's rear half onto the neck behind it; once the head is turned forward (rig step) that neck
-# fur shows, so it takes the colour of the mane just above it (nearest picture-side texel, 20 cm higher).
+# fur shows. It is refilled by diffusion over the surface from the fur around it (charcoal mane above, grey-cream
+# below), then given fur grain (the high-pass of the flank fur a little lower and behind) so it does not look airbrushed.
 pic = sign * N[:, 0] > .15
 shadow = (sign * X[:, 0] > .05) & (sign * X[:, 0] < .37) & (X[:, 1] > -.52) & (X[:, 1] < -.06) & (X[:, 2] > 1.26) & (X[:, 2] < 1.58) & (sign * N[:, 0] > -.2)
-donor = pic & ~shadow & (X[:, 1] > -.6) & (X[:, 1] < .05) & (X[:, 2] > 1.2)
-dd, dn = cKDTree(X[donor]).query(X[shadow] + [0, 0, .2], k=6)
-dw = np.exp(-dd / .03); dcol = (tex[ys[donor], xs[donor]].astype(np.float32)[dn] * dw[..., None]).sum(1) / dw.sum(1)[:, None]
-tex = tex.copy(); tex[ys[shadow], xs[shadow]] = np.clip(dcol, 0, 255).astype(np.uint8)
+near = (X[:, 1] > -.7) & (X[:, 1] < .12) & (X[:, 2] > 1.1) & (sign * X[:, 0] > -.05)
+ring = near & ~shadow
+grid = np.nonzero(shadow | ring)[0]; known = ~shadow[grid]
+gtree = cKDTree(X[grid]); _, nb = gtree.query(X[grid], k=9); nb = nb[:, 1:]
+C = tex[ys[grid], xs[grid]].astype(np.float32)
+C[~known] = C[known].mean(0)
+for _ in range(300):
+    C[~known] = C[nb[~known]].mean(1)
+blur = cv2.GaussianBlur(tex.astype(np.float32), (0, 0), 2.5)
+flank = pic & ~shadow & (X[:, 2] > .65) & (X[:, 2] < 1.15) & (X[:, 1] > -.45) & (X[:, 1] < .25)
+fd, fn = cKDTree(X[flank]).query(X[grid[~known]] + [0, .2, -.45], k=1)
+grain = tex[ys[flank], xs[flank]].astype(np.float32)[fn] - blur[ys[flank], xs[flank]][fn]
+C[~known] += grain.mean(1, keepdims=True) * 1.1
+tex = tex.copy(); sel = grid[~known]; tex[ys[sel], xs[sel]] = np.clip(C[~known], 0, 255).astype(np.uint8)
 src = (sign * N[:, 0] > .15) & (sign * X[:, 0] > -.02 * H)
 dst = (sign * N[:, 0] < -.05) & (sign * X[:, 0] < .02 * H)
 tree = cKDTree(X[src])

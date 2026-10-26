@@ -34,7 +34,7 @@ namespace FH.Game
         public HuntFighter Hunt;
         public bool HuntStyle => Hunt && Hunt.enabled;
         public float HitstopUntil;
-        /// <summary>Riding the Cu-sith: the hunter sits on its saddle bone and the hound takes the movement input.</summary>
+        /// <summary>Riding the Briarhound: the hunter sits on its saddle bone and the hound takes the movement input.</summary>
         public HoundCompanion Mount { get; private set; }
         public bool Riding => Mount;
         Transform rideParent;

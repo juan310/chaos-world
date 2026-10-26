@@ -104,7 +104,7 @@ namespace FH.Game
             {
                 var st = anim.State(clip); if (st == null) { Check("hound has the " + clip + " clip", false); continue; }
                 anim.Anim.Stop(); st.enabled = true; st.weight = 1;
-                for (int i = 0; i < 16; i++) { st.time = st.length * i / 16f; anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, "cusith_" + label + "_E_" + i.ToString("00") + ".png")); }
+                for (int i = 0; i < 16; i++) { st.time = st.length * i / 16f; anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, HoundCompanion.Model.ToLowerInvariant() + "_" + label + "_E_" + i.ToString("00") + ".png")); }
                 st.enabled = false;
             }
             // Rider and mount together through one gallop cycle.
@@ -323,7 +323,7 @@ namespace FH.Game
             Check("below half health the monster enrages (attacks sooner)", m.Reactions.Enraged && m.Brain.CooldownScale < 1,
                 "hp " + m.Brain.Health.ToString("0") + ", blows landed " + (H.SwingsLanded - landed) + ", mode " + m.Brain.Mode + ", last move " + F.LastMove);
 
-            // The Cu-sith: follows, comes to the whistle, can be ridden at a gallop, bites the hunted monster.
+            // The Briarhound: follows, comes to the whistle, can be ridden at a gallop, bites the hunted monster.
             var hound = S.Hound;
             Check("the Briarhound is in the ring", hound, (S.Hound ? S.Hound.name + " (" + HoundCompanion.Model + ")" : "none"));
             if (hound)
