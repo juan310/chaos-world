@@ -214,6 +214,15 @@ namespace FH.Core
         }
     }
 
+    /// <summary>Perfect evade: a blow that meets the evasion's invulnerability within <see cref="Window"/> seconds of
+    /// the evade starting (dodged at the last moment) restores stamina and briefly slows time. Later in the i-frames
+    /// it is a plain evade.</summary>
+    public static class PerfectEvade
+    {
+        public const float Window = .12f, Stamina = 20, SlowScale = .3f, SlowSeconds = .6f, Cooldown = .5f;
+        public static bool Is(float sinceEvadeStarted, bool invulnerable) => invulnerable && sinceEvadeStarted >= 0 && sinceEvadeStarted <= Window;
+    }
+
     /// <summary>Long-sword spirit: normal hits fill the gauge, spirit moves spend it (weaker when short), a landed
     /// Spirit Roundslash raises the level white -> yellow -> red (more damage), each level fading after a while; the gauge
     /// drains slowly when not hitting; an Iai Slash makes it refill on its own for a few seconds; a successful

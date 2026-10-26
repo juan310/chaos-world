@@ -511,12 +511,33 @@ namespace FH.Game
             yield return Until(() => quick.Struck > struck, quick.Period + .5f);
             Check("a slam pad strikes the hunter standing in it (a flinch, health lost)", quick.Struck == struck + 1 && H.Health < hp, (hp - H.Health).ToString("0.0") + " damage");
             yield return UntilNeutral();
+            // Early: the roll starts a quarter second before the blow: evaded by the i-frames, no perfect-evade bonus.
             H.Teleport(S.SafeGround(quick.transform.position), 0);
-            yield return Until(() => quick.UntilBlow < .1f, quick.Period + .5f);
-            hp = H.Health;
+            yield return Until(() => quick.UntilBlow < .26f && quick.UntilBlow > .2f, quick.Period + .5f);
+            hp = H.Health; int perfect0 = H.PerfectEvades;
             yield return Tap(PadButton.A, 2);
             yield return Wait(.4f);
-            Check("rolling through the slam evades it (no damage, \"Evaded!\")", quick.Evaded == evaded + 1 && H.Health >= hp - .01f, quick.Evaded - evaded + " evaded, " + (hp - H.Health).ToString("0.0") + " damage");
+            Check("rolling early through the slam evades it (no damage), but it is not a perfect evade", quick.Evaded == evaded + 1 && H.Health >= hp - .01f && H.PerfectEvades == perfect0,
+                  quick.Evaded - evaded + " evaded, " + (hp - H.Health).ToString("0.0") + " damage, perfect " + (H.PerfectEvades - perfect0));
+            yield return UntilNeutral();
+            // Last moment: the blow lands right as the roll starts: perfect evade, slow motion and stamina back.
+            H.Teleport(S.SafeGround(quick.transform.position), 0);
+            H.Stamina.Current = 60;
+            yield return Until(() => quick.UntilBlow < .07f, quick.Period + .5f);
+            hp = H.Health;
+            yield return Tap(PadButton.A, 2);
+            float slowest = Time.timeScale, staminaAfter = 0;
+            for (float t = 0; t < .5f; t += Time.unscaledDeltaTime)
+            {
+                slowest = Mathf.Min(slowest, Time.timeScale);
+                if (H.PerfectEvades > perfect0 && staminaAfter == 0) staminaAfter = H.Stamina.Current;
+                yield return null;
+            }
+            yield return Snap("r02b-perfect-evade");
+            Check("rolling at the last moment is a perfect evade: no damage, time slows, stamina comes back", H.PerfectEvades == perfect0 + 1 && H.Health >= hp - .01f && slowest < .5f && staminaAfter > 60 - 25 + 15,
+                  "perfect " + (H.PerfectEvades - perfect0) + ", time scale down to " + slowest.ToString("0.00") + ", stamina 60 -> roll -25 -> " + staminaAfter.ToString("0"));
+            yield return Wait(.6f);
+            Check("the slow motion ends by itself", Time.timeScale == 1 && !TimeWarp.Active, Time.timeScale.ToString("0.00"));
             yield return UntilNeutral();
             var log = Hazard("Sweeping log");
             int logBlows = log.Blows;

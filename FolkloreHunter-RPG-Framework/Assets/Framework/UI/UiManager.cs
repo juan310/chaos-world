@@ -143,7 +143,7 @@ namespace FH.UI
             bool block = BlocksWorld;
             if (block) InputRouter.GameplayBlocked = true;
             else if (InputRouter.GameplayBlocked) { InputRouter.Unblock(); LastBlockedToPlay = Time.unscaledTime; }
-            Time.timeScale = stack.Any(s => s.PausesWorld) || titleOpen ? 0 : 1;
+            Time.timeScale = stack.Any(s => s.PausesWorld) || titleOpen ? 0 : TimeWarp.Scale;   // a perfect evade's slow motion resumes after a menu
             Hud.SetVisible(!titleOpen && Session.Mode == SessionMode.Playing);
         }
 

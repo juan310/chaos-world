@@ -94,5 +94,28 @@ namespace FH.Tests
             Assert.That(dive.Distance, Is.GreaterThan(roll.Distance)); Assert.That(dive.Invulnerable, Is.GreaterThan(roll.Invulnerable));
             Assert.That(dive.Recover, Is.GreaterThan(0), "a dive ends on the ground");
         }
+
+        [Test]
+        public void PerfectEvadeOnlyAtTheLastMoment()
+        {
+            Assert.That(PerfectEvade.Is(.05f, true), "a blow just after the evade starts is a perfect evade");
+            Assert.That(PerfectEvade.Is(PerfectEvade.Window, true));
+            Assert.That(PerfectEvade.Is(.25f, true), Is.False, "later in the i-frames it is a plain evade");
+            Assert.That(PerfectEvade.Is(.05f, false), Is.False, "no i-frames, no evade");
+            Assert.That(PerfectEvade.Window, Is.LessThan(Evade.Spec(TestSupport.Db().HuntMovesets["katana"], EvadeKind.SideSlide, .32f).Invulnerable), "the window sits inside every evasion's i-frames");
+        }
+
+        [Test]
+        public void StaminaRestoreCapsAndEndsExhaustion()
+        {
+            var s = new StaminaPool(100, 20, .5f, 20);
+            s.TrySpend(100);
+            Assert.That(s.Exhausted);
+            s.Restore(PerfectEvade.Stamina);
+            Assert.That(s.Current, Is.EqualTo(20).Within(.001f));
+            Assert.That(s.Exhausted, Is.False, "a perfect evade's stamina ends exhaustion");
+            s.Restore(500);
+            Assert.That(s.Current, Is.EqualTo(100));
+        }
     }
 }

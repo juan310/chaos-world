@@ -215,7 +215,8 @@ namespace FH.Game
                   .Append(f.Class == WeaponClass.Bow ? "  charge level " + f.BowLevel + (f.Drawing ? " (drawing)" : "") + (f.Aiming ? "  AIMING" : "") + "   last shot L" + f.LastShotLevel + " x" + f.LastShotArrows + "   arrows fired " + ArrowShot.Fired + ", hits " + ArrowShot.Landed : "")
                   .Append(f.Class == WeaponClass.Lance ? "  retributions " + f.Retributions + (f.ChainedDodges > 0 ? "  hops " + f.ChainedDodges : "") : "")
                   .Append(f.Class == WeaponClass.Katana ? "  spirit " + f.Spirit.Value.ToString("0") + "/100  level " + f.SpiritLevel + (f.Spirit.IaiActive(Time.time) ? " (iai refill)" : "") + (f.IaiStance ? "  <color=#9cf>IAI STANCE</color>" : "") + (f.Foresight ? "  <color=#9cf>FORESIGHT</color>" : "") + "   foresight counters " + f.ForesightCounters + ", iai counters " + f.SpiritCounters : "").Append('\n');
-                sb.Append("Evade ").Append(f.Evades > 0 ? f.LastEvade.ToString() : "-").Append(" (").Append(f.Evades).Append(" so far)").Append(f.Sprinting ? "   sprinting: evade away from a monster to dive" : "").Append('\n');
+                sb.Append("Evade ").Append(f.Evades > 0 ? f.LastEvade.ToString() : "-").Append(" (").Append(f.Evades).Append(" so far, perfect ").Append(h.PerfectEvades).Append(")")
+                  .Append(TimeWarp.Active ? "  <color=#9cf>SLOW MOTION</color>" : "").Append(f.Sprinting ? "   sprinting: evade away from a monster to dive" : "").Append('\n');
                 var cur = f.Current;
                 if (cur != null)
                     sb.Append("Move <b>").Append(cur.name ?? cur.id).Append("</b>  ").Append(h.Attack.Phase).Append("  ").Append(h.Attack.Time.ToString("0.00")).Append(" / ").Append(cur.Total.ToString("0.00"))

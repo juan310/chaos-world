@@ -29,6 +29,10 @@ namespace FH.Game
         public bool Dodging => Time.time < dodgeUntil;
         public bool Invulnerable => Time.time >= invulnFrom && Time.time < invulnUntil;
         public float LastDodgeEvade { get; private set; } = -99;
+        /// <summary>Perfect evades (a blow met at the very start of an evasion): stamina back and a moment of slow motion.</summary>
+        public int PerfectEvades { get; private set; }
+        public float LastPerfectEvade { get; private set; } = -99;
+        float evadeStartAt = -99;
         public Vector3 Velocity { get; private set; }
         /// <summary>Monster Hunter-style moveset (Proving Grounds until integrated). Null or disabled: classic combat.</summary>
         public HuntFighter Hunt;
@@ -371,6 +375,7 @@ namespace FH.Game
             }
             else transform.rotation = Quaternion.LookRotation(dodgeDir);
             dodgeUntil = Time.time + time;
+            evadeStartAt = Time.time;
             invulnFrom = Time.time + .03f;
             invulnUntil = invulnFrom + (iframes >= 0 ? iframes : Stats[Stat.DodgeWindow]);
             Anim.Play(clipOverride != null && Anim.Has(clipOverride) ? clipOverride : clip, false, clipSpeed, true, .05f);
@@ -562,6 +567,8 @@ namespace FH.Game
             if (Invulnerable)
             {
                 LastDodgeEvade = Time.time;
+                // Hunt combat: dodged at the last moment is a perfect evade (once per evasion).
+                if (HuntStyle && Dodging && LastPerfectEvade < evadeStartAt && PerfectEvade.Is(Time.time - evadeStartAt, true)) { PerfectDodge(); return; }
                 session.Hud?.Flash("Evaded!");
                 return;
             }
@@ -587,6 +594,19 @@ namespace FH.Game
             hurtUntil = Time.time + .42f;
             if (away.sqrMagnitude > .01f) knock = away.normalized * KnockSpeed;   // 0.25 m pushed over 0.2 s, not one frame
             Anim.Play("Hit_A", false, 1.3f, true, .05f);
+        }
+
+        void PerfectDodge()
+        {
+            PerfectEvades++;
+            LastPerfectEvade = Time.time;
+            Stamina.Restore(PerfectEvade.Stamina);
+            TimeWarp.Slow(PerfectEvade.SlowScale, PerfectEvade.SlowSeconds);
+            Vector3 at = transform.position + Vector3.up * 1.1f;
+            WorldKit.Burst(at, new Color(.7f, .9f, 1f), 22);
+            WorldKit.Sound(at, "chime", .45f);
+            GamePad.Rumble(.25f, .6f, .12f);
+            session.Hud?.Flash("Perfect evade!  Stamina +" + PerfectEvade.Stamina.ToString("0"));
         }
 
         public void TakeVenomDamage(float damage) {

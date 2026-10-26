@@ -316,6 +316,7 @@ namespace FH.Game
             InputRouter.MouseLook = false;
             Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
             Proving = false; InRange = false;
+            TimeWarp.Clear();
             EnterTitle();
         }
 
@@ -338,6 +339,7 @@ namespace FH.Game
         // ---------------- per-frame ----------------
         void Update()
         {
+            TimeWarp.Tick();
             if (Mode != SessionMode.Playing) return;
             bool sim = Simulating;
             if (sim && !wasSimulating) Calm(.8f);   // returning from a menu never lands the player in an unavoidable hit

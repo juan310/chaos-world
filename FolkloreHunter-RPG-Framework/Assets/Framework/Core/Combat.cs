@@ -99,6 +99,13 @@ namespace FH.Core
             if (Current <= 0) Exhausted = true;
         }
 
+        /// <summary>Gives stamina back (a perfect evade); enough of it ends exhaustion at once.</summary>
+        public void Restore(float amount)
+        {
+            Current = Math.Min(Max, Current + amount);
+            if (Exhausted && Current >= ExhaustThreshold) Exhausted = false;
+        }
+
         public void Tick(float dt)
         {
             sinceSpend += dt;
