@@ -100,7 +100,7 @@ namespace FH.Game
                 loadouts[WeaponClass.Lance] = new[] { Long(WorldKit.Find(H.Visual, "Hunt_Lance"), 152, -.22f, -.35f, -.1f), Flat(WorldKit.Find(H.Visual, "Hunt_TowerShield")) };
                 var bowT = WorldKit.Find(H.Visual, "Hunt_Bow");
                 loadouts[WeaponClass.Bow] = new[] { Long(bowT, 160, -.3f, .02f, .05f, bowT ? bowT.parent : null), new Piece { t = quiver, onBackAlways = true }, new Piece { t = nocked, onBackAlways = true } };
-                loadouts[WeaponClass.Katana] = new[] { Long(katana, 52, -.26f, .32f, .22f) };
+                loadouts[WeaponClass.Katana] = new[] { Long(katana, -62, -.26f, .42f, .26f) };
             }
             H.BladeHit -= OnBladeHit; H.BladeHit += OnBladeHit;
             H.ShotLoosed -= OnShotLoosed; H.ShotLoosed += OnShotLoosed;
