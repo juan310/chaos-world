@@ -55,3 +55,25 @@ if ($Stage -in 'sides') {
               'SkeletonKnight' = "$w\SkeletonKnight_bare.png"; 'SkeletonMage' = "$w\SkeletonMage_bare.png"; 'GraveWarden' = "$w\GraveWarden_bare.png" }
     foreach ($k in $src.Keys) { foreach ($v in 'Left', 'Right') { & $py Tools\forge_queue.py edit "$k$v" $src[$k] $views[$v] } }
 }
+if ($Stage -in 'hairviews') {
+    # for each finished hairstyle picture: its back and both profiles (the hair differs on every side)
+    $back = 'turn the character around: the same person seen from directly behind, full body, same outfit and the same hairstyle seen from the back; plain dark grey background'
+    $left = "turn the character 90 degrees to show the left side of the body in full profile, facing the left edge of the picture; same outfit, armour, hairstyle and colours, standing straight, arms relaxed, full body, plain dark grey background"
+    $right = "turn the character 90 degrees to show the right side of the body in full profile, facing the right edge of the picture; same outfit, armour, hairstyle and colours, standing straight, arms relaxed, full body, plain dark grey background"
+    foreach ($g in 'F', 'M') { for ($i = 1; $i -le 10; $i++) {
+        $n = '{0:00}' -f $i; $front = Latest "edit_Hair$g${n}_*"
+        if (-not $front -or -not (Test-Path "$front\edit_1.png")) { "MISSING hair picture $g$n"; continue }
+        & $py Tools\forge_prep.py pad "$front\edit_1.png" "$w\Hair$g${n}_front.png" .08
+        & $py Tools\forge_queue.py edit "Hair$g${n}Back" "$w\Hair$g${n}_front.png" $back
+        & $py Tools\forge_queue.py edit "Hair$g${n}Left" "$w\Hair$g${n}_front.png" $left
+        & $py Tools\forge_queue.py edit "Hair$g${n}Right" "$w\Hair$g${n}_front.png" $right
+    } }
+}
+if ($Stage -in 'hairmodels') {
+    foreach ($g in 'F', 'M') { for ($i = 1; $i -le 10; $i++) {
+        $n = '{0:00}' -f $i; $b = Latest "edit_Hair$g${n}Back_*"
+        if (-not $b -or -not (Test-Path "$b\edit_1.png")) { "MISSING hair back $g$n"; continue }
+        $who = $(if ($g -eq 'M') { 'young man, chestnut brown hair, brown leather vest, white shirt, steel pauldrons with green cloth, red sash, dark trousers, steel knee guards, brown boots' } else { 'young woman, chestnut brown hair, brown leather corset, white blouse, steel pauldrons with green cloth, red sash, dark trousers, steel knee guards, brown boots' })
+        & $py Tools\forge_queue.py model "Hair$g$n" "$w\Hair$g${n}_front.png" $who "$b\edit_1.png"
+    } }
+}

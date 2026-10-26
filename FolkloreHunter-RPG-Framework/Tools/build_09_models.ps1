@@ -10,28 +10,34 @@ $r = "C:\Users\juana\Documents\FolkloreHunter-RPG-Framework"
 $F = "$env:LOCALAPPDATA\ClaudeEyesStudio\Forge"
 $log = "C:\AW\briarhound_work\models09"; New-Item -ItemType Directory -Force $log | Out-Null
 function Latest($pattern) { (Get-ChildItem $F -Directory -Filter $pattern | Where-Object { (Get-Content "$($_.FullName)\status.json" -Raw | ConvertFrom-Json).state -eq 'done' } | Sort-Object Name | Select-Object -Last 1).FullName }
+function Sides($name) {
+    # the profile pictures for a model (edit jobs <name>Left / <name>Right), as the builder's --sides argument
+    $l = Latest "edit_${name}Left_*"; $r2 = Latest "edit_${name}Right_*"
+    if ($l -and $r2 -and (Test-Path "$l\edit_1.png") -and (Test-Path "$r2\edit_1.png")) { return @('--sides', "$l\edit_1.png|$r2\edit_1.png") }
+    return @()
+}
 function Blend($base, $argList, $name) {
     $p = Start-Process $b -ArgumentList (@('-b', "$r\SourceArt\$base", '--python', "$r\Tools\build_hunter_variant.py", '--') + $argList) -WindowStyle Hidden -Wait -PassThru -RedirectStandardOutput "$log\$name.log" -RedirectStandardError "$log\$name.err"
     $line = Select-String -Path "$log\$name.log" -Pattern 'HUNTER_VARIANT' | Select-Object -Last 1
     if ($line) { "BUILT $name $($line.Line.Substring(15))" } else { "FAILED $name (see $log\$name.err)" }
 }
 if ($Stage -in 'all', 'hunters') {
-    Blend 'Hunter.blend' @((Latest 'model_HunterMale2_*'), 'Male') 'Hunter_Male'
-    Blend 'Hunter.blend' @((Latest 'model_HunterFemale2_*'), 'Female') 'Hunter_Female'
+    Blend 'Hunter.blend' (@((Latest 'model_HunterMale2_*'), 'Male') + (Sides 'HunterMale')) 'Hunter_Male'
+    Blend 'Hunter.blend' (@((Latest 'model_HunterFemale2_*'), 'Female') + (Sides 'HunterFemale')) 'Hunter_Female'
 }
 if ($Stage -in 'all', 'hair') {
     foreach ($g in 'M', 'F') { for ($i = 1; $i -le 10; $i++) {
         $n = '{0:00}' -f $i; $job = Latest "model_Hair$g${n}_*"
-        if ($job) { Blend 'Hunter.blend' @($job, ($(if ($g -eq 'M') { 'Male' } else { 'Female' }) + "_$n")) "Hunter_${g}_$n" } else { "MISSING hair $g$n" }
+        if ($job) { Blend 'Hunter.blend' (@($job, ($(if ($g -eq 'M') { 'Male' } else { 'Female' }) + "_$n")) + (Sides "Hair$g$n")) "Hunter_${g}_$n" } else { "MISSING hair $g$n" }
     } }
 }
 if ($Stage -in 'all', 'monsters') {
     $sw = Latest 'static_WarriorSword_*'; $ss = Latest 'static_WarriorShield_*'; $kg = Latest 'static_KnightGreatsword_*'
     $ms = Latest 'static_MageStaff_*'; $wg = Latest 'static_WardenGreatsword_*'
-    Blend 'Gravebound.blend' @((Latest 'model_SkeletonWarriorB_*'), 'Gravebound_Warrior', '1', '--monster', '--prop', "$sw|handslot.r|blade|0.44|0.07|Sword", '--prop', "$ss|handslot.l|shield|0.34|0.5|Shield") 'Gravebound_Warrior'
-    Blend 'Gravebound.blend' @((Latest 'model_SkeletonKnightB_*'), 'Gravebound_Knight', '1', '--monster', '--prop', "$kg|handslot.r|blade|0.64|0.1|GreatSword") 'Gravebound_Knight'
-    Blend 'Gravebound.blend' @((Latest 'model_SkeletonMageB_*'), 'Gravebound_Mage', '1', '--monster', '--prop', "$ms|handslot.r|staff|1.02|0.42|Staff") 'Gravebound_Mage'
-    Blend 'Gravebound.blend' @((Latest 'model_GraveWardenB_*'), 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword") 'GraveWarden'
+    Blend 'Gravebound.blend' ((Sides 'SkeletonWarrior') + @((Latest 'model_SkeletonWarriorB_*'), 'Gravebound_Warrior', '1', '--monster', '--prop', "$sw|handslot.r|blade|0.44|0.07|Sword", '--prop', "$ss|handslot.l|shield|0.34|0.5|Shield")) 'Gravebound_Warrior'
+    Blend 'Gravebound.blend' ((Sides 'SkeletonKnight') + @((Latest 'model_SkeletonKnightB_*'), 'Gravebound_Knight', '1', '--monster', '--prop', "$kg|handslot.r|blade|0.64|0.1|GreatSword")) 'Gravebound_Knight'
+    Blend 'Gravebound.blend' ((Sides 'SkeletonMage') + @((Latest 'model_SkeletonMageB_*'), 'Gravebound_Mage', '1', '--monster', '--prop', "$ms|handslot.r|staff|1.02|0.42|Staff")) 'Gravebound_Mage'
+    Blend 'Gravebound.blend' ((Sides 'GraveWarden') + @((Latest 'model_GraveWardenB_*'), 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword")) 'GraveWarden'
 }
 if ($Stage -in 'all', 'props') {
     $dst = "$r\Assets\Resources\Models\Lair"; New-Item -ItemType Directory -Force $dst | Out-Null
