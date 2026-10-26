@@ -320,7 +320,8 @@ namespace FH.UI
             JournalScreen.ContractDetail(C, detail, sel);
             var st = C.Contracts.Get(sel.id).status;
             if (st == ContractStatus.Active) UiKit.Button(detail, "Abandon", () => { C.Contracts.Abandon(sel.id); Refresh(); });
-            else if (st == ContractStatus.Completed && string.IsNullOrEmpty(sel.giverNpcId))
+            // Claimed at the board unless its giver takes the report in conversation.
+            else if (st == ContractStatus.Completed && (string.IsNullOrEmpty(sel.giverNpcId) || !C.Db.ClaimedInDialogue(sel.id)))
             {
                 var can = C.Contracts.CanClaim(sel.id);
                 UiKit.Button(detail, "Claim reward", () => { var r = C.Contracts.Claim(sel.id); if (!r.Ok) S.Hud.Flash(r.Reason); Refresh(); }).Enabled(can.Ok, can.Reason);

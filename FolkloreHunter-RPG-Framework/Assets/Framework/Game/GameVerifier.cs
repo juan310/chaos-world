@@ -855,6 +855,17 @@ namespace FH.Game
 
         IEnumerator SleepAndIncome()
         {
+            // A daytime rest is a nap (no new day: no skipping to rent); the night's sleep comes after 18:00.
+            if (!C.Clock.CanSleepThroughNight)
+            {
+                double before = C.State.world.hours;
+                yield return InteractWith(Find<BedRest>());
+                Click("Sleep");
+                yield return Frames(4);
+                Check("a daytime rest is a two-hour nap, not a new day", C.State.world.hours - before > 1.9 && C.State.world.hours - before < 2.2 && S.Hunter.Health >= S.Hunter.Stats[Stat.MaxHealth] - .01f, (C.State.world.hours - before).ToString("0.0") + " h");
+                while (Top != null) { Top.Back(); yield return Frames(2); }
+                if (!C.Clock.CanSleepThroughNight) { C.Clock.Advance(HoursToEvening()); Note("clock moved to the evening for the night's sleep (shortcut)"); }
+            }
             int day = C.Clock.Day;
             // Before the morning hour, the next morning is today's (a long run can pass midnight before this point).
             int morningDay = C.Clock.Hour < C.Db.Balance.dayStartHour - .01 ? day : day + 1;
@@ -873,6 +884,8 @@ namespace FH.Game
             Check("rent cannot be collected twice", again && !again.interactable);
             while (Top != null) { Top.Back(); yield return Frames(2); }
         }
+
+        double HoursToEvening() => Math.Max(0, WorldClock.BedtimeHour + .1 - C.Clock.Hour);
 
         IEnumerator DeathAndRecovery()
         {

@@ -27,6 +27,14 @@ namespace FH.Core
         public readonly Dictionary<string, AttributeDef> Attributes = new Dictionary<string, AttributeDef>();
         public readonly Dictionary<string, VendorDef> Vendors = new Dictionary<string, VendorDef>();
         public readonly Dictionary<string, DialogueDef> Dialogues = new Dictionary<string, DialogueDef>();
+
+        /// <summary>Some dialogue has a choice that claims this contract's reward (otherwise the board claims it).</summary>
+        public bool ClaimedInDialogue(string contractId) => Dialogues.Values.Any(d => d.nodes.Any(n => n.choices.Any(c => c.effects.Any(e => e.type == EffectType.ClaimContract && e.id == contractId))));
+
+        /// <summary>The dialogue node ids (of one dialogue) where this contract can be claimed.</summary>
+        public IEnumerable<string> ClaimNodes(string dialogueId, string contractId) => Dialogues.TryGetValue(dialogueId, out var d)
+            ? d.nodes.Where(n => n.choices.Any(c => c.effects.Any(e => e.type == EffectType.ClaimContract && e.id == contractId))).Select(n => n.id)
+            : Enumerable.Empty<string>();
         public readonly Dictionary<string, AreaDef> Areas = new Dictionary<string, AreaDef>();
         public readonly Dictionary<string, SpawnDef> Spawns = new Dictionary<string, SpawnDef>();
         public readonly Dictionary<string, HuntMovesetDef> HuntMovesets = new Dictionary<string, HuntMovesetDef>();

@@ -26,6 +26,14 @@ namespace FH.Core
 
         public void TickRealSeconds(float seconds) => Advance(seconds / 60.0 * db.Balance.hoursPerRealMinute);
 
+        /// <summary>From this hour (or before the morning) the bed takes the hunter through the night; earlier it is a nap.</summary>
+        public const double BedtimeHour = 18;
+        public bool CanSleepThroughNight => Hour >= BedtimeHour || Hour < db.Balance.dayStartHour - 0.01;
+
+        /// <summary>A rest during the day: a couple of hours pass, no new day (so rent and daily restocks cannot be
+        /// skipped to by sleeping at noon).</summary>
+        public double Nap(double hours = 2) { Advance(hours); return hours; }
+
         /// <summary>Sleep until the next morning. Returns hours slept.</summary>
         public double SleepUntilMorning()
         {
@@ -49,6 +57,8 @@ namespace FH.Core
         {
             var st = state.world.spawns.FirstOrDefault(x => x.spawnId == s.id);
             if (st != null && st.deadUntilHour > state.world.hours) return false;
+            // Its time is up: it comes back whole (broken parts healed), not only at the next midnight.
+            if (st != null && st.deadUntilHour >= 0) { st.deadUntilHour = -1; st.brokenParts.Clear(); }
             if (s.nightOnly && !clock.IsNight) return false;
             return conditions.All(s.requirements);
         }

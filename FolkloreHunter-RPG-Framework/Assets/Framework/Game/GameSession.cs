@@ -629,10 +629,11 @@ namespace FH.Game
 
         public void Sleep()
         {
-            Core.Clock.SleepUntilMorning();
+            bool night = Core.Clock.CanSleepThroughNight;
+            if (night) Core.Clock.SleepUntilMorning(); else Core.Clock.Nap();
             Hunter.RefreshStats(true);
             Calm(2);
-            Hud?.Notify("You wake rested. " + Core.Clock.Label, NoticeKind.Info);
+            Hud?.Notify(night ? "You wake rested. " + Core.Clock.Label : "You rest a while and feel restored. " + Core.Clock.Label + ". (The night's sleep comes after 18:00.)", NoticeKind.Info);
             if (Core.Estate.PendingIncome() > 0) Hud?.Notify("Rent is waiting in the estate ledger.", NoticeKind.Reward);
             Save();
             Hud?.Notify("Game saved.", NoticeKind.Info);

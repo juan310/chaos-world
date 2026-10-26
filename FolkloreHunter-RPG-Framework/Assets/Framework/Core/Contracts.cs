@@ -234,16 +234,18 @@ namespace FH.Core
                 while (qs.status == QuestStatus.Active && qs.stage < q.stages.Count && guard++ < 16)
                 {
                     var stage = q.stages[qs.stage];
-                    bool changed;
-                    if (e.type == ObjectiveType.EstateTier)
+                    bool changed = e.type != ObjectiveType.EstateTier && ObjectiveMath.Apply(stage.objectives, qs.progress, e);
+                    // State objectives hold whenever they are true: the estate tier reached, and a Craft objective whose
+                    // item the hunter already owns (forged before the stage began: the story must not wait for a
+                    // second, impossible forge).
+                    while (qs.progress.Count < stage.objectives.Count) qs.progress.Add(0);
+                    for (int i = 0; i < stage.objectives.Count; i++)
                     {
-                        while (qs.progress.Count < stage.objectives.Count) qs.progress.Add(0);
-                        changed = false;
-                        for (int i = 0; i < stage.objectives.Count; i++)
-                            if (stage.objectives[i].type == ObjectiveType.EstateTier && state.estate.tier >= stage.objectives[i].count && qs.progress[i] < stage.objectives[i].count)
-                            { qs.progress[i] = stage.objectives[i].count; changed = true; }
+                        var o = stage.objectives[i];
+                        int have = o.type == ObjectiveType.EstateTier ? (state.estate.tier >= o.count ? o.count : 0)
+                                 : o.type == ObjectiveType.Craft ? Math.Min(o.count, state.inventory.Where(x => x.itemId == o.targetId).Sum(x => x.count)) : 0;
+                        if (have > qs.progress[i]) { qs.progress[i] = have; changed = true; }
                     }
-                    else changed = ObjectiveMath.Apply(stage.objectives, qs.progress, e);
                     if (!ObjectiveMath.Done(stage.objectives, qs.progress)) { if (changed) events.RaiseQuest(q.id); break; }
                     var granted = rewards.Grant(stage.reward, "quest:" + q.id + ":" + stage.id);
                     if (!granted.Ok && !rewards.AlreadyGranted("quest:" + q.id + ":" + stage.id))

@@ -265,7 +265,7 @@ namespace FH.UI
             legend.Place(new Vector2(.7f, 0), Vector2.one, Vector2.zero, Vector2.zero);
             Layout.Heading(legend, "Valley of Thornbury");
             bool inCrypt = S.CurrentArea == "crypt";
-            UiKit.Paragraph(legend, inCrypt ? "You are below ground in the Warden's Crypt. The way out is the stair behind you." : "You are in " + C.Db.Areas[S.CurrentArea].name + ".", 20);
+            UiKit.Paragraph(legend, inCrypt ? "You are below ground in the Warden's Crypt. The way out is the stair behind you." : "You are in " + (C.Db.Areas.TryGetValue(S.CurrentArea ?? "", out var here) ? here.name : S.Proving ? S.TestAreaName : "the wilds") + ".", 20);
             UiKit.Paragraph(legend, "<color=#ffffff>▲</color> You\n<color=#f5d68c>●</color> People\n<color=#9be38a>■</color> Your cottage\n<color=#c9d6ff>■</color> Thornbury Crossing\n<color=#ff7a55>●</color> Contract quarry\n<color=#b98cff>■</color> Crypt entrance\n<color=#ff7a55>◯</color> Active hunting ground", 20);
             UiKit.Paragraph(legend, C.Clock.Label + (C.Clock.IsNight ? "\nNight: more of the dead walk the graveyard." : ""), 19, UiKit.Muted);
             var w = S.World;

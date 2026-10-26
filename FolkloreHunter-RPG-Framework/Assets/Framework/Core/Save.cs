@@ -46,7 +46,9 @@ namespace FH.Core
                 result.State = JsonMapper.To<GameState>(map);
             }
             catch (Exception e) { result.Status = LoadStatus.Corrupt; result.Message = "Save data could not be upgraded (" + e.Message + ")."; return result; }
-            Sanitize(result.State, db, result.Repairs);
+            // A repair that fails (data shaped in a way nothing expected) means a damaged save: the backup is tried.
+            try { Sanitize(result.State, db, result.Repairs); }
+            catch (Exception e) { result.State = null; result.Status = LoadStatus.Corrupt; result.Message = "Save data is damaged (" + e.Message + ")."; return result; }
             result.Status = LoadStatus.Loaded;
             return result;
         }
@@ -106,6 +108,13 @@ namespace FH.Core
             if (s.equipment == null) s.equipment = new EquipmentState();
             if (s.estate == null) s.estate = new EstateState();
             if (s.world == null) s.world = new WorldState();
+            // Lists written as null (hand-edited or damaged saves) become empty instead of breaking the load.
+            s.inventory = s.inventory ?? new List<ItemStack>(); s.estate.storage = s.estate.storage ?? new List<ItemStack>();
+            s.contracts = s.contracts ?? new List<ContractState>(); s.quests = s.quests ?? new List<QuestState>();
+            s.knownRecipes = s.knownRecipes ?? new List<string>(); s.relationships = s.relationships ?? new List<RelationshipState>();
+            s.world.flags = s.world.flags ?? new List<string>(); s.world.claimedRewards = s.world.claimedRewards ?? new List<string>();
+            s.world.spawns = s.world.spawns ?? new List<SpawnState>(); s.player.hotbar = s.player.hotbar ?? new List<string> { "", "", "", "" };
+            s.player.attributes = s.player.attributes ?? new List<AttributeValue>(); s.player.skills = s.player.skills ?? new List<string>();
             if (s.gold < 0) { repairs.Add("negative gold " + s.gold); s.gold = 0; }
             CleanStacks(s.inventory, db, repairs, "pack");
             CleanStacks(s.estate.storage, db, repairs, "storage");
@@ -120,6 +129,39 @@ namespace FH.Core
                 .Select(u => int.TryParse(u.Substring(1), out var n) ? n : 0).DefaultIfEmpty(0).Max();
             if (s.nextUid <= maxUid) s.nextUid = maxUid + 1;
             s.equipment.weapon = CheckEquip(s, db, s.equipment.weapon, EquipSlot.Weapon, repairs);
+            // A hunter without a weapon cannot fight: equip one they own, or the starting blade.
+            if (string.IsNullOrEmpty(s.equipment.weapon))
+            {
+                var own = s.inventory.FirstOrDefault(x => db.Items.ContainsKey(x.itemId) && db.Item(x.itemId).slot == EquipSlot.Weapon && !string.IsNullOrEmpty(x.uid));
+                if (own == null && !string.IsNullOrEmpty(db.Balance.startWeapon) && db.Items.ContainsKey(db.Balance.startWeapon))
+                {
+                    own = new ItemStack { itemId = db.Balance.startWeapon, count = 1, uid = s.NewUid() };
+                    s.inventory.Add(own);
+                    repairs.Add("gave the starting weapon");
+                }
+                if (own != null) { s.equipment.weapon = own.uid; repairs.Add("equipped " + own.itemId); }
+            }
+            // Sample-era saves (v1) carried the first contract over as claimed but not what it paid: restore its
+            // reputation, recipes and materials once (its gold was already in the sample's purse).
+            if (s.world.flags.Contains("migrated_from_sample") && !s.world.flags.Contains("sample_reward_restored")
+                && db.Contracts.TryGetValue("c_gravebound_cull", out var cull) && s.contracts.Any(c => c != null && c.id == cull.id && c.status == ContractStatus.Claimed))
+            {
+                s.world.flags.Add("sample_reward_restored");
+                var rw = cull.reward;
+                if (rw != null)
+                {
+                    s.player.hunterReputation += rw.hunterReputation;
+                    foreach (var r in rw.unlockRecipes ?? new List<string>()) if (!s.knownRecipes.Contains(r)) s.knownRecipes.Add(r);
+                    foreach (var f in rw.setFlags ?? new List<string>()) if (!s.world.flags.Contains(f)) s.world.flags.Add(f);
+                    foreach (var it in rw.items ?? new List<ItemAmount>())
+                    {
+                        if (!db.Items.ContainsKey(it.itemId)) continue;
+                        if (db.Item(it.itemId).IsUnique) for (int k = 0; k < it.count; k++) s.inventory.Add(new ItemStack { itemId = it.itemId, count = 1, uid = s.NewUid() });
+                        else s.inventory.Add(new ItemStack { itemId = it.itemId, count = it.count, uid = "" });
+                    }
+                    repairs.Add("restored the first contract's reward from the sample-era save");
+                }
+            }
             s.equipment.head = CheckEquip(s, db, s.equipment.head, EquipSlot.Head, repairs);
             s.equipment.body = CheckEquip(s, db, s.equipment.body, EquipSlot.Body, repairs);
             s.equipment.charm = CheckEquip(s, db, s.equipment.charm, EquipSlot.Charm, repairs);
@@ -221,7 +263,10 @@ namespace FH.Core
             Write(slot, SaveCodec.Encode(state));
         }
 
-        public LoadResult Load(int slot, GameDatabase db)
+        /// <summary>Loads a slot. With <paramref name="repair"/> (playing it), a damaged latest save is quarantined and the
+        /// good backup is written back as the slot, so the next save does not push the damaged one over the backup; a
+        /// summary for the slot list reads only.</summary>
+        public LoadResult Load(int slot, GameDatabase db, bool repair = true)
         {
             string path = PathFor(slot), bak = BackupFor(slot);
             if (!File.Exists(path) && !File.Exists(bak)) return new LoadResult { Status = LoadStatus.NoSave, Message = "No saved game in this slot." };
@@ -236,13 +281,13 @@ namespace FH.Core
                 var backup = SaveCodec.Decode(SafeRead(bak), db);
                 if (backup.Ok)
                 {
-                    if (File.Exists(path)) Quarantine(path);
+                    if (repair && File.Exists(path)) { Quarantine(path); try { File.Copy(bak, path, true); } catch (Exception) { } }
                     backup.Status = LoadStatus.LoadedFromBackup;
                     backup.Message = "The latest save was damaged; the previous save was restored.";
                     return backup;
                 }
             }
-            if (File.Exists(path)) Quarantine(path);
+            if (repair && File.Exists(path)) Quarantine(path);
             return main ?? new LoadResult { Status = LoadStatus.Corrupt, Message = "Save data is damaged." };
         }
 
@@ -268,7 +313,7 @@ namespace FH.Core
         {
             var s = new SlotSummary { Slot = slot, Exists = Exists(slot) };
             if (!s.Exists) { s.Label = "Empty"; return s; }
-            var r = Load(slot, db);
+            var r = Load(slot, db, false);
             s.Status = r.Status;
             if (!r.Ok) { s.Label = r.Message; return s; }
             var st = r.State;
