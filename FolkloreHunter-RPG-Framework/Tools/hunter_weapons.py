@@ -355,8 +355,10 @@ def bow_pose(depth=1.0, cant=0.0, pitch=0.0, release=0.0, lean=0.0):
             if n in P.pb: P.aim(n, A)
         if cant and 'lowerarm.l' in P.pb: P.turn('lowerarm.l', A, -cant)
         bow_hand = P.head('hand.l') if 'hand.l' in P.pb else SL + A * reach
-        string = bow_hand - A * (.36 + .5 * depth) + Vector((-.03, 0, .04))  # back along the arrow to the cheek
-        string += Vector((-.06, .08, -.02)) * release
+        # The string hand comes back along the arrow toward the cheek; the draw is scaled to the (short, chibi) arm reach
+        # so the hand stays in front of the chest and face rather than disappearing behind the back.
+        string = bow_hand - A * (reach * (.35 + .5 * depth)) + Vector((0, 0, .06))
+        string += Vector((-.05, .06, -.01)) * release
         P.arm('r', string, (-1, .6, .3))
         for n in ('wrist.r', 'hand.r'):
             if n in P.pb: P.aim(n, A)
