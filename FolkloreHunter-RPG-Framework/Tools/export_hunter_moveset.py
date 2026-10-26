@@ -107,6 +107,9 @@ cam_data = bpy.data.cameras.new('PreviewCam'); cam_data.type = 'ORTHO'; cam_data
 cam = bpy.data.objects.new('PreviewCam', cam_data); scene.collection.objects.link(cam); scene.camera = cam
 rig.animation_data_create()
 shots = []
+props = [o for o in bpy.data.objects if o.name in ('1H_Sword', 'Round_Shield', 'Knight_Cape')]
+views = (('front', (0, -6, 1.0), (math.radians(90), 0, 0)), ('side', (6, 0, 1.0), (math.radians(90), 0, math.radians(90))),
+         ('right', (-6, 0, 1.0), (math.radians(90), 0, math.radians(-90))), ('threequarter', (4.2, -4.2, 2.6), (math.radians(68), 0, math.radians(45))))
 for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spin', 'Lie_Down', 'Use_Item']:
     act = bpy.data.actions.get(name)
     if not act:
@@ -119,13 +122,18 @@ for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spi
         pass
     f0, f1 = act.frame_range
     scene.frame_set(int(f0 + (f1 - f0) * .5))
-    for view, loc, rot in (('front', (0, -6, 1.0), (math.radians(90), 0, 0)), ('side', (6, 0, 1.0), (math.radians(90), 0, math.radians(90)))):
+    bare = name in ('Ride_Idle', 'Sit_Chair_Idle')      # legs must be visible: hide sword, shield and cape for these
+    for o in props:
+        o.hide_render = bare
+    for view, loc, rot in (views if bare else views[:2]):
         cam.location = loc; cam.rotation_euler = rot
         out = preview / ('%s_%s.png' % (name, view))
         scene.render.filepath = str(out)
         bpy.ops.render.render(write_still=True)
         shots.append(str(out))
 rig.animation_data.action = None
+for o in props:
+    o.hide_render = False
 
 bpy.data.objects.remove(cam, do_unlink=True)
 bpy.ops.export_scene.fbx(filepath=str(dest / 'Hunter.fbx'), use_selection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
