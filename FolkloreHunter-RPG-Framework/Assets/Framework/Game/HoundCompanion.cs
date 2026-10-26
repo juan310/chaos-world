@@ -433,7 +433,7 @@ namespace FH.Game
                 float sc = soft ? Vector3.Distance(Flat(p), Flat(soft.transform.position)) : Vector3.Distance(Flat(p), Flat(transform.position));
                 if (sc < flankScore) { flankScore = sc; flank = p; }
             }
-            bool atFlank = Vector3.Distance(Flat(flank), Flat(transform.position)) < 1.4f * Size;
+            bool atFlank = Vector3.Distance(Flat(flank), Flat(transform.position)) < .9f * Size;   // close enough to really be across
             bool danger = Danger(target);
             PincerAngle = HoundTactics.PincerAngle(target.transform.position.x, target.transform.position.z, h.x, h.z, transform.position.x, transform.position.z);
             Action = HoundTactics.Choose(gap, open ? reach + 1.2f * Size : reach, danger, now >= evadeReadyAt, now >= comboReadyAt, now >= pounceReadyAt, atFlank);
