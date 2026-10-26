@@ -71,6 +71,18 @@ namespace FH.Game
 
         UiScreen Top => S.Ui.Top;
 
+        /// <summary>A still of the crypt from the camera position of a supplied picture, for comparing with it.</summary>
+        IEnumerator CryptView(string name, Vector3 local, Vector3 lookAt)
+        {
+            var cam = S.CameraRig.Camera.transform; bool manual = S.CameraRig.Manual;
+            S.CameraRig.Manual = true;
+            var o = S.World.CryptOrigin;
+            cam.position = o + local; cam.LookAt(o + lookAt);
+            yield return Real(.6f);
+            yield return Snap(name);
+            S.CameraRig.Manual = manual; S.CameraRig.Snap();
+        }
+
         Button FindButton(string contains)
         {
             if (Top == null) return null;
@@ -718,6 +730,24 @@ namespace FH.Game
             var boss = S.Monsters.FirstOrDefault(m => m && m.Alive && m.MonsterId == "grave_warden");
             Check("the Grave Warden is present in the crypt", boss != null);
             if (!boss) yield break;
+            // 0.9: the hallway and the lair from the supplied pictures.
+            var lair = S.World.transform.Find("Warden's Crypt - instanced dungeon");
+            var gd = FindObjectsByType<GreatDoor>(FindObjectsInactive.Exclude).FirstOrDefault();
+            Check("the Warden's hallway ends at the great door, closed, under THE DEAD OBEY THE WARDEN", gd && !gd.IsOpen && lair && lair.Find("Inscription: THE DEAD OBEY THE WARDEN"));
+            int braziers = lair ? lair.GetComponentsInChildren<BrazierFlame>().Length : 0;
+            Check("braziers burn along the hallway and around the lair", braziers >= 10, braziers + " braziers");
+            Check("the lair floor carries the rune circle; banners, chains and statues are in place", lair && lair.Find("Rune circle") && lair.GetComponentsInChildren<LineRenderer>().Length >= 10 && lair.GetComponentsInChildren<Transform>().Count(t => t.name.StartsWith("Banner")) >= 8,
+                  lair ? lair.GetComponentsInChildren<LineRenderer>().Length + " chains" : "no crypt");
+            var guards = S.Monsters.Where(m => m && m.Alive && m.SpawnId != null && m.SpawnId.StartsWith("sp_crypt_guard")).ToList();
+            Check("two skeleton guards stand in the hallway", guards.Count == 2, guards.Count + " guards, models " + string.Join("/", guards.Select(m => m.Model)));
+            float hall = WardenLair.HallFloor;
+            yield return CryptView("15a-warden-hallway", new Vector3(.4f, hall + 2.4f, WardenLair.HallStart + 3.2f), new Vector3(0, hall + 2.6f, WardenLair.DoorZ));
+            if (gd) gd.Use(S);
+            yield return Real(2.2f);
+            Check("pushing the great door swings both leaves into the lair", gd && gd.IsOpen && Mathf.Abs(Mathf.DeltaAngle(0, gd.LeftHinge.localEulerAngles.y)) > 70 && Mathf.Abs(Mathf.DeltaAngle(0, gd.RightHinge.localEulerAngles.y)) > 70);
+            yield return CryptView("15b-warden-lair", new Vector3(0, hall + 3.4f, WardenLair.DoorZ + .9f), new Vector3(0, 1.4f, 12));
+            foreach (var guard in guards) S.DespawnMonster(guard);      // shortcut (labelled): the guards are not part of the boss checks below
+            Note("crypt: the two hallway guards were removed for the boss checks (shortcut)");
             Place(S.World.CryptOrigin + new Vector3(0, 0, 4), boss.transform.position);
             float t = 0;
             while (t < 5 && !boss.Brain.Engaged) { t += Time.unscaledDeltaTime; yield return null; }

@@ -135,7 +135,7 @@ namespace FH.Game
 
         /// <summary>Pose frames of the hunter's new clips with the weapon in hand (bow, katana) and of the evasions, for the
         /// Claude Eyes inspector: side view, orthographic, transparent background, 16 frames per clip, rendered by the player.</summary>
-        IEnumerator CaptureHunterPoses()
+        IEnumerator CaptureHunterPoses(string prefix = "hunter")
         {
             string folder = Path.Combine(root, "HunterPoses"); Directory.CreateDirectory(folder);
             H.enabled = false;                                   // nothing drives the pose while it is sampled
@@ -171,7 +171,7 @@ namespace FH.Game
                         st.time = st.length * (from + (1 - from) * i / 16f); anim.Anim.Sample();
                         F.KeepBladeOffGround();                          // as LateUpdate does in play
                         lowest = Mathf.Min(lowest, F.BladeTipClearance);
-                        yield return Render(cam, rt, Path.Combine(folder, "hunter_" + label + "_E_" + i.ToString("00") + ".png")); written++;
+                        yield return Render(cam, rt, Path.Combine(folder, prefix + "_" + label + "_E_" + i.ToString("00") + ".png")); written++;
                     }
                     st.enabled = false;
                     if (label == "katana_overhead")
@@ -183,7 +183,86 @@ namespace FH.Game
             anim.Current = ""; anim.Play("Idle");
             H.enabled = true;
             S.ProvingRig.SetWeapon("sword_shield");
-            Check("hunter pose frames rendered for Claude Eyes (bow, katana, jog and sprint, evasions)", written == 20 * 16, written + " frames");
+            Check(prefix + " pose frames rendered for Claude Eyes (bow, katana, jog and sprint, evasions)", written == 20 * 16, written + " frames");
+        }
+
+        // ---------------- 0.9: the hunters from the main character sheet ----------------
+        IEnumerator NewLookChecks()
+        {
+            var before = H.Look;
+            foreach (var body in new[] { Appearance.Male, Appearance.Female })
+            {
+                var models = Appearance.Models(body, 1);
+                string want = models.FirstOrDefault(CharacterFactory.Exists);
+                if (want == null || want == "Hunter") { Note("the " + body + " hunter model is not in this build"); continue; }
+                S.ProvingRig.ClearMonsters();
+                if (H.LockTarget) yield return Tap(PadButton.RightStick);
+                H.ApplyLook(models);
+                S.ProvingRig.SetWeapon("sword_shield");
+                F.SetSheathed(true);
+                yield return Frames(4);
+                var rends = H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>();
+                var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+                float ground = S.GroundHeight(H.transform.position);
+                Check(body + " hunter: the character sheet's model is worn, standing on the ground at full height", H.Look == want && Mathf.Abs(b.min.y - ground) < .15f && b.size.y > 1.55f,
+                      H.Look + ", height " + b.size.y.ToString("0.00") + " m, lowest point " + (b.min.y - ground).ToString("0.00") + " m from the ground");
+                var clips = new[] { "Hunt_Jog", "Hunt_Sprint", "Bow_Draw", "Katana_Iai", "Lance_Charge", "Dodge_Forward", "Dodge_Right", "Ride_Idle", "2H_Melee_Attack_Chop", "1H_Melee_Attack_Chop" };
+                Check(body + " hunter: every clip of the hunt moveset plays on the new body", clips.All(H.Anim.Has), string.Join(", ", clips.Where(c => !H.Anim.Has(c))));
+                Check(body + " hunter: sword, shield, lance, bow and katana sit in the new hands", new[] { "1H_Sword", "Round_Shield", "Hunt_Lance", "Hunt_Bow", "Hunt_Katana" }.All(n => WorldKit.Find(H.Visual, n)));
+                yield return Snap("n01-" + body + "-look");
+                // a real fight: the draw slash and the combo land on a monster
+                var m = Fresh(S.ProvingRig.Spawn("gravebound", true)); m.Passive = true;
+                Face(m, 2.2f); yield return Frames(3);
+                int landed = H.SwingsLanded;
+                for (int i = 0; i < 3; i++) { yield return Tap(PadButton.Y); yield return Wait(.45f); }
+                yield return UntilNeutral();
+                Check(body + " hunter: the sword combo lands on a monster", H.SwingsLanded > landed, (H.SwingsLanded - landed) + " hits");
+                yield return Snap("n02-" + body + "-combo");
+                S.ProvingRig.ClearMonsters(); F.SetSheathed(true); yield return Frames(2);
+                // jog: full stick for a second and a half
+                var p0 = Flat(H.transform.position);
+                Hold(PadButton.None, new Vector2(0, 1)); yield return Wait(1.5f);
+                float jog = Vector3.Distance(p0, Flat(H.transform.position)) / 1.5f;
+                Release(); yield return Wait(.4f);
+                Check(body + " hunter: full stick jogs at the hunt pace", jog > 2.8f, jog.ToString("0.00") + " m/s");
+                yield return CaptureHunterPoses(body);
+            }
+            H.ApplyLook(Appearance.Models(Appearance.Classic, 1));
+            S.ProvingRig.SetWeapon("sword_shield");
+            yield return Frames(3);
+            Check("the classic knight can be put back on", H.Look == "Hunter", H.Look + " (was " + before + ")");
+        }
+
+        // ---------------- 0.9: the skeletons and the Grave Warden from the supplied sheets ----------------
+        IEnumerator SkeletonUpgradeChecks()
+        {
+            foreach (var id in new[] { "gravebound", "gravebound_knight", "gravebound_mage", "grave_warden" })
+            {
+                S.ProvingRig.ClearMonsters();
+                if (H.LockTarget) yield return Tap(PadButton.RightStick);
+                yield return Frames(2);
+                var m = S.ProvingRig.Spawn(id, true);
+                if (!m) { Check(id + " can be spawned", false); continue; }
+                m.Passive = true;
+                Face(m, id == "grave_warden" ? 6 : 4.5f); yield return Frames(4);
+                var props = m.Visual.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith(m.Model + "_") && !r.name.EndsWith("_Body")).Select(r => r.name.Substring(m.Model.Length + 1)).ToList();
+                bool fresh = m.Model == m.Def.model;
+                Check(m.Def.name + ": the model from the skeleton sheet, holding its own weapons", fresh && props.Count > 0, m.Model + (fresh ? "" : " (older model: the new one is not in this build)") + "; weapons " + string.Join("/", props));
+                yield return Snap("s01-" + id);
+                if (id == "gravebound_mage")
+                {
+                    m.Passive = false; m.Brain.AttackFilter = null;
+                    int bolts = MonsterVenom.GraveBolts;
+                    S.ProvingRig.Invulnerable = true;
+                    Face(m, 7f); yield return Frames(2);
+                    yield return Until(() => MonsterVenom.GraveBolts > bolts, 8);
+                    yield return Wait(.25f);
+                    yield return Snap("s02-grave-bolt");
+                    Check("the Gravebound Mage casts grave bolts at the hunter from range", MonsterVenom.GraveBolts > bolts, (MonsterVenom.GraveBolts - bolts) + " bolts");
+                    S.ProvingRig.Invulnerable = false;
+                }
+            }
+            S.ProvingRig.ClearMonsters();
         }
 
         static IEnumerator Render(Camera cam, RenderTexture rt, string path)
@@ -1454,6 +1533,8 @@ namespace FH.Game
             yield return BossChecks();
             yield return RangeChecks();
             yield return CaptureHunterPoses();
+            yield return NewLookChecks();
+            yield return SkeletonUpgradeChecks();
 
             // Menus on the pad: Menu opens pause, B backs out.
             yield return Tap(PadButton.Start);

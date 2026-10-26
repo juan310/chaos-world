@@ -27,20 +27,23 @@ for s in STATES: C.EXPECTED_FRAMES[s] = 16
 summary = {'scope': 'Hunter with the bow, the katana and the evasions: real Unity player frames (orthographic side view) and the '
                     'hunter actor track. Sprite-oriented 2D pose checks plus temporal track checks.'}
 totals = {'confirmed': 0, 'likely': 0, 'uncertain': 0}
-for state in STATES:
-    files = sorted(poses.glob('hunter_%s_E_*.png' % state))
-    key = 'hunter_' + state
-    if len(files) != 16:
-        summary[key] = {'error': 'expected 16 frames, found %d' % len(files)}; print('SIGHTFORGE_HUNTER', key, 'missing frames', flush=True); continue
-    page, data = E.cmd_animation(SimpleNamespace(project=p, run='hunter-' + state, subject='Hunter', state=state, dir='E', files=list(map(str, files))))
-    found = [f for f in data['findings'] if f['kind'] in ('confirmed', 'likely', 'uncertain')]
-    for f in found:
-        # One-shots do not loop, so "loop does not close" does not apply to them; airborne moves leave the ground line.
-        f['expected'] = (state != 'walk' and f['check'] == 'loop does not close') or \
-                        (state in AIRBORNE and f['check'] in ('feet leave the ground line', 'scale jump', 'part missing', 'frame displaced'))
-    summary[key] = {'summary': data['summary'], 'findings': found, 'page': page}
-    for k in totals: totals[k] += data['summary'].get(k, 0)
-    print('SIGHTFORGE_HUNTER', key, json.dumps(data['summary']), 'unexpected', sum(1 for f in found if not f['expected'] and f['kind'] != 'uncertain'), flush=True)
+for who in ('hunter', 'male', 'female'):          # the classic knight and (0.9) the hunters from the main character sheet
+    if not list(poses.glob(who + '_walk_E_*.png')):
+        continue
+    for state in STATES:
+        files = sorted(poses.glob('%s_%s_E_*.png' % (who, state)))
+        key = who + '_' + state
+        if len(files) != 16:
+            summary[key] = {'error': 'expected 16 frames, found %d' % len(files)}; print('SIGHTFORGE_HUNTER', key, 'missing frames', flush=True); continue
+        page, data = E.cmd_animation(SimpleNamespace(project=p, run=who + '-' + state, subject=who.capitalize(), state=state, dir='E', files=list(map(str, files))))
+        found = [f for f in data['findings'] if f['kind'] in ('confirmed', 'likely', 'uncertain')]
+        for f in found:
+            # One-shots do not loop, so "loop does not close" does not apply to them; airborne moves leave the ground line.
+            f['expected'] = (state != 'walk' and f['check'] == 'loop does not close') or \
+                            (state in AIRBORNE and f['check'] in ('feet leave the ground line', 'scale jump', 'part missing', 'frame displaced'))
+        summary[key] = {'summary': data['summary'], 'findings': found, 'page': page}
+        for k in totals: totals[k] += data['summary'].get(k, 0)
+        print('SIGHTFORGE_HUNTER', key, json.dumps(data['summary']), 'unexpected', sum(1 for f in found if not f['expected'] and f['kind'] != 'uncertain'), flush=True)
 summary['totals'] = totals
 
 track = r / 'Captures/Proving/proving_track.jsonl'

@@ -9,7 +9,9 @@ namespace FH.Game {
    var trail=o.AddComponent<TrailRenderer>();trail.time=.18f;trail.startWidth=.26f;trail.endWidth=.01f;trail.material=WorldKit.Transparent("Venom trail",new Color(.5f,.8f,.05f,.65f));
   }
   /// <summary>The Gravebound Mage's grave bolt: a purple spirit fire that flies at the hunter (no poison).</summary>
+  public static int GraveBolts{get;private set;}
   public static void GraveBolt(GameSession s,MonsterAttackDef attack,Vector3 origin,Vector3 direction) {
+   GraveBolts++;
    var o=WorldKit.Orb("Grave bolt",origin,.2f,WorldKit.Glow(new Color(.62f,.3f,1f),3));
    var v=o.AddComponent<MonsterVenom>();v.session=s;v.attack=attack;v.strength=1;v.poison=false;v.colour=new Color(.7f,.4f,1f);v.velocity=direction.normalized*11;
    var trail=o.AddComponent<TrailRenderer>();trail.time=.25f;trail.startWidth=.32f;trail.endWidth=.01f;trail.material=WorldKit.Transparent("Grave bolt trail",new Color(.62f,.32f,1f,.7f));
