@@ -246,9 +246,11 @@ namespace FH.Core
             return s.distanceToPlayer <= Def.perceptionRadius && s.lineOfSight && Math.Abs(s.angleToPlayer) <= Def.fieldOfView * .5f;
         }
 
-        MonsterAttackDef ChooseAttack(float distance)
+        public Func<MonsterAttackDef, bool> AttackFilter;
+
+        MonsterAttackDef ChooseAttack(Senses senses)
         {
-            var inRange = Def.attacks.Where(a => distance <= a.range).ToList();
+            var inRange = Def.attacks.Where(a => senses.distanceToPlayer <= a.range && senses.distanceToPlayer >= a.minRange && Math.Abs(senses.angleToPlayer) >= a.minAngle && Math.Abs(senses.angleToPlayer) <= a.maxAngle && (AttackFilter == null || AttackFilter(a))).ToList();
             if (inRange.Count == 0) return null;
             attackIndex++;
             return inRange[attackIndex % inRange.Count];
@@ -278,7 +280,7 @@ namespace FH.Core
                     if (s.distanceFromHome > Def.leashRadius || !s.playerAlive || unseen > Def.loseInterestTime) { Set(MonsterMode.Return); break; }
                     if (Grace <= 0 && cooldown <= 0)
                     {
-                        var atk = ChooseAttack(s.distanceToPlayer);
+                        var atk = ChooseAttack(s);
                         if (atk != null) { CurrentAttack = atk; HitDelivered = false; Set(MonsterMode.Telegraph); }
                     }
                     break;

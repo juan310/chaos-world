@@ -11,8 +11,8 @@ using UnityEngine;
 /// (the sample's Build and Build-Werewolf outputs are never touched).</summary>
 public static class FHBuild
 {
-    public const string ScenePath = "Assets/Scenes/FolkloreHunterRPG.unity";
-    public const string Output = "Build-RPG/FolkloreHunterRPG.exe";
+    public const string ScenePath = "Assets/Scenes/FolkloreHunterHunts.unity";
+    public const string Output = "Build-Hunts/FolkloreHunterHunts.exe";
     const string Generated = "Assets/Generated/RPG";
 
     [MenuItem("Folklore Hunter/Generate scene")]
@@ -47,6 +47,7 @@ public static class FHBuild
         var session = sessionGo.AddComponent<GameSession>();
         session.World = refs; session.Hunter = hunter; session.CameraRig = rig; session.Ui = ui;
 
+        QualitySettings.skinWeights = SkinWeights.Unlimited;
         QualitySettings.shadows = ShadowQuality.All; QualitySettings.shadowResolution = ShadowResolution.High; QualitySettings.shadowDistance = 65; QualitySettings.antiAliasing = 4; QualitySettings.vSyncCount = 1;
 
         int count = 0;
@@ -91,5 +92,5 @@ public static class FHBuild
         if (report.summary.result != BuildResult.Succeeded) throw new System.Exception("Player build failed");
     }
 
-    public static string Version => "0.4.0-framework";
+    public static string Version => "0.5.0-reference-hunts";
 }

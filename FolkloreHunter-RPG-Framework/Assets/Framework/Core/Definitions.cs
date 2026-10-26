@@ -8,7 +8,7 @@ namespace FH.Core
 
     public enum ItemKind { Material, Consumable, Weapon, Armor, Charm, Gift, Key }
     public enum Rarity { Common, Uncommon, Rare, Epic, Legendary }
-    public enum DamageType { Slash, Blunt, Pierce, Fire, Holy }
+    public enum DamageType { Slash, Blunt, Pierce, Fire, Holy, Poison }
     public enum EquipSlot { None, Weapon, Head, Body, Charm }
     public enum Stat { MaxHealth, MaxStamina, MaxMagic, Attack, Defense, SpellPower, StaminaRegen, PoiseDamage, CritChance, MoveSpeed, DodgeWindow }
 
@@ -28,6 +28,7 @@ namespace FH.Core
         public EquipSlot slot;
         public List<StatMod> stats = new List<StatMod>();
         public float heal, restoreMagic, restoreStamina; // consumable effects
+        public bool curePoison;
         public string icon;              // short glyph shown on slots
         public bool IsUnique => maxStack <= 1;
     }
@@ -84,6 +85,8 @@ namespace FH.Core
     public class MonsterAttackDef
     {
         public string id, anim;
+        public string hitBone;
+        public float minRange, minAngle, maxAngle = 180, lungeSpeed;
         public float telegraph = .55f, active = .2f, recovery = .7f;
         public float damage = 12, range = 2.2f, radius = .9f, cooldown = 1.6f, weight = 1, animSpeed = 1;
         public DamageType damageType = DamageType.Slash;
@@ -108,6 +111,7 @@ namespace FH.Core
     public class MonsterDef
     {
         public string id, name, model, family;
+        public float bodyRadius;
         public float height = 1.8f, maxHealth = 90, poise = 40, poiseRegen = 8, staggerTime = 1.1f;
         public float walkSpeed = 1.6f, chaseSpeed = 2.2f, turnSpeed = 7;
         public float perceptionRadius = 11, fieldOfView = 140, hearingRadius = 4, leashRadius = 18, loseInterestTime = 5;

@@ -186,7 +186,7 @@ namespace FH.Game
             Check("sword is parented to the real right-hand slot bone", sword && hand && sword.IsChildOf(hand));
             var monsters = S.Monsters.Where(m => m && m.Alive).ToList();
             Check("rigged Gravebound spawned from data", monsters.Count(m => m.MonsterId == "gravebound") >= 4, monsters.Count.ToString());
-            Check("monsters use skinned meshes with authored clips", monsters.All(m => m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && m.Anim.Has("Walking_A") && m.Anim.Has("1H_Melee_Attack_Chop")));
+            Check("monsters use skinned meshes with authored clips", monsters.All(m => m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && m.Anim.Has("Walking_A") && m.Def.attacks.All(a => m.Anim.Has(a.anim))));
             var msword = monsters.Select(m => WorldKit.Find(m.Visual, "1H_Sword (held)")).FirstOrDefault();
             Check("monster sword is attached to its hand slot bone", msword && msword.parent && msword.parent.name.Contains("handslot.r"));
             // Real skin deformation by the walk clip (bake two frames of the skinned mesh).

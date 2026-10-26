@@ -92,6 +92,8 @@ namespace FH.Game
             ApplyEquipmentVisuals();
         }
 
+        public void RefreshEquipmentPresentation() => ApplyEquipmentVisuals();
+
         void ApplyEquipmentVisuals()
         {
             // The rig has one sword mesh; upgraded blades are shown by tinting it rather than inventing new art.
@@ -101,6 +103,8 @@ namespace FH.Game
             if (!r) return;
             var baseMat = CharacterFactory.Atlas("Hunter");
             r.sharedMaterial = item.rarity >= Rarity.Uncommon ? TintedBlade(baseMat, item.rarity) : baseMat;
+            var equipment = GetComponent<HuntEquipment>(); if (!equipment) equipment = gameObject.AddComponent<HuntEquipment>();
+            equipment.Refresh(session, this);
         }
 
         static Material TintedBlade(Material baseMat, Rarity rarity)
@@ -266,6 +270,9 @@ namespace FH.Game
         {
             if (!sword) { BladeBase = transform.position + Vector3.up; BladeTip = BladeBase + transform.forward; return; }
             Vector3 a = sword.TransformPoint(swordLocalA), b = sword.TransformPoint(swordLocalB);
+            var equipment = GetComponent<HuntEquipment>();
+            Vector3 equippedA, equippedB;
+            if (equipment && equipment.TryBlade(out equippedA, out equippedB)) { a = equippedA; b = equippedB; }
             Vector3 grip = hand ? hand.position : a;
             if (Vector3.Distance(a, grip) > Vector3.Distance(b, grip)) { var t = a; a = b; b = t; }
             float reach = Attack.Def != null ? Attack.Def.reach : 1;
@@ -387,6 +394,7 @@ namespace FH.Game
 
         public void Consume(ItemDef item)
         {
+            if (item.curePoison) GetComponent<VenomStatus>()?.Clear();
             Health = Mathf.Min(Stats[Stat.MaxHealth], Health + item.heal);
             Magic = Mathf.Min(Stats[Stat.MaxMagic], Magic + item.restoreMagic);
             Stamina.Current = Mathf.Min(Stamina.Max, Stamina.Current + item.restoreStamina);
@@ -443,9 +451,16 @@ namespace FH.Game
             Anim.Play("Hit_A", false, 1.3f, true, .05f);
         }
 
+        public void TakeVenomDamage(float damage) {
+            if (Dead || damage <= 0) return;
+            Health = Mathf.Max(0, Health - damage);
+            if (Health <= 0) { Dead = true; deathAt = Time.time; LockTarget = null; Attack.Cancel(); Anim.Play("Death_A", false, 1, true, .05f); }
+        }
+
         public void Revive(Vector3 position, float yaw)
         {
             Dead = false; deathAt = -1;
+            GetComponent<VenomStatus>()?.Clear();
             Teleport(position, yaw);
             Health = Stats[Stat.MaxHealth]; Stamina.Current = Stamina.Max; Magic = Stats[Stat.MaxMagic];
             Attack.Cancel(); hurtUntil = 0; lockUntil = 0;

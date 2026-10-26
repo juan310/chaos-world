@@ -31,7 +31,15 @@
     { "id": "potion_mooncap", "name": "Mooncap Tonic", "description": "Restores 65 health.", "kind": "Consumable", "rarity": "Common", "maxStack": 10, "buyPrice": 20, "sellPrice": 6, "heal": 65, "icon": "+" },
     { "id": "draught_stamina", "name": "Hunter's Draught", "description": "Restores 100 stamina and 30 magic.", "kind": "Consumable", "rarity": "Common", "maxStack": 10, "buyPrice": 18, "sellPrice": 5, "restoreStamina": 100, "restoreMagic": 30, "icon": "~" },
     { "id": "honey_cake", "name": "Honey Cake", "description": "Sticky and sweet. A fine gift.", "kind": "Gift", "rarity": "Common", "maxStack": 10, "buyPrice": 12, "sellPrice": 3, "icon": "c" },
-    { "id": "promise_ring", "name": "Silver Promise Ring", "description": "A simple silver band set with a pressed moonpetal.", "kind": "Key", "rarity": "Rare", "maxStack": 1, "icon": "o" }
+    { "id": "promise_ring", "name": "Silver Promise Ring", "description": "A simple silver band set with a pressed moonpetal.", "kind": "Key", "rarity": "Rare", "maxStack": 1, "icon": "o" },
+    {"id": "thorn_bark", "name": "Thornback Bark Plate", "description": "Hunt material used at the forge.", "kind": "Material", "rarity": "Uncommon", "maxStack": 99, "sellPrice": 12, "icon": "*"},
+    {"id": "swept_tusk", "name": "Swept Tusk", "description": "Hunt material used at the forge.", "kind": "Material", "rarity": "Uncommon", "maxStack": 99, "sellPrice": 12, "icon": "*"},
+    {"id": "amber_resin", "name": "Amber Resin", "description": "Hunt material used at the forge.", "kind": "Material", "rarity": "Uncommon", "maxStack": 99, "sellPrice": 12, "icon": "*"},
+    {"id": "mire_scale", "name": "Mirejaw Peat Scale", "description": "Hunt material used at the forge.", "kind": "Material", "rarity": "Uncommon", "maxStack": 99, "sellPrice": 12, "icon": "*"},
+    {"id": "venom_sac", "name": "Mirejaw Venom Sac", "description": "Hunt material used at the forge.", "kind": "Material", "rarity": "Uncommon", "maxStack": 99, "sellPrice": 12, "icon": "*"},
+    {"id": "thornback_set", "name": "Thornback Hunt Armor", "description": "Layered bark, dark hide, tusk helm and amber inlay. Visible armor fitted to the hunter's skeleton.", "kind": "Armor", "slot": "Body", "rarity": "Rare", "maxStack": 1, "sellPrice": 90, "curePoison": false, "icon": "#"},
+    {"id": "tusk_cleaver", "name": "Tusk Cleaver", "description": "A broad cleaver forged around a swept Thornback tusk. Heavier committed swings.", "kind": "Weapon", "slot": "Weapon", "rarity": "Rare", "maxStack": 1, "sellPrice": 90, "curePoison": false, "icon": "#"},
+    {"id": "antidote", "name": "Antidote", "description": "Clears Mirejaw venom.", "kind": "Consumable", "slot": "None", "rarity": "Common", "maxStack": 10, "sellPrice": 8, "curePoison": true, "icon": "+"}
   ],
 
   "weapons": [
@@ -46,13 +54,15 @@
         { "id": "slash1", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.26, "active": 0.14, "recovery": 0.40, "staminaCost": 16, "damageMultiplier": 1.0, "poiseMultiplier": 1.0, "reach": 1.05, "radius": 0.22, "forwardStep": 0.35, "comboWindow": 0.30 },
         { "id": "chop2", "anim": "1H_Melee_Attack_Chop", "windup": 0.30, "active": 0.14, "recovery": 0.44, "staminaCost": 18, "damageMultiplier": 1.15, "poiseMultiplier": 1.3, "reach": 1.05, "radius": 0.24, "forwardStep": 0.45, "comboWindow": 0.30 },
         { "id": "slash3", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.36, "active": 0.16, "recovery": 0.62, "staminaCost": 24, "damageMultiplier": 1.5, "poiseMultiplier": 1.8, "reach": 1.1, "radius": 0.26, "forwardStep": 0.6, "comboWindow": 0.0 }
-      ] }
+      ] },
+    {"id": "tusk_cleaver", "damageType": "Slash", "baseDamage": 39, "poiseDamage": 24, "grip": "handslot.r", "combo": [{"id": "slash1", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.41000000000000003, "active": 0.14, "recovery": 0.54, "staminaCost": 23, "damageMultiplier": 1.0, "poiseMultiplier": 1.0, "reach": 1.05, "radius": 0.17, "forwardStep": 0.3, "comboWindow": 0.3}, {"id": "chop2", "anim": "1H_Melee_Attack_Chop", "windup": 0.44999999999999996, "active": 0.14, "recovery": 0.5800000000000001, "staminaCost": 25, "damageMultiplier": 1.15, "poiseMultiplier": 1.3, "reach": 1.05, "radius": 0.17, "forwardStep": 0.3, "comboWindow": 0.3}, {"id": "slash3", "anim": "1H_Melee_Attack_Slice_Diagonal", "windup": 0.51, "active": 0.16, "recovery": 0.76, "staminaCost": 31, "damageMultiplier": 1.5, "poiseMultiplier": 1.8, "reach": 1.1, "radius": 0.17, "forwardStep": 0.3, "comboWindow": 0.0}]}
   ],
 
   "armors": [
     { "id": "padded_jerkin", "defense": 4, "visual": "Knight_Body" },
     { "id": "bone_vest", "defense": 14, "resistances": [ { "type": "Slash", "multiplier": 0.9 } ], "visual": "" },
-    { "id": "warden_helm", "defense": 10, "resistances": [ { "type": "Blunt", "multiplier": 0.9 } ], "visual": "" }
+    { "id": "warden_helm", "defense": 10, "resistances": [ { "type": "Blunt", "multiplier": 0.9 } ], "visual": "" },
+    {"id": "thornback_set", "defense": 18, "visual": "ThornbackGear", "resistances": [{"type": "Blunt", "multiplier": 0.8}]}
   ],
 
   "statuses": [
@@ -103,14 +113,20 @@
       "maxHealth": 650, "poise": 120, "attacks": [ { "id": "claw", "anim": "", "telegraph": 0.5, "active": 0.2, "recovery": 0.8, "damage": 30, "range": 2.5 } ],
       "parts": [ { "id": "head", "name": "Head", "bone": "head", "weakPoint": true, "damageMultiplier": 1.5 }, { "id": "foreclaw", "name": "Foreclaw", "bone": "hand.r", "breakHealth": 120, "damageMultiplier": 1.0 } ],
       "lootTable": "", "xp": 500, "gold": 150,
-      "assetStatus": "Missing: a 3D werewolf mesh, skeleton rig and combat animations. Only 2D Sprite Studio comparison frames exist. Not spawnable." }
+      "assetStatus": "Missing: a 3D werewolf mesh, skeleton rig and combat animations. Only 2D Sprite Studio comparison frames exist. Not spawnable." },
+    {"family": "quadruped", "boss": true, "poiseRegen": 8, "staggerTime": 1.45, "perceptionRadius": 13, "fieldOfView": 165, "hearingRadius": 4, "leashRadius": 19, "loseInterestTime": 7, "spawnGrace": 3, "turnSpeed": 3.2, "assetStatus": "ready", "id": "thornback", "name": "Thornback", "model": "Thornback", "height": 2.75, "bodyRadius": 0.95, "maxHealth": 430, "poise": 95, "walkSpeed": 1.1, "chaseSpeed": 2.6, "xp": 230, "gold": 55, "lootTable": "lt_thornback", "resistances": [{"type": "Fire", "multiplier": 1.35}, {"type": "Slash", "multiplier": 0.85}], "attacks": [{"id": "charge", "anim": "Charge", "telegraph": 1.05, "active": 0.78, "recovery": 1.7, "damage": 29, "range": 10, "radius": 0.78, "cooldown": 1.1, "damageType": "Blunt", "minRange": 3.2, "maxAngle": 90, "lungeSpeed": 7.1, "hitBone": "head"}, {"id": "tusk_sweep", "anim": "TuskSweep", "telegraph": 0.82, "active": 0.26, "recovery": 1.45, "damage": 24, "range": 3.5, "radius": 0.95, "cooldown": 1.1, "damageType": "Blunt", "maxAngle": 115, "hitBone": "head"}, {"id": "rear_sweep", "anim": "TailSweep", "telegraph": 0.85, "active": 0.32, "recovery": 1.6, "damage": 20, "range": 3.8, "radius": 1.05, "cooldown": 1.1, "damageType": "Blunt", "minAngle": 105, "hitBone": "tail_2"}], "parts": [{"id": "body", "name": "Bark Armor", "bone": "chest", "radius": 0.44, "damageMultiplier": 0.72}, {"id": "hindquarters", "name": "Hindquarters", "bone": "hips", "radius": 0.4, "damageMultiplier": 0.85}, {"id": "throat", "name": "Amber Throat", "bone": "neck", "radius": 0.23, "damageMultiplier": 1.8, "weakPoint": true}, {"id": "tusk_l", "name": "Left Tusk", "bone": "tusk.l", "radius": 0.22, "damageMultiplier": 0.9, "breakHealth": 68, "breakLootTable": "lt_thorn_tusk", "brokenDamageMultiplier": 1.2}, {"id": "tusk_r", "name": "Right Tusk", "bone": "tusk.r", "radius": 0.22, "damageMultiplier": 0.9, "breakHealth": 68, "breakLootTable": "lt_thorn_tusk", "brokenDamageMultiplier": 1.2}, {"id": "foreleg_l", "name": "Foreleg", "bone": "fore_lower.l", "radius": 0.25, "damageMultiplier": 1}, {"id": "foreleg_r", "name": "Foreleg", "bone": "fore_lower.r", "radius": 0.25, "damageMultiplier": 1}]},
+    {"family": "quadruped", "boss": true, "poiseRegen": 8, "staggerTime": 1.45, "perceptionRadius": 13, "fieldOfView": 165, "hearingRadius": 4, "leashRadius": 19, "loseInterestTime": 7, "spawnGrace": 3, "turnSpeed": 3.2, "assetStatus": "ready", "id": "mirejaw", "name": "Mirejaw", "model": "Mirejaw", "height": 2.05, "bodyRadius": 1.05, "maxHealth": 520, "poise": 105, "walkSpeed": 0.95, "chaseSpeed": 2.2, "xp": 290, "gold": 70, "lootTable": "lt_mirejaw", "resistances": [{"type": "Fire", "multiplier": 1.2}, {"type": "Poison", "multiplier": 0.1}], "attacks": [{"id": "jaw_bite", "anim": "Bite", "telegraph": 0.92, "active": 0.24, "recovery": 1.5, "damage": 27, "range": 3.9, "radius": 0.75, "cooldown": 1.1, "damageType": "Blunt", "maxAngle": 110, "hitBone": "jaw"}, {"id": "tail_sweep", "anim": "TailSweep", "telegraph": 0.85, "active": 0.34, "recovery": 1.65, "damage": 23, "range": 4.4, "radius": 1.3, "cooldown": 1.1, "damageType": "Blunt", "minAngle": 105, "hitBone": "tail_3"}, {"id": "venom_spray", "anim": "Poison", "telegraph": 1.15, "active": 0.3, "recovery": 1.8, "damage": 12, "range": 11.5, "radius": 0.4, "cooldown": 1.1, "damageType": "Poison", "minRange": 4.0, "maxAngle": 110, "hitBone": "jaw"}], "parts": [{"id": "body", "name": "Peat Armor", "bone": "chest", "radius": 0.5, "damageMultiplier": 0.7}, {"id": "hindquarters", "name": "Hindquarters", "bone": "hips", "radius": 0.4, "damageMultiplier": 0.85}, {"id": "jaw", "name": "Jaw", "bone": "jaw", "radius": 0.3, "damageMultiplier": 1.5, "weakPoint": true}, {"id": "gland_l", "name": "Left Venom Sac", "bone": "gland.l", "radius": 0.23, "damageMultiplier": 1.35, "weakPoint": true, "breakHealth": 70, "breakLootTable": "lt_mire_gland"}, {"id": "gland_r", "name": "Right Venom Sac", "bone": "gland.r", "radius": 0.23, "damageMultiplier": 1.35, "weakPoint": true, "breakHealth": 70, "breakLootTable": "lt_mire_gland"}, {"id": "tail", "name": "Armored Tail", "bone": "tail_3", "radius": 0.3, "damageMultiplier": 0.8}]}
   ],
 
   "lootTables": [
     { "id": "lt_gravebound", "entries": [ { "itemId": "bone_shard", "min": 2, "max": 3, "chance": 1 }, { "itemId": "grave_dust", "min": 1, "max": 1, "chance": 1 } ] },
     { "id": "lt_gravebound_helm", "entries": [ { "itemId": "grave_iron", "min": 1, "max": 1, "chance": 1 } ] },
     { "id": "lt_warden", "entries": [ { "itemId": "bone_shard", "min": 4, "max": 6, "chance": 1 }, { "itemId": "grave_dust", "min": 2, "max": 3, "chance": 1 }, { "itemId": "warden_sigil", "min": 1, "max": 1, "chance": 1 } ] },
-    { "id": "lt_warden_helm", "entries": [ { "itemId": "grave_iron", "min": 2, "max": 2, "chance": 1 } ] }
+    { "id": "lt_warden_helm", "entries": [ { "itemId": "grave_iron", "min": 2, "max": 2, "chance": 1 } ] },
+    {"id": "lt_thornback", "entries": [{"itemId": "thorn_bark", "min": 8, "max": 8, "chance": 1}, {"itemId": "swept_tusk", "min": 2, "max": 2, "chance": 1}, {"itemId": "amber_resin", "min": 1, "max": 1, "chance": 1}]},
+    {"id": "lt_thorn_tusk", "entries": [{"itemId": "swept_tusk", "min": 1, "max": 1, "chance": 1}]},
+    {"id": "lt_mirejaw", "entries": [{"itemId": "mire_scale", "min": 6, "max": 6, "chance": 1}, {"itemId": "venom_sac", "min": 2, "max": 2, "chance": 1}]},
+    {"id": "lt_mire_gland", "entries": [{"itemId": "venom_sac", "min": 1, "max": 1, "chance": 1}]}
   ],
 
   "ranks": [
@@ -156,7 +172,9 @@
       "prerequisites": [ { "type": "Flag", "id": "werewolf_sighted", "label": "The beast has not been sighted yet." } ],
       "objectives": [ { "id": "kill", "type": "Kill", "targetId": "werewolf", "count": 1, "description": "Hunt the werewolf" } ],
       "reward": { "gold": 500, "xp": 600, "hunterReputation": 300 },
-      "repeatable": false }
+      "repeatable": false },
+    {"id": "c_thornback", "name": "Thorns at the Timberline", "description": "Hunt Thornback in Thornwood Clearing. Break a tusk and bring down the bark-armored beast.", "giverNpcId": "mira", "areaId": "thornwood", "targetMonsterId": "thornback", "rankRequired": 1, "objectives": [{"id": "tusk", "type": "Break", "targetId": "thornback.tusk_l", "count": 1, "description": "Break Thornback's left tusk"}, {"id": "hunt", "type": "Kill", "targetId": "thornback", "count": 1, "description": "Hunt Thornback"}], "reward": {"gold": 90, "xp": 150, "hunterReputation": 65, "items": [{"itemId": "thorn_bark", "count": 4}, {"itemId": "swept_tusk", "count": 1}, {"itemId": "amber_resin", "count": 1}], "unlockRecipes": ["r_thornback_set", "r_tusk_cleaver"]}, "repeatable": true, "cooldownDays": 1},
+    {"id": "c_mirejaw", "name": "Venom on the Riverbank", "description": "Mirejaw stalks Mirewater Bank. Watch the swollen sacs before its venom spray; breaking both removes the spray.", "giverNpcId": "mira", "areaId": "mirebank", "targetMonsterId": "mirejaw", "rankRequired": 1, "objectives": [{"id": "hunt", "type": "Kill", "targetId": "mirejaw", "count": 1, "description": "Hunt Mirejaw"}], "reward": {"gold": 130, "xp": 180, "hunterReputation": 75}, "repeatable": true, "cooldownDays": 1}
   ],
 
   "quests": [
@@ -177,7 +195,10 @@
     { "id": "r_bone_vest", "name": "Bonewoven Vest", "description": "Lace Gravebound ribs over leather.", "station": "Forge", "inputs": [ { "itemId": "bone_shard", "count": 6 }, { "itemId": "grave_iron", "count": 1 } ], "goldCost": 25, "output": { "itemId": "bone_vest", "count": 1 } },
     { "id": "r_warden_helm", "name": "Warden's Helm", "description": "Hammer the Warden's grave iron into a helm.", "station": "Forge", "inputs": [ { "itemId": "grave_iron", "count": 2 }, { "itemId": "warden_sigil", "count": 1 } ], "goldCost": 60, "output": { "itemId": "warden_helm", "count": 1 }, "requirements": [ { "type": "Rank", "value": 2 } ] },
     { "id": "r_promise_ring", "name": "Silver Promise Ring", "description": "A silver band with a pressed moonpetal. Made at your own workbench.", "station": "Workbench", "inputs": [ { "itemId": "silver_ingot", "count": 1 }, { "itemId": "moonpetal", "count": 2 } ], "goldCost": 15, "output": { "itemId": "promise_ring", "count": 1 }, "unlockedByDefault": true,
-      "requirements": [ { "type": "RelationshipStage", "id": "mira", "state": "courting", "label": "You have no one to give it to yet." } ] }
+      "requirements": [ { "type": "RelationshipStage", "id": "mira", "state": "courting", "label": "You have no one to give it to yet." } ] },
+    {"id": "r_thornback_set", "name": "Thornback Hunt Armor", "description": "Craft from hunt materials.", "station": "Forge", "inputs": [{"itemId": "thorn_bark", "count": 8}, {"itemId": "swept_tusk", "count": 2}, {"itemId": "amber_resin", "count": 1}], "output": {"itemId": "thornback_set", "count": 1}, "goldCost": 35, "unlockedByDefault": false},
+    {"id": "r_tusk_cleaver", "name": "Tusk Cleaver", "description": "Craft from hunt materials.", "station": "Forge", "inputs": [{"itemId": "thorn_bark", "count": 3}, {"itemId": "swept_tusk", "count": 1}, {"itemId": "amber_resin", "count": 1}], "output": {"itemId": "tusk_cleaver", "count": 1}, "goldCost": 35, "unlockedByDefault": false},
+    {"id": "r_antidote", "name": "Antidote", "description": "Craft from hunt materials.", "station": "Alchemy", "inputs": [{"itemId": "mooncap_herb", "count": 1}, {"itemId": "grave_dust", "count": 1}], "output": {"itemId": "antidote", "count": 1}, "goldCost": 0, "unlockedByDefault": true}
   ],
 
   "estateTiers": [
@@ -320,7 +341,9 @@
     { "id": "old_bridge", "name": "Old Bridge", "kind": "HuntArea", "safe": false, "x": 3, "z": 2, "radius": 7 },
     { "id": "ashen_fields", "name": "Ashen Graveyard", "kind": "HuntArea", "safe": false, "x": 14, "z": 20, "radius": 18 },
     { "id": "crypt", "name": "Warden's Crypt", "kind": "Dungeon", "safe": false, "returnArea": "ashen_fields",
-      "entryRequirements": [ { "type": "Rank", "value": 1, "label": "The crypt door is sealed. Only a Bronze Hunter could convince the village to unbar it." } ] }
+      "entryRequirements": [ { "type": "Rank", "value": 1, "label": "The crypt door is sealed. Only a Bronze Hunter could convince the village to unbar it." } ] },
+    {"id": "thornwood", "name": "Thornwood Clearing", "kind": "HuntArea", "safe": false, "x": -25, "z": 14, "radius": 10},
+    {"id": "mirebank", "name": "Mirewater Bank", "kind": "HuntArea", "safe": false, "x": 30, "z": 8, "radius": 10}
   ],
 
   "spawns": [
@@ -329,6 +352,8 @@
     { "id": "sp_graves_1", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 13, "z": 22, "patrolRadius": 3, "respawnHours": 12 },
     { "id": "sp_graves_2", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 21, "z": 20, "patrolRadius": 3, "respawnHours": 12 },
     { "id": "sp_night_1", "areaId": "ashen_fields", "monsterId": "gravebound", "x": 17, "z": 27, "patrolRadius": 4, "respawnHours": 6, "nightOnly": true },
-    { "id": "sp_warden", "areaId": "crypt", "monsterId": "grave_warden", "x": 0, "z": 9, "patrolRadius": 1.5, "respawnHours": 72 }
+    { "id": "sp_warden", "areaId": "crypt", "monsterId": "grave_warden", "x": 0, "z": 9, "patrolRadius": 1.5, "respawnHours": 72 },
+    {"id": "sp_thornback", "areaId": "thornwood", "monsterId": "thornback", "x": -25, "z": 14, "patrolRadius": 2, "respawnHours": 24},
+    {"id": "sp_mirejaw", "areaId": "mirebank", "monsterId": "mirejaw", "x": 30, "z": 8, "patrolRadius": 2, "respawnHours": 24}
   ]
 }

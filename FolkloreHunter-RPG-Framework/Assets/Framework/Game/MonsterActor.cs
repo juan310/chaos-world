@@ -17,7 +17,18 @@ namespace FH.Game
         public AnimationDriver Anim { get; private set; }
         public bool Ready { get; private set; }
         public Vector3 Home;
-        public Vector3 AttackCenter => transform.position + transform.forward * (Brain.CurrentAttack == null ? 1 : Brain.CurrentAttack.range * .55f) + Vector3.up * .1f;
+        public Vector3 AttackCenter {
+            get {
+                var atk = Brain.CurrentAttack;
+                if (atk != null && !string.IsNullOrEmpty(atk.hitBone)) {
+                    var bone = WorldKit.Find(Visual, atk.hitBone);
+                    if (bone) return bone.position;
+                }
+                return transform.position + transform.forward * (atk == null ? 1 : atk.range * .55f) + Vector3.up * .1f;
+            }
+        }
+        Vector3 previousAttackCenter;
+        bool IsCreature => Def != null && Def.family == "quadruped";
 
         CharacterController cc;
         Transform hand, chest, head;
@@ -42,6 +53,7 @@ namespace FH.Game
             session = s; Def = def; MonsterId = def.id; InstanceKey = "m" + (++serial);
             Brain = new MonsterBrain(def);
             Parts = new PartTracker(def, brokenParts);
+            if (def.id == "mirejaw") Brain.AttackFilter = a => a.id != "venom_spray" || !(Parts.Broken.Contains("gland_l") && Parts.Broken.Contains("gland_r"));
             cc = GetComponent<CharacterController>();
             Anim = new AnimationDriver(Visual, def.model);
             hand = WorldKit.Find(Visual, "handslot.r");
@@ -61,6 +73,7 @@ namespace FH.Game
             Brain.ModeChanged += OnMode;
             Anim.Play(Anim.Has("Idle_Combat") ? "Idle" : "Idle");
             Ready = true;
+            if (IsCreature) gameObject.AddComponent<CreaturePresentation>().Initialize(this, s);
         }
 
         void AttachWeapon()
@@ -112,6 +125,7 @@ namespace FH.Game
         void OnMode(MonsterMode m)
         {
             ring.SetActive(m == MonsterMode.Telegraph || m == MonsterMode.Attack);
+            previousAttackCenter = AttackCenter;
             if (eyes) eyes.sharedMaterial = m == MonsterMode.Telegraph || m == MonsterMode.Attack ? WorldKit.Glow(new Color(1f, .15f, .05f), 4) : eyesBase;
             switch (m)
             {
@@ -185,16 +199,22 @@ namespace FH.Game
                     break;
                 case MonsterMode.Telegraph:
                     // Tracks the player during the wind-up, then commits: the swing direction locks before it lands.
-                    if (Brain.ModeTime < Brain.CurrentAttack.telegraph * .6f) Face(to, dt * .7f);
+                    if (Brain.ModeTime < Brain.CurrentAttack.telegraph * .6f && Brain.CurrentAttack.minAngle < 90) Face(to, dt * .7f);
                     UpdateRing();
                     break;
                 case MonsterMode.Attack:
                     UpdateRing();
-                    if (!Brain.HitDelivered && hero.Overlaps(AttackCenter, Brain.CurrentAttack.radius))
-                    {
+                    if (IsCreature && Brain.CurrentAttack.id == "venom_spray") {
+                        if (!Brain.HitDelivered) {
+                            Brain.HitDelivered = true;
+                            MonsterVenom.Fire(session, Brain.CurrentAttack, AttackCenter, transform.forward, Parts.Broken.Count(x => x.StartsWith("gland_")) == 1 ? .6f : 1f);
+                        }
+                    } else if (!Brain.HitDelivered && (IsCreature ? CreatureTouches(hero) : hero.Overlaps(AttackCenter, Brain.CurrentAttack.radius))) {
                         Brain.HitDelivered = true;
                         hero.ReceiveHit(Brain.CurrentAttack, transform.position);
                     }
+                    previousAttackCenter = AttackCenter;
+                    if (Brain.CurrentAttack.lungeSpeed > 0) { move = transform.forward; speed = Brain.CurrentAttack.lungeSpeed; }
                     break;
                 case MonsterMode.Return:
                     {
@@ -217,6 +237,12 @@ namespace FH.Game
             if (hurtFlash > 0) hurtFlash -= dt;
         }
 
+        bool CreatureTouches(HunterController hero) {
+            foreach (var col in Physics.OverlapCapsule(previousAttackCenter, AttackCenter, Brain.CurrentAttack.radius, 1 << Layers.Actor, QueryTriggerInteraction.Ignore))
+                if (col == hero.Body) return true;
+            return false;
+        }
+
         float returnBest, returnStall, detourFor;
         Vector3 detour;
 
@@ -229,7 +255,7 @@ namespace FH.Game
         }
 
         /// <summary>Walk playback rate that matches ground speed to the clip's stride (no foot sliding).</summary>
-        float Gait(float speed) => Mathf.Clamp(speed * Brain.Status.SpeedMultiplier / walkNatural, .5f, 2.5f);
+        float Gait(float speed) => Mathf.Clamp(speed * Brain.Status.SpeedMultiplier / walkNatural, .5f, IsCreature ? 4.0f : 2.5f);
 
         void UpdateRing()
         {

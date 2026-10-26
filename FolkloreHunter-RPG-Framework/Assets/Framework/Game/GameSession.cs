@@ -63,6 +63,7 @@ namespace FH.Game
             EnterTitle();
             if (args.Contains("--verify-rpg")) gameObject.AddComponent<GameVerifier>();
             if (args.Contains("--tour-rpg")) gameObject.AddComponent<GameTour>();
+            if (args.Contains("--verify-creatures") || args.Contains("--show-hunts")) gameObject.AddComponent<CreatureReview>();
             if (args.Contains("--input-log")) gameObject.AddComponent<InputLogger>();
             if (Arg(args, "--eyes-track") is string track) gameObject.AddComponent<MotionTrack>().Path = Path.GetFullPath(track);
         }
@@ -375,7 +376,7 @@ namespace FH.Game
         MonsterActor SpawnMonster(SpawnDef sp, Vector3 pos)
         {
             var def = Db.Monsters[sp.monsterId];
-            var go = CharacterFactory.Actor(def.name, SafeGround(pos) + Vector3.up * .05f, def.height * .95f, .34f * def.height / 1.8f);
+            var go = CharacterFactory.Actor(def.name, SafeGround(pos) + Vector3.up * .05f, def.height * .95f, def.bodyRadius > 0 ? def.bodyRadius : .34f * def.height / 1.8f);
             go.transform.rotation = Quaternion.Euler(0, rng.Range(0, 359), 0);
             var actor = go.AddComponent<MonsterActor>();
             actor.SpawnId = sp.id; actor.AreaId = sp.areaId; actor.PatrolRadius = sp.patrolRadius;

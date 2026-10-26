@@ -10,9 +10,10 @@ public class FHModelImport : AssetPostprocessor
         var m = (ModelImporter)assetImporter;
         m.materialImportMode = ModelImporterMaterialImportMode.ImportStandard; m.importCameras = false; m.importLights = false; m.isReadable = true;
         string p = assetPath;
-        if (p.EndsWith("Hunter.fbx") || p.EndsWith("Gravebound.fbx") || p.EndsWith("Herbalist.fbx") || p.EndsWith("Smith.fbx") || p.EndsWith("Noble.fbx"))
+        if (p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx") || p.EndsWith("Hunter.fbx") || p.EndsWith("Gravebound.fbx") || p.EndsWith("Herbalist.fbx") || p.EndsWith("Smith.fbx") || p.EndsWith("Noble.fbx"))
         {
             m.animationType = ModelImporterAnimationType.Legacy; m.importAnimation = true; m.animationCompression = ModelImporterAnimationCompression.Off;
+            if (p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx")) { m.skinWeights = ModelImporterSkinWeights.Custom; m.maxBonesPerVertex = 8; m.minBoneWeight = .001f; }
         }
         else m.importAnimation = false;
     }
@@ -21,6 +22,11 @@ public class FHModelImport : AssetPostprocessor
     {
         var t = (TextureImporter)assetImporter;
         t.textureType = TextureImporterType.Default; t.mipmapEnabled = true; t.filterMode = FilterMode.Bilinear; t.maxTextureSize = 1024;
+        if (assetPath.Contains("/Monsters/")) {
+            t.maxTextureSize = 4096;
+            if (assetPath.Contains("_normal")) t.textureType = TextureImporterType.NormalMap;
+            if (assetPath.Contains("_metallic")) t.sRGBTexture = false;
+        }
         if (assetPath.Contains("/Werewolf/"))
         {
             t.textureType = TextureImporterType.Sprite; t.spriteImportMode = SpriteImportMode.Single; t.spritePixelsPerUnit = 95;
