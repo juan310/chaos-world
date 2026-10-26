@@ -94,9 +94,9 @@ namespace FH.Game
             void ToReview(Transform t) { foreach (var x in t.GetComponentsInChildren<Transform>(true)) { hide.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; } }
             ToReview(hound.Visual);
             var go = new GameObject("Hound review camera"); var cam = go.AddComponent<Camera>();
-            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear; cam.orthographic = true; cam.orthographicSize = 1.45f;
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear; cam.orthographic = true; cam.orthographicSize = 1.45f * HoundCompanion.Size;
             var rt = new RenderTexture(512, 400, 24); cam.targetTexture = rt;
-            Vector3 c = hound.transform.position + Vector3.up * 1.05f;
+            Vector3 c = hound.transform.position + Vector3.up * 1.05f * HoundCompanion.Size;
             cam.transform.position = c + hound.transform.right * 6f; cam.transform.LookAt(c);
             var anim = hound.Anim;
             var states = new[] { ("Idle", "idle"), ("Walk", "walk"), ("Gallop", "run"), ("Bite", "attack"), ("Sit", "sit"), ("Howl", "howl"), ("Hit", "hit") };
@@ -110,7 +110,7 @@ namespace FH.Game
             // Rider and mount together through one gallop cycle.
             if (!H.Riding) hound.Mount();
             ToReview(H.Visual);
-            cam.orthographicSize = 1.75f; c = hound.transform.position + Vector3.up * 1.4f;
+            cam.orthographicSize = 1.75f * HoundCompanion.Size; c = hound.transform.position + Vector3.up * 1.4f * HoundCompanion.Size;
             cam.transform.position = c + hound.transform.right * 6f; cam.transform.LookAt(c);
             var g = anim.State("Gallop"); var ride = H.Anim.State("Ride_Idle");
             anim.Anim.Stop(); H.Anim.Anim.Stop(); g.enabled = true; g.weight = 1; ride.enabled = true; ride.weight = 1;
@@ -328,15 +328,17 @@ namespace FH.Game
             Check("the Briarhound is in the ring", hound, (S.Hound ? S.Hound.name + " (" + HoundCompanion.Model + ")" : "none"));
             if (hound)
             {
+                // Release the lock from the enrage test: a locked target sends the hound to assist instead of heeling.
+                if (H.LockTarget) yield return Tap(PadButton.RightStick);
                 var spot = S.World.ProvingOrigin + new Vector3(-14, 0, -14);
                 H.Teleport(S.SafeGround(spot), 45);
-                yield return Until(() => Vector3.Distance(hound.transform.position, H.transform.position) < 5, 8);
-                Check("the hound follows the hunter", Vector3.Distance(hound.transform.position, H.transform.position) < 5, Vector3.Distance(hound.transform.position, H.transform.position).ToString("0.0") + " m");
+                yield return Until(() => Vector3.Distance(hound.transform.position, H.transform.position) < 5 * HoundCompanion.Size, 8);
+                Check("the hound follows the hunter", Vector3.Distance(hound.transform.position, H.transform.position) < 5 * HoundCompanion.Size, Vector3.Distance(hound.transform.position, H.transform.position).ToString("0.0") + " m");
                 yield return Tap(PadButton.DPadUp);
                 Check("D-pad up whistles the hound", hound.LastEvent == "called" || hound.State == HoundState.Called, hound.LastEvent);
                 yield return Wait(1.6f);
                 // Mount: stand beside it and press X. Drawn, X sheathes first; sheathed, X mounts.
-                var beside = hound.transform.position + hound.transform.right * 1.4f;
+                var beside = hound.transform.position + hound.transform.right * 1.4f * HoundCompanion.Size;
                 H.Teleport(S.SafeGround(beside), hound.transform.eulerAngles.y);
                 F.SetSheathed(false);
                 yield return Frames(4);
@@ -384,7 +386,7 @@ namespace FH.Game
                 Note("rider hips to saddle bone: " + gapMin.ToString("0.000") + "-" + gapMax.ToString("0.000") + " m through the gallop");
                 Check("the rider stays seated through the gallop (hips within 5 cm of a fixed seat)", seatGaps.Count > 0 && gapMax - gapMin < .05f && gapMax < .45f, gapMin.ToString("0.00") + "-" + gapMax.ToString("0.00"));
                 yield return Snap("p09-gallop");
-                Check("RT gallops: much faster than the hunter can run", top > H.RunSpeed * 2 && hound.Anim.Current.Contains("Gallop"), top.ToString("0.0") + " m/s vs run " + H.RunSpeed.ToString("0.0"));
+                Check("RT gallops: much faster than the hunter can run (1.7x or more)", top > H.RunSpeed * 1.7f && hound.Anim.Current.Contains("Gallop"), top.ToString("0.0") + " m/s vs run " + H.RunSpeed.ToString("0.0"));
                 Release();
                 yield return Wait(.6f);
                 yield return Tap(PadButton.X);

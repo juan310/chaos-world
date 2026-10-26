@@ -44,7 +44,7 @@ namespace FH.Game
             foreach (var m in s.Monsters)
                 if (m && m.gameObject.activeInHierarchy && Vector3.Distance(m.transform.position, hero) < Range)
                     Actor(sb, ref first, m.InstanceKey, m.DisplayName, "monster", m.MonsterId, m.transform, m.Visual, m.Anim, m.Def.height);
-            if (s.Hound) Actor(sb, ref first, "hound", HoundCompanion.DisplayName, "companion", "briarhound", s.Hound.transform, s.Hound.Visual, s.Hound.Anim, 1.9f);
+            if (s.Hound) Actor(sb, ref first, "hound", HoundCompanion.DisplayName, "companion", "briarhound", s.Hound.transform, s.Hound.Visual, s.Hound.Anim, HoundCompanion.Height);
             foreach (var n in s.World.Npcs)
                 if (n && n.gameObject.activeInHierarchy && Vector3.Distance(n.transform.position, hero) < Range)
                     Actor(sb, ref first, "npc_" + n.NpcId, n.Def(s).name, "npc", n.NpcId, n.transform, n.Visual, n.Anim, 1.8f);

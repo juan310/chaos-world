@@ -14,6 +14,10 @@ namespace FH.Game
         public const string DisplayName = "Briarhound";
         /// <summary>The generated Briarhound model when present, else the earlier hand-built hound.</summary>
         public static string Model => Resources.Load<GameObject>("Models/Briarhound") ? "Briarhound" : "CuSith";
+        /// <summary>Overall height to the ear tips. The Briarhound is a big mount: withers about the hunter's height.</summary>
+        public static float Height => Model == "Briarhound" ? 2.5f : 1.9f;
+        /// <summary>Size relative to the original 1.9 m hound (collision, reach and offsets scale with it).</summary>
+        public static float Size => Height / 1.9f;
         bool moving;
         public HoundState State { get; private set; } = HoundState.Follow;
         public AnimationDriver Anim { get; private set; }
@@ -37,7 +41,7 @@ namespace FH.Game
 
         public static HoundCompanion Spawn(GameSession s, Vector3 at, float yaw)
         {
-            var go = CharacterFactory.Actor(DisplayName, s.SafeGround(at) + Vector3.up * .05f, 1.25f, .42f);
+            var go = CharacterFactory.Actor(DisplayName, s.SafeGround(at) + Vector3.up * .05f, 1.25f * Size, .42f * Size);
             go.transform.rotation = Quaternion.Euler(0, yaw, 0);
             var h = go.AddComponent<HoundCompanion>();
             h.Initialize(s);
@@ -48,7 +52,7 @@ namespace FH.Game
         {
             S = s;
             cc = GetComponent<CharacterController>();
-            Visual = CharacterFactory.Create(Model, transform, 1.9f);
+            Visual = CharacterFactory.Create(Model, transform, Height);
             foreach (var r in Visual.GetComponentsInChildren<Renderer>(true).Where(r => r.name.Contains("Eye_")))
                 r.sharedMaterial = WorldKit.Glow(new Color(.55f, 1f, .72f), 3);
             Anim = new AnimationDriver(Visual, Model);
@@ -60,7 +64,7 @@ namespace FH.Game
             if (gallopNatural > 1f) GallopSpeed = Mathf.Clamp(gallopNatural, 5.5f, 9f);
             Debug.Log("FH_HOUND walk " + WalkSpeed.ToString("0.00") + " m/s (natural " + walkNatural.ToString("0.00") + "), gallop " + GallopSpeed.ToString("0.00") + " m/s (natural " + gallopNatural.ToString("0.00") + ")");
             var m = new GameObject("Hound mount point").AddComponent<HoundMount>();
-            m.transform.SetParent(transform, false); m.transform.localPosition = Vector3.up * .6f; m.Hound = this; m.Range = 2.4f;
+            m.transform.SetParent(transform, false); m.transform.localPosition = Vector3.up * .6f * Size; m.Hound = this; m.Range = 2.4f * Size;
             mount = m;
             Anim.Play("Idle");
             lastPos = transform.position;
@@ -101,7 +105,7 @@ namespace FH.Game
         public void Dismount(bool thrown = false)
         {
             if (!Ridden) return;
-            var side = transform.position + transform.right * 1.3f;
+            var side = transform.position + transform.right * 1.3f * Size;
             S.Hunter.EndRide(S.SafeGround(side), transform.eulerAngles.y);
             State = HoundState.Follow;
             LastEvent = thrown ? "rider thrown" : "dismounted";
@@ -172,15 +176,15 @@ namespace FH.Game
             if (State == HoundState.Assist)
             {
                 var side = transform.position - target.transform.position; side.y = 0;
-                goal = target.transform.position + (side.sqrMagnitude > .01f ? side.normalized : -target.transform.forward) * (target.Def.bodyRadius + 1.3f);
+                goal = target.transform.position + (side.sqrMagnitude > .01f ? side.normalized : -target.transform.forward) * (target.Def.bodyRadius + 1.3f * Size);
                 stopAt = .5f;
                 float reach = Vector3.Distance(Flat(transform.position), Flat(target.transform.position));
-                if (reach < target.Def.bodyRadius + 1.9f && Time.time >= biteReadyAt) { StartBite(target); return; }
+                if (reach < target.Def.bodyRadius + 1.9f * Size && Time.time >= biteReadyAt) { StartBite(target); return; }
             }
             else
             {
                 // Heel: behind and to the right of the hunter.
-                goal = h.position - h.forward * 2.6f + h.right * 1.8f;
+                goal = h.position - (h.forward * 2.6f - h.right * 1.8f) * Size;
                 stopAt = 1.2f;
             }
             Vector3 to = goal - transform.position; to.y = 0;
@@ -233,8 +237,8 @@ namespace FH.Game
             biteAt = -1;
             var m = biteTarget;
             if (!m || !m.Alive) return;
-            var box = m.Hurtboxes.OrderBy(b => Vector3.Distance(b.transform.position, transform.position + transform.forward * 1.2f + Vector3.up)).FirstOrDefault();
-            if (!box || Vector3.Distance(Flat(box.transform.position), Flat(transform.position)) > m.Def.bodyRadius + 2.4f) { LastEvent = "bite missed"; return; }
+            var box = m.Hurtboxes.OrderBy(b => Vector3.Distance(b.transform.position, transform.position + (transform.forward * 1.2f + Vector3.up) * Size)).FirstOrDefault();
+            if (!box || Vector3.Distance(Flat(box.transform.position), Flat(transform.position)) > m.Def.bodyRadius + 2.4f * Size) { LastEvent = "bite missed"; return; }
             if (m.HuntRules) m.PendingStun = 3;
             m.ReceiveHit(box, box.transform.position, (part, broken) => new HitInfo { Damage = 9, Poise = 6 });
             Bites++;
@@ -246,6 +250,6 @@ namespace FH.Game
 
         static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
 
-        void OnDestroy() { if (Ridden && S && S.Hunter) S.Hunter.EndRide(S.SafeGround(transform.position + transform.right * 1.3f), transform.eulerAngles.y); }
+        void OnDestroy() { if (Ridden && S && S.Hunter) S.Hunter.EndRide(S.SafeGround(transform.position + transform.right * 1.3f * Size), transform.eulerAngles.y); }
     }
 }

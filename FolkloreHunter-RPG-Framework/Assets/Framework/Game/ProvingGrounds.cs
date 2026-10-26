@@ -42,7 +42,7 @@ namespace FH.Game
             if (Resources.Load<GameObject>("Models/Briarhound") || Resources.Load<GameObject>("Models/CuSith"))
             {
                 var h = S.Hunter.transform;
-                S.Hound = HoundCompanion.Spawn(S, h.position - h.forward * 2.6f + h.right * 1.8f, h.eulerAngles.y);
+                S.Hound = HoundCompanion.Spawn(S, h.position - (h.forward * 2.6f - h.right * 1.8f) * HoundCompanion.Size, h.eulerAngles.y);
             }
             S.Hud?.Notify("Proving Grounds: a passive Gravebound waits at the centre. The ledger by the south wall spawns monsters and sets options.", NoticeKind.Story);
         }
