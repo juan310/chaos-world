@@ -28,6 +28,8 @@ namespace FH.Game
         public int Phase { get; private set; } = 1;
         public int MaxPhase { get; private set; } = 1;
         public string LastAttackId { get; private set; } = "";
+        /// <summary>Wind-ups started so far (each attack's telegraph).</summary>
+        public int AttacksStarted { get; private set; }
         System.Random bossRng;
         Vector3 leapFrom, leapTo; float leapHeight;
         float getUpUntil;
@@ -214,7 +216,7 @@ namespace FH.Game
         {
             if (m == MonsterMode.Telegraph && Brain.CurrentAttack != null)
             {
-                LastAttackId = Brain.CurrentAttack.id;
+                LastAttackId = Brain.CurrentAttack.id; AttacksStarted++;
                 if (HuntRules && Brain.CurrentAttack.Shape != AoeShape.None) BeginAreaAttack(Brain.CurrentAttack);
             }
             if (m != MonsterMode.Attack && Visual && Visual.localPosition.y != 0) Visual.localPosition = new Vector3(Visual.localPosition.x, 0, Visual.localPosition.z);   // a leap cut short lands

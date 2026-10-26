@@ -372,8 +372,10 @@ namespace FH.Game
 
         IEnumerator Force(MonsterActor m, string id)
         {
+            yield return Until(() => m.Brain.Mode == MonsterMode.Chase || m.Brain.Mode == MonsterMode.Idle || m.Brain.Mode == MonsterMode.Alert, 4);   // the previous move finished
+            int started = m.AttacksStarted;
             m.Brain.ForceNext(m.Def.attacks.First(a => a.id == id));   // fixture: this move now, to check it deterministically
-            yield return Until(() => m.Brain.CurrentAttack != null && m.Brain.CurrentAttack.id == id, 3);
+            yield return Until(() => m.AttacksStarted > started && m.Brain.CurrentAttack != null && m.Brain.CurrentAttack.id == id, 3);   // a new wind-up, not an earlier one
             yield return null;
         }
 
@@ -388,6 +390,7 @@ namespace FH.Game
             Check("hunt rules make the Grave Warden a boss: 2.5x health and its area attacks", w.Def.maxHealth >= valley.maxHealth * 2.4f && w.Def.attacks.Count(a => a.Shape != AoeShape.None) >= 4 && valley.attacks.All(a => a.Shape == AoeShape.None),
                   w.Def.maxHealth.ToString("0") + " vs " + valley.maxHealth.ToString("0") + " health, " + string.Join("/", w.Def.attacks.Select(a => a.id)));
             w.Passive = false;
+            w.Brain.AttackFilter = a => false;           // fixture: it makes only the moves under test (forced one at a time)
             S.ProvingRig.Invulnerable = true;            // health refilled; blows still land (counted by the areas)
             // The Briarhound sits these out: its bites flinch the boss, and a flinch cancels a wind-up (by design).
             if (S.Hound) { S.Hound.PlaceAt(S.SafeGround(S.World.ProvingOrigin + new Vector3(-30, 0, -20)), 0); S.Hound.enabled = false; }
@@ -484,7 +487,7 @@ namespace FH.Game
             }
             // Thornback: a potion at mid range draws a charge.
             S.ProvingRig.ClearMonsters(); yield return Frames(2);
-            var t = S.ProvingRig.Spawn("thornback", true); t.Passive = false;
+            var t = S.ProvingRig.Spawn("thornback", true); t.Passive = false;   // (its own choice here: that is what is checked)
             F.SetSheathed(true);
             S.ProvingRig.Invulnerable = false; H.Health = H.Stats[Stat.MaxHealth] * .6f;   // hurt, so the potion is drunk
             yield return Until(() => t.Brain.Mode == MonsterMode.Chase && t.Brain.Grace <= 0, 6);
@@ -497,6 +500,7 @@ namespace FH.Game
             // Mirejaw: the tail spin hits all round, even a hunter behind it.
             S.ProvingRig.ClearMonsters(); yield return Frames(2);
             var mj = S.ProvingRig.Spawn("mirejaw", true); mj.Passive = false;
+            mj.Brain.AttackFilter = a => false;          // fixture: only the forced move
             var behind = mj.transform.position - mj.transform.forward * 3.2f;
             H.Teleport(S.SafeGround(behind), Quaternion.LookRotation(Flat(mj.transform.position - behind)).eulerAngles.y); LookAlong(H.transform.eulerAngles.y);
             yield return Frames(2);

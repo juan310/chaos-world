@@ -571,7 +571,7 @@ namespace FH.Game
                 bool locked = hunter.LockTarget == m;
                 var atk = m.Brain.CurrentAttack;
                 bool threat = !m.Passive && atk != null && (m.Brain.Mode == MonsterMode.Telegraph || m.Brain.Mode == MonsterMode.Attack) && dh < m.Def.bodyRadius + atk.range + atk.radius + 1.5f;
-                bool marked = huntersMark == m && now - huntersMarkAt < 6;
+                bool marked = huntersMark == m && now - huntersMarkAt < 6 && dh < 14;   // only while the hunter is still near it
                 if (!locked && !threat && !marked && !(!m.Passive && m.Brain.Engaged && dh < 14)) continue;
                 float score = HoundTactics.TargetScore(locked, threat, marked, dh, down);
                 if (score > bestScore) { bestScore = score; best = m; reason = locked ? "your lock" : threat ? (down ? "protecting you (down)" : "about to hit you") : marked ? "you are hitting it" : "engaged nearby"; }
