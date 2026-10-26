@@ -8,7 +8,9 @@
 #    the head), seam-unified surface diffusion, 8 influences (the same method as the reference monsters).
 #  - Clips use IK on all four paws, so planted paws stay planted and the body (not the ground line) moves:
 #    Idle, Walk (trot, 0.7 s), Gallop (rotary, 0.47 s, low bob, level head for the rider), Bite (blade slash),
-#    Sit, Howl (one shot), Hit. Baked to plain bone keys for Unity's legacy Animation.
+#    Sit, Howl (one shot), Hit, and the Palamute-style fighting set: Slash_R (return slash, left to right), Spin
+#    (spinning blade slash with a hop), Pounce (crouch, leap, slash on landing; in place, the game carries it forward),
+#    Hop (evasive hop; in place). Baked to plain bone keys for Unity's legacy Animation.
 #   blender -b --python Tools/rig_briarhound.py [-- --turn 70]
 import bpy, sys, json, math
 import numpy as np
@@ -333,7 +335,74 @@ def hit(t):
     tail_sway(t, 0, lift=20 * k)
 
 
-clips = {'Idle': (2.4, idle), 'Walk': (.7, walk), 'Gallop': (.4667, gallop), 'Bite': (.9, bite), 'Sit': (2.0, sit), 'Howl': (1.6, howl), 'Hit': (.5, hit)}
+def slash_r(t):
+    # Return slash: the mirror of the bite's sweep, quicker (it follows the bite in the combo).
+    wind = sm(t, 0, .3) * (1 - sm(t, .32, .48))
+    sweep = sm(t, .32, .48) * (1 - sm(t, .62, 1))
+    lunge = math.sin(math.pi * min(1, max(0, (t - .25) / .45)))
+    yaw = 26 * wind - 34 * sweep
+    move_root((0, -.12 * lunge, -.05 * wind))
+    rot('chest', (1, 0, 0), 5 * wind - 4 * lunge); rot('chest', (0, 0, 1), yaw * .25)
+    rot('neck', (0, 0, 1), yaw * .35); rot('head', (0, 0, 1), yaw * .4); rot('head', (1, 0, 0), 3 * wind)
+    rot('jaw', (1, 0, 0), 5 * lunge)
+    for e in ('ear.l', 'ear.r'): rot(e, (1, 0, 0), 35 * max(wind, lunge))
+    tail_sway(t, 0, lift=10 * lunge)
+
+
+def paw_turned(key, R, dy=0, dz=0, pitch=0):
+    """A paw target carried round with the body (spins): rest position and rotation turned by R, then offset."""
+    tg, at, r0 = targets[key]
+    tg.location = R @ (at + Vector((0, dy, 0))) + Vector((0, 0, dz))
+    tg.rotation_euler = (R @ Matrix.Rotation(math.radians(pitch), 3, 'X') @ r0.to_matrix()).to_euler()
+
+
+def spin(t):
+    # Spinning slash: crouch, hop and turn a full circle with the blade held out, land and settle.
+    turn = 360 * sm(t, .18, .78)
+    hop = math.sin(math.pi * min(1, max(0, (t - .16) / .64)))
+    crouch = sm(t, 0, .16) * (1 - sm(t, .16, .3)) + sm(t, .78, .88) * (1 - sm(t, .88, 1))
+    R = Matrix.Rotation(math.radians(turn), 3, 'Z')
+    rot('root', (0, 0, 1), turn); move_root((0, 0, .28 * hop - .08 * crouch))
+    for key in targets: paw_turned(key, R, 0, .24 * hop, 20 * hop)
+    rot('chest', (1, 0, 0), 6 * crouch - 4 * hop)
+    rot('neck', (0, 0, 1), -18 * hop); rot('head', (0, 0, 1), -14 * hop)       # blade leads outward through the turn
+    rot('jaw', (1, 0, 0), 6 * hop)
+    for e in ('ear.l', 'ear.r'): rot(e, (1, 0, 0), 40 * hop)
+    tail_sway(t, 0, lift=-10 * hop)
+
+
+def pounce(t):
+    # Crouch, leap (the game carries it forward), slash as the forepaws come down, absorb the landing.
+    crouch = sm(t, 0, .28) * (1 - sm(t, .28, .38))
+    air = math.sin(math.pi * min(1, max(0, (t - .3) / .4)))
+    land = sm(t, .66, .76) * (1 - sm(t, .76, 1))
+    slash = math.sin(math.pi * min(1, max(0, (t - .5) / .22)))
+    rise = sm(t, .3, .5) * (1 - sm(t, .5, .7))
+    move_root((0, 0, .5 * air - .12 * crouch - .1 * land))
+    rot('root', (1, 0, 0), -10 * rise + 8 * slash)                              # nose up on the rise, down onto the strike
+    for k in ('fore.l', 'fore.r'): paw(k, -.3 * air, .5 * air + .12 * rise, 35 * air)
+    for k in ('hind.l', 'hind.r'): paw(k, .28 * air, .42 * air, -25 * air)
+    rot('chest', (1, 0, 0), 8 * crouch); rot('neck', (1, 0, 0), -8 * rise + 10 * slash)
+    rot('head', (0, 0, 1), -24 * slash); rot('jaw', (1, 0, 0), 8 * slash)
+    for e in ('ear.l', 'ear.r'): rot(e, (1, 0, 0), 45 * max(air, crouch))
+    tail_sway(t, 0, lift=-12 * air + 10 * crouch)
+
+
+def hop(t):
+    # Evasive hop (back or to the side; the game carries it): a quick crouch, all four paws off, land low.
+    crouch = sm(t, 0, .18) * (1 - sm(t, .18, .3))
+    air = math.sin(math.pi * min(1, max(0, (t - .16) / .62)))
+    land = sm(t, .76, .86) * (1 - sm(t, .86, 1))
+    move_root((0, 0, .3 * air - .1 * crouch - .08 * land))
+    rot('root', (1, 0, 0), -6 * air)
+    for k in targets: paw(k, 0, .26 * air, (25 if k.startswith('fore') else -20) * air)
+    rot('chest', (1, 0, 0), 6 * crouch); rot('neck', (1, 0, 0), -6 * air)
+    for e in ('ear.l', 'ear.r'): rot(e, (1, 0, 0), 40 * max(air, crouch))
+    tail_sway(t, 0, lift=-14 * air)
+
+
+clips = {'Idle': (2.4, idle), 'Walk': (.7, walk), 'Gallop': (.4667, gallop), 'Bite': (.9, bite), 'Sit': (2.0, sit), 'Howl': (1.6, howl), 'Hit': (.5, hit),
+         'Slash_R': (.6, slash_r), 'Spin': (.85, spin), 'Pounce': (.9, pounce), 'Hop': (.45, hop)}
 arm.animation_data_create()
 actions = []
 deform = [p for p in pb]
@@ -395,7 +464,7 @@ views = {'side': ((6, 0, 1.0), (math.radians(90), 0, math.radians(90))), 'front'
 shots = []
 for a in actions:
     arm.animation_data.action = a; n = int(a.frame_range[1])
-    fracs = (0, .25, .5, .75) if a.name in ('Walk', 'Gallop', 'Bite', 'Howl') else (.5,)
+    fracs = (0, .25, .5, .75) if a.name in ('Walk', 'Gallop', 'Bite', 'Howl', 'Slash_R', 'Spin', 'Pounce', 'Hop') else (.5,)
     for fr in fracs:
         scene.frame_set(1 + int((n - 1) * fr))
         for v in (('side', 'threequarter') if fr in (0, .5) else ('side',)) if a.name != 'Idle' else ('side', 'front', 'threequarter', 'top'):
