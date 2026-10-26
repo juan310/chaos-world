@@ -150,6 +150,8 @@ namespace FH.Game
         public bool Drifting { get; private set; }
         /// <summary>Clips of the strikes started, in order (the verifier reads the combo from it).</summary>
         public readonly List<string> Sequence = new List<string>();
+        /// <summary>What each strike did: the part it cut, or why it missed (distance and angle to the nearest part).</summary>
+        public readonly List<string> StrikeLog = new List<string>();
         float actionEnd, strikeAt = -1, travelFrom, travelUntil, travelSpeed, comboReadyAt, pounceReadyAt, evadeReadyAt, rideHopReadyAt, bank, dustClock;
         Vector3 travelDir; bool travelKeepsFacing, rideQueued;
         int comboStep = -1;
@@ -220,7 +222,16 @@ namespace FH.Game
                 Bites++; any = true;
                 LastEvent = (strike.Clip == "Spin" ? "spin hit " : strike.Clip == "Pounce" ? "pounced on " : strike.Clip == "Slash_R" ? "slashed " : "bit ") + m.DisplayName;
             }
-            if (!any) LastEvent = LastEvent + " (missed)";
+            if (!any)
+            {
+                LastEvent = LastEvent + " (missed)";
+                var t = strikeTarget;
+                var nb = t ? t.Hurtboxes.Where(b => b).OrderBy(b => Vector3.Distance(Flat(b.transform.position), Flat(transform.position))).FirstOrDefault() : null;
+                StrikeLog.Add(strike.Clip + " missed" + (nb ? " (nearest part " + Vector3.Distance(Flat(nb.transform.position), Flat(transform.position)).ToString("0.0") + " m, "
+                    + Vector3.Angle(transform.forward, Flat(nb.transform.position - (transform.position - transform.forward * 1.2f * Size))).ToString("0") + " deg, reach " + (t.Def.bodyRadius + strike.Reach * Size).ToString("0.0") + ")" : " (no target)"));
+            }
+            else StrikeLog.Add(strike.Clip + " hit " + LastPartStruck);
+            if (StrikeLog.Count > 60) StrikeLog.RemoveAt(0);
             WorldKit.Sound(transform.position, any ? "hit" : "swish", any ? .25f : .14f);
         }
 
@@ -457,12 +468,14 @@ namespace FH.Game
 
         public float PincerAngle { get; private set; }
         public int LaneClears { get; private set; }
+        bool inLane; float laneAt;
 
         /// <summary>The hunter is attacking (a charge, a thrust, a shot) and the hound stands in front of them, in the
         /// way: it steps aside, to whichever side it is already on. True while it does.</summary>
         bool ClearOfHuntersLane(float dt)
         {
             var hunter = S.Hunter;
+            if (inLane && Time.time - laneAt > .3f) inLane = false;
             if (!hunter.Attack.Running) return false;
             var hf = Flat(hunter.transform.forward).normalized;
             var rel = Flat(transform.position - hunter.transform.position);
@@ -471,7 +484,8 @@ namespace FH.Game
             if (along < 0 || along > length || Mathf.Abs(across) > lane) return false;
             var side = Vector3.Cross(Vector3.up, hf) * (across >= 0 ? 1 : -1);
             MoveToward(transform.position + side * (lane + 1.2f * Size - Mathf.Abs(across) + .6f), .2f, true, -side, dt, GallopSpeed);
-            if (LastEvent != "out of the hunter's way") LaneClears++;
+            if (!inLane) LaneClears++;
+            inLane = true; laneAt = Time.time;
             LastEvent = "out of the hunter's way";
             return true;
         }

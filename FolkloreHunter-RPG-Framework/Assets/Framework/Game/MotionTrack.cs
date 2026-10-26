@@ -9,7 +9,7 @@ namespace FH.Game
     /// reads) from the running 3D game, so its temporal checks run on real play: facing against travel, stride per walk
     /// cycle, jitter, dithering, pops, pose flicker and "moving while the picture does not change".
     /// Mapping to the inspector's top-down 2D model: x = world X, y = world Z (north = +Z); the facing is the rendered
-    /// model's forward quantised to S/E/N/W; the "sprite" is the playing clip plus its cycle frame (16 per loop).
+    /// model's forward quantised to S/E/N/W; the "sprite" is the playing clip plus its cycle frame (32 per loop).
     /// Idle poses carry no frame number, so a body that glides while idling reads as a stuck picture.</summary>
     public class MotionTrack : MonoBehaviour
     {
@@ -70,7 +70,8 @@ namespace FH.Game
         {
             string clip = anim?.Current ?? "";
             var st = anim?.State(clip);
-            int k = st == null ? 0 : Mathf.FloorToInt(Mathf.Repeat(st.normalizedTime, 1f) * 16) % 16;
+            // 32 pictures per cycle: at a full gallop 16 would each span more ground than the inspector's stuck-picture threshold.
+            int k = st == null ? 0 : Mathf.FloorToInt(Mathf.Repeat(st.normalizedTime, 1f) * 32) % 32;
             if (clip.EndsWith("Walking_A") || clip.EndsWith("|Walk")) return who + "_walk_" + dir + "_" + k.ToString("00");
             if (clip.EndsWith("Running_A") || clip.EndsWith("|Gallop")) return who + "_run_" + dir + "_" + k.ToString("00");
             if (clip.EndsWith("Idle") || clip.EndsWith("Idle_Combat") || clip.EndsWith("|Sit")) return who + "_idle_" + dir;

@@ -130,6 +130,49 @@ namespace FH.Game
             Note("hound pose frames written to Captures/Proving/HoundPoses for SightForge review");
         }
 
+        /// <summary>Pose frames of the hunter's new clips with the weapon in hand (bow, katana) and of the evasions, for the
+        /// Claude Eyes inspector: side view, orthographic, transparent background, 16 frames per clip, rendered by the player.</summary>
+        IEnumerator CaptureHunterPoses()
+        {
+            string folder = Path.Combine(root, "HunterPoses"); Directory.CreateDirectory(folder);
+            H.enabled = false;                                   // nothing drives the pose while it is sampled
+            var hide = new List<(GameObject go, int layer)>();
+            foreach (var x in H.Visual.GetComponentsInChildren<Transform>(true)) { hide.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; }
+            var go = new GameObject("Hunter review camera"); var cam = go.AddComponent<Camera>();
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear; cam.orthographic = true; cam.orthographicSize = 1.9f;
+            var rt = new RenderTexture(512, 400, 24); cam.targetTexture = rt;
+            var anim = H.Anim;
+            var sets = new[]
+            {
+                ("bow", new[] { ("Bow_Draw", "bow_draw"), ("Bow_Shoot", "bow_shoot"), ("Bow_Power_Shoot", "bow_power"), ("Bow_Arc_Shoot", "bow_arc"), ("Bow_Piercer", "bow_piercer"), ("Bow_Step_R", "bow_step"), ("Bow_Aim_Walk", "walk") }),
+                ("katana", new[] { ("2H_Melee_Attack_Chop", "katana_overhead"), ("2H_Melee_Attack_Slice", "katana_slice"), ("2H_Melee_Attack_Stab", "katana_thrust"), ("2H_Melee_Attack_Spin", "katana_roundslash"), ("2H_Melee_Attack_Spinning", "katana_spirit3"), ("Katana_Iai", "katana_iai") }),
+                ("sword_shield", new[] { ("Dodge_Right", "slide"), ("Dodge_Backward", "backstep"), ("Dodge_Forward", "roll"), ("Jump_Full_Short", "dive"), ("Lie_StandUp", "dive_landing") }),
+            };
+            int written = 0;
+            foreach (var (weapon, clips) in sets)
+            {
+                S.ProvingRig.SetWeapon(weapon);
+                F.SetSheathed(false);
+                yield return Frames(2);
+                Vector3 c = H.transform.position + Vector3.up * 1.05f;
+                cam.transform.position = c + H.transform.right * 6f; cam.transform.LookAt(c);
+                foreach (var (clip, label) in clips)
+                {
+                    var st = anim.State(clip); if (st == null) { Check("hunter has the " + clip + " clip", false); continue; }
+                    anim.Anim.Stop(); st.enabled = true; st.weight = 1;
+                    st.time = 0; anim.Anim.Sample(); yield return null;   // warm-up: the first frame must not show the previous clip
+                    for (int i = 0; i < 16; i++) { st.time = st.length * i / 16f; anim.Anim.Sample(); yield return Render(cam, rt, Path.Combine(folder, "hunter_" + label + "_E_" + i.ToString("00") + ".png")); written++; }
+                    st.enabled = false;
+                }
+            }
+            foreach (var (o, layer) in hide) if (o) o.layer = layer;
+            cam.targetTexture = null; rt.Release(); Destroy(rt); Destroy(go);
+            anim.Current = ""; anim.Play("Idle");
+            H.enabled = true;
+            S.ProvingRig.SetWeapon("sword_shield");
+            Check("hunter pose frames rendered for Claude Eyes (bow, katana, evasions)", written == 18 * 16, written + " frames");
+        }
+
         static IEnumerator Render(Camera cam, RenderTexture rt, string path)
         {
             cam.Render();
@@ -162,7 +205,7 @@ namespace FH.Game
             yield return Until(() => SeqIndex(hound.Sequence.Skip(seq0).ToList(), "Bite", "Slash_R", "Spin") >= 0, 10);
             var seq = hound.Sequence.Skip(seq0).ToList();
             Check("the hound fights in a combo: bite, return slash, spinning slash", SeqIndex(seq, "Bite", "Slash_R", "Spin") >= 0 && hound.Bites - hits0 >= 3,
-                  string.Join(">", seq.Take(6)) + ", " + (hound.Bites - hits0) + " hits");
+                  string.Join(">", seq.Take(6)) + ", " + (hound.Bites - hits0) + " hits: " + string.Join("; ", hound.StrikeLog.Skip(Math.Max(0, hound.StrikeLog.Count - 4))));
             yield return Wait(.3f);
             yield return Snap("p10b-hound-spin");
             // Between combos it circles to the flank, across the monster from the hunter (the Palamute's pincer).
@@ -206,6 +249,9 @@ namespace FH.Game
             Check("the hound steers round a pillar to the hunter (no teleport)", arrived < 2.5f && hound.Detours > det0 && hound.Warps == warp0,
                   arrived.ToString("0.0") + " m from heel, detours " + (hound.Detours - det0) + ", warps " + (hound.Warps - warp0));
             yield return Snap("p10f-hound-detour");
+            m = Fresh(m); Face(m, 3f); yield return Frames(2);
+            if (H.LockTarget != m) { if (H.LockTarget) yield return Tap(PadButton.RightStick); yield return Tap(PadButton.RightStick); }
+            Check("locked on to the training Gravebound again for the next hound checks", H.LockTarget == m);
             // Pounce: from mid range it leaps in and strikes.
             m = Fresh(m);
             var away = Flat(hound.transform.position - m.transform.position).normalized; if (away.sqrMagnitude < .01f) away = m.transform.right;
@@ -214,7 +260,7 @@ namespace FH.Game
             yield return Until(() => hound.Pounces > p0, 6);
             yield return Wait(1f);
             float gap1 = Vector3.Distance(Flat(hound.transform.position), Flat(m.transform.position));
-            Check("from mid range the hound pounces: leaps in and strikes", hound.Pounces > p0 && hound.Bites > b0 && gap1 < gap0 - 2.5f, "gap " + gap0.ToString("0.0") + " -> " + gap1.ToString("0.0") + " m, " + hound.LastEvent);
+            Check("from mid range the hound pounces: leaps in and strikes", hound.Pounces > p0 && hound.Bites > b0 && gap1 < gap0 - 2.5f, "gap " + gap0.ToString("0.0") + " -> " + gap1.ToString("0.0") + " m, " + string.Join("; ", hound.StrikeLog.Skip(Math.Max(0, hound.StrikeLog.Count - 2))));
             // Evade: a monster winding up with the hound inside its reach: it hops clear.
             m = Fresh(m);
             S.ProvingRig.Invulnerable = true;
@@ -440,6 +486,8 @@ namespace FH.Game
             float travelled = Vector3.Distance(Flat(d0), Flat(H.transform.position));
             Check("RB+Y+B: dash attack charges forward (over 4 m in 1.3 s) and costs stamina", dash == "dash_attack" && travelled > 4f && H.Stamina.Current < st0 - 8, dash + ", " + travelled.ToString("0.0") + " m, stamina " + st0.ToString("0") + " -> " + H.Stamina.Current.ToString("0"));
             yield return UntilNeutral();
+            S.ProvingRig.ClearMonsters();               // the Grave Warden from the counter test would draw the charge
+            yield return Frames(2);
             m = Fresh(Target());
             Face(m, 3.5f);
             yield return Frames(3);
@@ -1138,6 +1186,7 @@ namespace FH.Game
             yield return LanceChecks();
             yield return BowChecks();
             yield return RangeChecks();
+            yield return CaptureHunterPoses();
 
             // Menus on the pad: Menu opens pause, B backs out.
             yield return Tap(PadButton.Start);
