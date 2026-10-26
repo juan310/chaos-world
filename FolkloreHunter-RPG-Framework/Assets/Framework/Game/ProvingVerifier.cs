@@ -142,6 +142,246 @@ namespace FH.Game
 
         int SaveFiles() => Directory.Exists(S.Store.Root) ? Directory.GetFiles(S.Store.Root, "*", SearchOption.AllDirectories).Count(f => !f.EndsWith("settings.json")) : 0;
 
+        Renderer R(string name) { var tr = WorldKit.Find(H.Visual, name); return tr ? tr.GetComponent<Renderer>() : null; }
+        void Pad(PadButton b, Vector2 stick = default) => GamePad.Inject(b, stick);
+        IEnumerator Combo(PadButton held, PadButton extra, int frames = 3, Vector2 stick = default) { Pad(held | extra, stick); yield return Frames(frames); Pad(held, stick); yield return Frames(2); }
+        MonsterActor Fresh(MonsterActor m) { m = m && m.Alive ? m : Target(); m.Brain.Health = m.Def.maxHealth; return m; }
+
+        // ---------------- lance ----------------
+        IEnumerator LanceChecks()
+        {
+            S.ProvingRig.ClearMonsters();
+            yield return Frames(2);
+            S.ProvingRig.SetWeapon("lance");
+            yield return Frames(3);
+            var lance = WorldKit.Find(H.Visual, "Hunt_Lance");
+            Check("the ledger puts the lance and tower shield in hand (sheathed on the back)", F.Class == WeaponClass.Lance && F.Sheathed && R("Hunt_Lance").enabled && R("Hunt_TowerShield").enabled
+                  && !H.SwordTransform.GetComponent<Renderer>().enabled && !R("Round_Shield").enabled && lance.parent.name == "chest", lance.parent.name);
+            var m = Fresh(Target());
+            Face(m, 2.3f);
+            Hold(PadButton.RB); yield return Wait(.2f); Release(); yield return Wait(.15f);    // raising the guard draws
+            Check("raising the guard draws the lance into the hand", !F.Sheathed && lance.parent.name != "chest", lance.parent.name);
+            yield return Snap("p11-lance-drawn");
+            int landed = H.SwingsLanded;
+            var seen = new List<string>();
+            var presses = new Queue<PadButton>(new[] { PadButton.Y, PadButton.B, PadButton.Y });
+            yield return Tap(presses.Dequeue());
+            for (float t = 0; t < 2.5f; t += Time.unscaledDeltaTime)
+            {
+                if (seen.LastOrDefault() != CurrentId && CurrentId != "-") seen.Add(CurrentId);
+                if (F.Current != null && HuntRoutes.CanChain(F.Current, H.Attack.Normalized) && presses.Count > 0) { yield return Tap(presses.Dequeue(), 2); continue; }
+                yield return null;
+            }
+            Check("Y, B, Y: mid thrust, high thrust, mid thrust (the triple thrust)", seen.Take(3).SequenceEqual(new[] { "mid_1", "high_2", "mid_3" }), string.Join(">", seen));
+            Check("the lance's thrusts land from 2.3 m (longer reach than the sword)", H.SwingsLanded - landed >= 2, (H.SwingsLanded - landed) + " hits");
+            yield return UntilNeutral();
+            yield return Tap(PadButton.Y | PadButton.B);
+            yield return Until(() => F.Current != null, .5f);
+            Check("Y+B is the wide sweep", CurrentId == "wide_sweep", CurrentId);
+            yield return UntilNeutral();
+
+            // Hops: up to three in a row, the last one long; no roll while drawn.
+            Face(m, 3f); yield return Frames(3);
+            var dists = new List<float>();
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 p0 = H.transform.position;
+                yield return Tap(PadButton.A, 2);
+                yield return Until(() => !H.Dodging, .8f);
+                dists.Add(Vector3.Distance(Flat(p0), Flat(H.transform.position)));
+                yield return Frames(2);
+            }
+            Check("A hops instead of rolling: short (under 2.2 m), three in a row", dists[0] > .9f && dists[0] < 2.2f && dists[1] > .9f, string.Join(", ", dists.Select(d => d.ToString("0.00"))));
+            Check("the third hop is the long one, and a fourth is refused until a pause", dists[2] > dists[0] * 1.3f && dists[3] < .3f, string.Join(", ", dists.Select(d => d.ToString("0.00"))));
+            yield return Wait(.6f);
+
+            // Guard: the tower shield against the Warden.
+            S.ProvingRig.ClearMonsters();
+            var warden = S.ProvingRig.Spawn("grave_warden", true);
+            warden.Passive = false; warden.Calm(1);
+            foreach (var a in warden.Def.attacks) a.reaction = "Knockback";
+            H.Health = H.Stats[Stat.MaxHealth];
+            Face(warden, 2.0f);
+            Hold(PadButton.RB);
+            float hpBefore = H.Health;
+            yield return Until(() => F.LastEvent == "guarded" || F.LastEvent == "perfect guard", 9);
+            var atk = warden.Brain.CurrentAttack;
+            Check("the tower shield blocks the Warden with very little chip", (F.LastEvent == "guarded" || F.LastEvent == "perfect guard") && hpBefore - H.Health < (atk != null ? atk.damage * .1f : 99), F.LastEvent + ", lost " + (hpBefore - H.Health).ToString("0.0"));
+            yield return Snap("p12-lance-guard");
+            // Guard thrust (RB+Y) and guard dash (RB+Y with the stick).
+            yield return Combo(PadButton.RB, PadButton.Y);
+            yield return Until(() => F.Current != null, .4f);
+            Check("RB+Y: guard thrust from behind the shield", CurrentId == "guard_thrust", CurrentId);
+            yield return UntilNeutral();
+            Vector3 g0 = H.transform.position;
+            Pad(PadButton.RB, new Vector2(0, 1)); yield return Frames(4);
+            yield return Combo(PadButton.RB, PadButton.Y, 3, new Vector2(0, 1));
+            yield return Until(() => F.Current != null, .4f);
+            string dashId = CurrentId;
+            yield return Until(() => F.Current == null, 1.5f);
+            Check("RB+Y with the stick: guard dash, shield up while closing in", dashId == "guard_dash" && Vector3.Distance(Flat(g0), Flat(H.transform.position)) > 1.2f, dashId + ", " + Vector3.Distance(Flat(g0), Flat(H.transform.position)).ToString("0.0") + " m");
+            Release();
+            yield return Wait(.3f);
+            // Counter stance: hold RB then B as the Warden winds up; the blocked blow becomes a Retribution Thrust.
+            bool countered = false; int retributions = F.Retributions;
+            for (int tries = 0; tries < 4 && !countered; tries++)
+            {
+                H.Health = H.Stats[Stat.MaxHealth];
+                Face(warden, 2.0f);
+                yield return Until(() => warden.Brain.Mode == MonsterMode.Telegraph && warden.Brain.CurrentAttack.telegraph - warden.Brain.ModeTime < .55f, 8);
+                Hold(PadButton.RB); yield return Frames(2);
+                Hold(PadButton.RB | PadButton.B);
+                yield return Until(() => F.Retributions > retributions || H.Hurt, 1.4f);
+                countered = F.Retributions > retributions;
+                Release();
+                yield return Until(() => F.Current != null, .3f);
+                if (countered) { Check("RB+B counter stance: the blocked blow is answered by the Retribution Thrust", CurrentId == "retribution" || F.LastMove == "Retribution Thrust", CurrentId + " / " + F.LastMove); yield return Snap("p13-lance-retribution"); }
+                yield return UntilNeutral();
+            }
+            Check("the counter stance catches a real Warden blow", countered, F.LastEvent);
+            // Released without a blow: the counter thrust.
+            Hold(PadButton.RB); yield return Frames(3);
+            yield return Combo(PadButton.RB, PadButton.B, 3);
+            yield return Wait(.15f);                     // the shield stays up past the 70 ms two-button window
+            Release();
+            yield return Until(() => F.Current != null, .5f);
+            Check("a quick RB+B tap releases the counter thrust", CurrentId == "counter_thrust", CurrentId);
+            yield return UntilNeutral();
+
+            // Dash attack (RB+Y+B): charges forward striking repeatedly, Y finishes.
+            S.ProvingRig.ClearMonsters();
+            m = Fresh(Target());
+            Face(m, 7f);
+            yield return Frames(3);
+            H.Stamina.Current = H.Stamina.Max;
+            Vector3 d0 = H.transform.position; landed = H.SwingsLanded; float st0 = H.Stamina.Current;
+            Hold(PadButton.RB); yield return Frames(3);
+            yield return Combo(PadButton.RB, PadButton.Y | PadButton.B, 3);
+            Release();
+            yield return Until(() => F.Current != null, .4f);
+            string dash = CurrentId;
+            yield return Wait(1.3f);
+            yield return Snap("p14-lance-dash");
+            float travelled = Vector3.Distance(Flat(d0), Flat(H.transform.position));
+            Check("RB+Y+B: dash attack charges forward (over 4 m in 1.3 s)", dash == "dash_attack" && travelled > 4f, dash + ", " + travelled.ToString("0.0") + " m");
+            Check("the charge strikes repeatedly and costs stamina", H.SwingsLanded - landed >= 2 && H.Stamina.Current < st0 - 8, (H.SwingsLanded - landed) + " hits, stamina " + st0.ToString("0") + " -> " + H.Stamina.Current.ToString("0"));
+            yield return Tap(PadButton.Y);
+            yield return Until(() => CurrentId == "dash_finisher", .6f);
+            Check("Y during the charge: finishing thrust", CurrentId == "dash_finisher", CurrentId);
+            yield return UntilNeutral();
+            Note("lance: hops " + string.Join(", ", dists.Select(d => d.ToString("0.00"))) + " m; dash " + travelled.ToString("0.0") + " m");
+        }
+
+        // ---------------- bow ----------------
+        IEnumerator BowChecks()
+        {
+            S.ProvingRig.ClearMonsters();
+            yield return Frames(2);
+            S.ProvingRig.SetWeapon("bow");
+            yield return Frames(3);
+            Check("the ledger puts the bow in hand and the quiver on the back", F.Class == WeaponClass.Bow && R("Hunt_Bow").enabled && R("Hunt_Quiver").enabled && !R("Hunt_Lance").enabled && !H.SwordTransform.GetComponent<Renderer>().enabled);
+            var m = Fresh(Target());
+            Face(m, 10f);
+            yield return Frames(3);
+            int fired = ArrowShot.Fired, hits = ArrowShot.Landed;
+            yield return Tap(PadButton.Y);
+            yield return Until(() => ArrowShot.Fired > fired, 1f);
+            yield return Wait(.5f);
+            Check("Y from sheathed: draw shot, an arrow flies and strikes the monster 10 m away", ArrowShot.Fired == fired + 1 && ArrowShot.Landed > hits, (ArrowShot.Fired - fired) + " fired, " + (ArrowShot.Landed - hits) + " hit");
+            // Quick follow-up shots climb the levels: 1 -> 2 -> 3 arrows.
+            var levels = new List<string>();
+            for (int i = 0; i < 2; i++)
+            {
+                yield return Until(() => F.Current == null || HuntRoutes.CanChain(F.Current, H.Attack.Normalized), 1);
+                int before = ArrowShot.Fired;
+                yield return Tap(PadButton.Y, 2);
+                yield return Until(() => ArrowShot.Fired > before, 1f);
+                levels.Add("L" + F.LastShotLevel + "x" + F.LastShotArrows);
+            }
+            Check("quick follow-up shots rise a level each: 2 arrows, then 3", levels.SequenceEqual(new[] { "L2x2", "L3x3" }), string.Join(", ", levels));
+            yield return Wait(1.4f);
+            Check("after a pause the bow is back at level 1", F.BowLevel == 1, F.BowLevel.ToString());
+            // Holding Y draws: levels climb with time and the draw costs stamina; release shoots.
+            H.Stamina.Current = H.Stamina.Max;
+            Hold(PadButton.Y);
+            yield return Until(() => F.Drawing, .5f);
+            yield return Wait(1.05f);
+            int heldLevel = F.BowLevel; float drawStamina = H.Stamina.Current;
+            yield return Snap("p15-bow-draw");
+            Release();
+            yield return Until(() => F.Current != null, .5f);
+            yield return Wait(.3f);
+            Check("holding Y draws through the charge levels (level 3 after a second)", heldLevel == 3 && F.LastShotLevel == 3 && F.LastShotArrows == 3, "held level " + heldLevel + ", shot L" + F.LastShotLevel + "x" + F.LastShotArrows);
+            Check("drawing costs stamina", drawStamina < H.Stamina.Max - 5, drawStamina.ToString("0"));
+            yield return Wait(1.4f);
+            // Charging sidestep: +1 level and a quick side step.
+            Vector3 s0 = H.transform.position;
+            yield return Tap(PadButton.A, 2);
+            yield return Until(() => !H.Dodging, .8f);
+            float step = Vector3.Distance(Flat(s0), Flat(H.transform.position));
+            Check("A with the bow drawn: charging sidestep (+1 level, about 2.4 m)", F.LastEvent.StartsWith("charging sidestep") && F.BowLevel == 2 && step > 1.5f && step < 3.2f, F.LastEvent + ", level " + F.BowLevel + ", " + step.ToString("0.00") + " m");
+            int f2 = ArrowShot.Fired;
+            yield return Tap(PadButton.Y, 2);
+            yield return Until(() => ArrowShot.Fired > f2, 1f);
+            Check("the shot after a sidestep fires at the raised level", F.LastShotLevel == 2, "L" + F.LastShotLevel);
+            // Power shot: B right after a shot: a wider fan at the current level, no level gained.
+            yield return Until(() => F.Current == null || HuntRoutes.CanChain(F.Current, H.Attack.Normalized), 1);
+            int f3 = ArrowShot.Fired; int lv = F.BowLevel;
+            yield return Tap(PadButton.B, 2);
+            yield return Until(() => ArrowShot.Fired > f3, 1f);
+            Check("B right after a shot: power shot (two extra arrows in a wider fan)", F.LastMove == "Power Shot" && F.LastShotArrows == Set().Level(lv).arrows + 2, F.LastMove + " x" + F.LastShotArrows + " at level " + lv);
+            yield return Wait(1.4f);
+            // Arc shot: B on its own: arrows rain on the target after a moment and build stun.
+            m = Fresh(m);
+            float stun = m.Reactions.StunBuild; int h4 = ArrowShot.Landed;
+            yield return Tap(PadButton.B, 2);
+            yield return Until(() => F.Current != null, .4f);
+            string arc = CurrentId;
+            yield return Wait(1.0f);
+            yield return Snap("p16-arc-shot");
+            yield return Wait(1.0f);
+            Check("B alone: arc shot, arrows rain down on the monster", arc == "arc_shot" && ArrowShot.Landed - h4 >= 2, arc + ", " + (ArrowShot.Landed - h4) + " hits");
+            Check("the arc shot builds stun toward a topple", m.Reactions.StunBuild > stun || m.Reactions.Topples > 0, stun.ToString("0") + " -> " + m.Reactions.StunBuild.ToString("0"));
+            yield return UntilNeutral();
+            // Dragon Piercer: Y+B: a long windup, then one bolt that strikes again and again as it passes through.
+            m = Fresh(m);
+            Face(m, 8f); yield return Frames(3);
+            int h5 = ArrowShot.Landed;
+            yield return Tap(PadButton.Y | PadButton.B);
+            yield return Until(() => F.Current != null, .4f);
+            string dp = CurrentId;
+            yield return Wait(.9f);
+            yield return Snap("p17-dragon-piercer");
+            yield return Wait(1.2f);
+            Check("Y+B: Dragon Piercer pierces and hits several times with one bolt", dp == "dragon_piercer" && ArrowShot.Landed - h5 >= 3, dp + ", " + (ArrowShot.Landed - h5) + " hits");
+            yield return UntilNeutral();
+            // Aim: RB brings the camera over the shoulder; arrows go to the centre of the screen.
+            m = Fresh(m);
+            Face(m, 9f); yield return Frames(3);
+            Hold(PadButton.RB);
+            yield return Wait(.15f);
+            // Point the camera the way a player would: its centre ray (from over the right shoulder) through the monster.
+            Vector3 shoulder = H.transform.position + Vector3.up * 1.65f + S.CameraRig.Camera.transform.right * .7f;
+            Vector3 toM = ((m.AimPoint ? m.AimPoint.position : m.transform.position + Vector3.up) - shoulder).normalized;
+            S.CameraRig.Yaw = Mathf.Atan2(-toM.x, toM.z) * Mathf.Rad2Deg; S.CameraRig.Pitch = Mathf.Asin(-toM.y) * Mathf.Rad2Deg;
+            yield return Wait(.6f);
+            float camDist = Vector3.Distance(S.CameraRig.Camera.transform.position, H.transform.position + Vector3.up * 1.5f);
+            Check("RB aims: the camera comes in over the shoulder", F.Aiming && S.CameraRig.Aiming && camDist < 4f, camDist.ToString("0.0") + " m");
+            yield return Snap("p18-bow-aim");
+            int h6 = ArrowShot.Landed;
+            yield return Combo(PadButton.RB, PadButton.Y, 2);
+            yield return Wait(.6f);
+            Check("a shot while aiming flies to the reticle and hits what it shows", ArrowShot.Landed > h6, "aim point " + F.LastAimPoint.ToString("0.0") + ", monster at " + m.transform.position.ToString("0.0"));
+            Release();
+            yield return Wait(.3f);
+            Check("letting go of RB ends the aim", !F.Aiming && !S.CameraRig.Aiming);
+            Note("bow: arrows fired " + ArrowShot.Fired + ", hits " + ArrowShot.Landed);
+            S.ProvingRig.SetWeapon("sword_shield");
+            yield return Frames(3);
+        }
+
+        HuntMovesetDef Set() => F.Set;
+
         // ---------------- run ----------------
         IEnumerator Run()
         {
@@ -406,6 +646,9 @@ namespace FH.Game
                 yield return CaptureHoundPoses(hound);
             }
 
+            yield return LanceChecks();
+            yield return BowChecks();
+
             // Menus on the pad: Menu opens pause, B backs out.
             yield return Tap(PadButton.Start);
             Check("Menu button opens the pause menu", S.Ui.Top is PauseScreen, S.Ui.Describe());
@@ -417,6 +660,8 @@ namespace FH.Game
             yield return Wait(.5f);
             Check("leaving returns to the title with classic controls", S.Mode == SessionMode.Title && !H.HuntStyle && !InputRouter.MouseLook && Cursor.lockState == CursorLockMode.None);
             Check("the Proving Grounds wrote no save files", SaveFiles() == savesBefore, savesBefore + " -> " + SaveFiles());
+            var lanceR = WorldKit.Find(H.Visual, "Hunt_Lance").GetComponent<Renderer>(); var bowR = WorldKit.Find(H.Visual, "Hunt_Bow").GetComponent<Renderer>();
+            Check("back on the title the hunter holds sword and shield again (no lance or bow)", H.SwordTransform.GetComponent<Renderer>().enabled && !lanceR.enabled && !bowR.enabled && H.SwordTransform.parent.name != "chest", H.SwordTransform.parent.name);
         }
     }
 }
