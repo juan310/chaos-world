@@ -19,7 +19,7 @@ poses = r / 'Captures/Proving/HoundPoses'
 p = E.Project(str(r), 'Captures/Proving/HoundPoses', pid='folklore-rpg', name='Folklore Hunter - RPG framework')
 hound = 'briarhound' if list(poses.glob('briarhound_idle_E_*.png')) else 'cusith'
 NAME = {'briarhound': 'Briarhound', 'cusith': 'Cu-sith'}[hound]
-clips = [(hound, s) for s in ('idle', 'walk', 'run', 'attack', 'sit', 'howl', 'hit')] + [('riding', 'run')]
+clips = [(hound, s) for s in ('idle', 'walk', 'run', 'attack', 'slash', 'spin', 'pounce', 'hop', 'sit', 'howl', 'hit')] + [('riding', 'run')]
 for _, state in clips:
     C.EXPECTED_FRAMES[state] = 16
 summary = {'scope': NAME + ' and the hunter riding it: real Unity player frames (orthographic side view) and the hound actor track. '

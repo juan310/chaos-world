@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using FH.Core;
 using UnityEngine;
@@ -6,9 +7,12 @@ namespace FH.Game
 {
     public enum HoundState { Follow, Assist, Called, Ridden, Sitting }
 
-    /// <summary>The Briarhound: a great shaggy hunting hound that follows the hunter, slashes the monster being hunted
-    /// with the crescent blade it carries in its jaws, comes when whistled, and can be ridden at a gallop to cross ground
-    /// quickly (the Palamute's role). Gait speeds come from the clip's paw stride so the feet do not slide.</summary>
+    /// <summary>The Briarhound: a great shaggy hunting hound in Monster Hunter Rise's Palamute role. It heels (and runs
+    /// beside a sprinting hunter), comes when whistled, and fights the hunted monster with the crescent blade in its
+    /// jaws: bite, return slash and spinning slash in a combo, a pounce to close in, a flanking position across the
+    /// monster from the hunter, and a hop clear of the monster's wind-ups. Ridden it walks, lopes, dashes (RT), drifts
+    /// through sharp turns (RB while dashing), attacks on Y (chain up to three) and sidesteps on A, without costing the
+    /// rider stamina. Gait speeds come from the clip's paw stride so the feet do not slide.</summary>
     public class HoundCompanion : MonoBehaviour
     {
         public const string DisplayName = "Briarhound";
@@ -33,8 +37,7 @@ namespace FH.Game
         GameSession S;
         CharacterController cc;
         Transform pawL, pawR;
-        float vertical, biteReadyAt, biteAt = -1, idleFor, stuckFor;
-        MonsterActor biteTarget;
+        float vertical, calledAt, idleFor, stuckFor;
         int mountedFrame = -10;
         Vector3 lastPos;
         HoundMount mount;
@@ -83,7 +86,7 @@ namespace FH.Game
                 Warp(S.SafeGround(p), h.eulerAngles.y);
                 LastEvent = "appeared";
             }
-            State = HoundState.Called; LastEvent = "called";
+            State = HoundState.Called; LastEvent = "called"; calledAt = Time.time;
             Anim.Play("Howl", false, 1.2f, true);
             WorldKit.Sound(transform.position, "chime", .3f);
         }
@@ -112,6 +115,9 @@ namespace FH.Game
             LastEvent = thrown ? "rider thrown" : "dismounted";
         }
 
+        /// <summary>Puts the hound somewhere at once (the Training Range, the verifier).</summary>
+        public void PlaceAt(Vector3 p, float yaw) { Warp(p, yaw); lastPos = p; }
+
         void Warp(Vector3 p, float yaw)
         {
             cc.enabled = false; transform.SetPositionAndRotation(p, Quaternion.Euler(0, yaw, 0)); cc.enabled = true;
@@ -131,70 +137,284 @@ namespace FH.Game
             lastPos = transform.position;
         }
 
+        // ---------------- actions: strikes, pounce, hops (shared by the companion and the ridden hound) ----------------
+        /// <summary>A strike, pounce or hop is playing out (no steering until it ends).</summary>
+        public bool Acting => Time.time < actionEnd;
+        public HoundAction Action { get; private set; } = HoundAction.Follow;
+        public int Pounces { get; private set; }
+        public int Evades { get; private set; }
+        public int RideAttacks { get; private set; }
+        public int RideHops { get; private set; }
+        public bool Dashing { get; private set; }
+        public bool Drifting { get; private set; }
+        /// <summary>Clips of the strikes started, in order (the verifier reads the combo from it).</summary>
+        public readonly List<string> Sequence = new List<string>();
+        float actionEnd, strikeAt = -1, travelFrom, travelUntil, travelSpeed, comboReadyAt, pounceReadyAt, evadeReadyAt, rideHopReadyAt, bank, dustClock;
+        Vector3 travelDir; bool travelKeepsFacing, rideQueued;
+        int comboStep = -1;
+        HoundStrike strike;
+        MonsterActor strikeTarget;
+        Quaternion visualBase = Quaternion.identity; bool visualBaseSet;
+
+        void StartStrike(HoundStrike st, int step, MonsterActor target)
+        {
+            strike = st; comboStep = step; strikeTarget = target;
+            if (target)
+            {
+                var face = target.transform.position - transform.position; face.y = 0;
+                if (face.sqrMagnitude > .01f) transform.rotation = Quaternion.LookRotation(face);
+            }
+            Anim.Play(st.Clip, false, Mathf.Max(.3f, Anim.Length(st.Clip) / st.Length), true, .05f);
+            strikeAt = Time.time + st.HitAt; actionEnd = Time.time + st.Length;
+            Sequence.Add(st.Clip); if (Sequence.Count > 40) Sequence.RemoveAt(0);
+            LastEvent = st.Clip == "Bite" ? "bite" : st.Clip == "Slash_R" ? "slash" : st.Clip == "Spin" ? "spin" : "pounce";
+        }
+
+        /// <summary>Moves the hound along <paramref name="dir"/> between two times of the current action (a pounce's leap, a hop).</summary>
+        void Travel(Vector3 dir, float distance, float from, float until, bool keepFacing)
+        {
+            travelDir = dir.normalized; travelFrom = Time.time + from; travelUntil = Time.time + until;
+            travelSpeed = distance / Mathf.Max(.05f, until - from); travelKeepsFacing = keepFacing;
+        }
+
+        void UpdateAction(float dt)
+        {
+            float now = Time.time;
+            if (now >= travelFrom && now < travelUntil)
+            {
+                var to = S.ConstrainMove(transform.position, transform.position + travelDir * travelSpeed * dt);
+                cc.Move(to - transform.position);
+                if (!travelKeepsFacing && travelDir.sqrMagnitude > .01f) transform.rotation = Quaternion.LookRotation(travelDir);
+            }
+            if (strikeAt > 0 && now >= strikeAt) { strikeAt = -1; LandStrike(); }
+        }
+
+        /// <summary>The strike lands: the spin catches every monster around; the others the nearest body part in front.</summary>
+        void LandStrike()
+        {
+            Vector3 muzzle = transform.position + (transform.forward * 1.2f + Vector3.up) * Size;
+            bool any = false;
+            foreach (var m in S.Monsters.Where(x => x && x.Alive).ToList())
+            {
+                if (strikeTarget && m != strikeTarget && !strike.AllAround) continue;
+                var box = m.Hurtboxes.OrderBy(b => Vector3.Distance(b.transform.position, strike.AllAround ? transform.position + Vector3.up * Size : muzzle)).FirstOrDefault();
+                if (!box) continue;
+                float d = Vector3.Distance(Flat(box.transform.position), Flat(transform.position));
+                if (d > m.Def.bodyRadius + (strike.AllAround ? strike.Radius : strike.Reach) * Size) continue;
+                if (!strike.AllAround)
+                {
+                    var to = Flat(box.transform.position - transform.position);
+                    if (to.sqrMagnitude > .01f && Vector3.Angle(transform.forward, to) > 75) continue;    // a slash hits what is in front
+                }
+                if (m.HuntRules) m.PendingStun = strike.Stun;
+                float dmg = strike.Damage;
+                m.ReceiveHit(box, box.transform.position, (part, broken) => new HitInfo { Damage = dmg, Poise = dmg * .6f });
+                Bites++; any = true;
+                LastEvent = (strike.Clip == "Spin" ? "spin hit " : strike.Clip == "Pounce" ? "pounced on " : strike.Clip == "Slash_R" ? "slashed " : "bit ") + m.DisplayName;
+            }
+            if (!any) LastEvent = LastEvent + " (missed)";
+            WorldKit.Sound(transform.position, any ? "hit" : "swish", any ? .25f : .14f);
+        }
+
+        /// <summary>A monster is winding up (or swinging) and the hound stands inside its reach.</summary>
+        bool Danger(MonsterActor m)
+        {
+            if (!m || !m.Alive || m.Passive) return false;
+            if (m.Brain.Mode != MonsterMode.Telegraph && m.Brain.Mode != MonsterMode.Attack) return false;
+            var atk = m.Brain.CurrentAttack;
+            if (atk == null) return false;
+            float d = Vector3.Distance(Flat(m.transform.position), Flat(transform.position));
+            return d < m.Def.bodyRadius + atk.range + atk.radius + HoundTactics.DangerMargin * Size;
+        }
+
+        void Hop(Vector3 dir, float distance, float time, bool keepFacing)
+        {
+            Anim.Play("Hop", false, Mathf.Max(.3f, Anim.Length("Hop") / time), true, .04f);
+            Travel(dir, distance, .05f, time * .85f, keepFacing);
+            actionEnd = Time.time + time; strikeAt = -1; comboStep = -1;
+        }
+
+        // ---------------- ridden: lope, dash, drift, attacks, sidestep (Monster Hunter Rise's Palamute) ----------------
         void RideTick(float dt)
         {
             var h = S.Hunter;
             if (Time.frameCount > mountedFrame + 1 && (InputRouter.Down(GameAction.Interact) || InputRouter.Down(GameAction.Sheathe))) { Dismount(); return; }
-            if (InputRouter.Down(GameAction.Whistle)) { Anim.Play("Howl", false, 1.4f, true); LastEvent = "howl"; }
+            if (InputRouter.Down(GameAction.Whistle) && !Acting) { Anim.Play("Howl", false, 1.4f, true); LastEvent = "howl"; }
             var mv = InputRouter.Move();
             var cam = S.CameraRig.Camera.transform;
             Vector3 fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized, right = Vector3.Cross(Vector3.up, fwd);
             Vector3 dir = Vector3.ClampMagnitude(fwd * mv.y + right * mv.x, 1);
-            bool gallop = InputRouter.Held(GameAction.Run);
-            if (dir.sqrMagnitude > .01f)
+            float stick = dir.magnitude, now = Time.time;
+            // Y: the hound attacks (bite, slash, spin; press again during a strike to chain). A: a quick sidestep.
+            if (InputRouter.Down(GameAction.Attack))
             {
-                float speed = (gallop ? GallopSpeed : WalkSpeed) * dir.magnitude;
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 1 - Mathf.Exp(-dt * (gallop ? 5 : 8)));
-                // Travel along the hound's facing: it curves into turns instead of sliding sideways.
-                Vector3 step = transform.forward * speed * dt;
-                Vector3 to = S.ConstrainMove(transform.position, transform.position + step);
-                cc.Move(to - transform.position);
-                PlayGait(gallop, speed);
+                if (!Acting) { RideAttacks++; StartStrike(HoundTactics.Combo[0], 0, RideTarget()); }
+                else if (comboStep >= 0) rideQueued = true;
             }
-            else if (!Busy("Howl")) Anim.Play("Idle");
+            if (InputRouter.Down(GameAction.Dodge) && now >= rideHopReadyAt && !(Acting && comboStep >= 0 && strikeAt > 0))
+            {
+                var side = stick > .1f ? dir : transform.right;
+                Hop(side, HoundTactics.RideHopDistance * Size, HoundTactics.RideHopTime, true);
+                h.InvulnerableFor(HoundTactics.RideHopInvulnerable);
+                rideHopReadyAt = now + HoundTactics.RideHopCooldown; RideHops++;
+                LastEvent = "ridden sidestep";
+            }
+            UpdateAction(dt);
+            if (Acting)
+            {
+                if (comboStep >= 0 && now >= actionEnd - .05f && rideQueued) ChainRideStrike();
+                Bank(0, dt);
+                return;
+            }
+            if (comboStep >= 0) { if (rideQueued) { ChainRideStrike(); return; } comboStep = -1; }
+            Dashing = InputRouter.Held(GameAction.Run) && stick > .1f;
+            Drifting = Dashing && InputRouter.Held(GameAction.Guard) && stick > .3f;
+            if (stick > .05f)
+            {
+                float speed = HoundTactics.RideSpeed(stick, Dashing, Drifting, WalkSpeed, GallopSpeed);
+                float yawBefore = transform.eulerAngles.y;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 1 - Mathf.Exp(-dt * HoundTactics.TurnRate(stick, Dashing, Drifting)));
+                float yawRate = Mathf.DeltaAngle(yawBefore, transform.eulerAngles.y) / Mathf.Max(1e-4f, dt);
+                // Travel along the hound's facing: it curves into turns instead of sliding sideways.
+                Vector3 to = S.ConstrainMove(transform.position, transform.position + transform.forward * speed * dt);
+                cc.Move(to - transform.position);
+                PlayGait(speed > WalkSpeed * 1.05f, speed);
+                // A drift leans into the turn and kicks up dirt; a dashing turn leans a little.
+                Bank(Drifting ? Mathf.Clamp(-yawRate * .12f, -22, 22) : Dashing ? Mathf.Clamp(-yawRate * .04f, -8, 8) : 0, dt);
+                if (Drifting && (dustClock -= dt) <= 0) { dustClock = .08f; WorldKit.Burst(transform.position - transform.forward * .8f * Size + Vector3.up * .1f, new Color(.6f, .52f, .4f), 4); }
+                if (Drifting) LastEvent = "drift";
+            }
+            else { Bank(0, dt); if (!Busy("Howl")) Anim.Play("Idle"); }
         }
 
+        void ChainRideStrike()
+        {
+            rideQueued = false;
+            int next = HoundTactics.NextStrike(comboStep);
+            if (next < 0) { comboStep = -1; return; }
+            RideAttacks++;
+            StartStrike(HoundTactics.Combo[next], next, RideTarget());
+        }
+
+        /// <summary>The monster in front of the ridden hound within reach (or none: the strike swings at the air).</summary>
+        MonsterActor RideTarget() => S.NearestMonster(transform.position, 4.5f * Size, transform.forward, 70);
+
+        void Bank(float degrees, float dt)
+        {
+            if (!Visual) return;
+            if (!visualBaseSet) { visualBase = Visual.localRotation; visualBaseSet = true; }
+            bank = Mathf.Lerp(bank, degrees, 1 - Mathf.Exp(-dt * 8));
+            Visual.localRotation = Quaternion.AngleAxis(bank, Vector3.forward) * visualBase;
+        }
+
+        // ---------------- companion ----------------
         void AiTick(float dt)
         {
             var h = S.Hunter.transform;
             Vector3 toHunter = h.position - transform.position; toHunter.y = 0;
             float dist = toHunter.magnitude;
             if (dist > 45) { Warp(S.SafeGround(h.position - h.forward * 4 + h.right * 2), h.eulerAngles.y); return; }
+            Bank(0, dt);
 
-            // Assist: bite the monster the hunter is fighting.
+            // Assist: fight the monster the hunter is fighting.
             var target = S.Hunter.LockTarget && S.Hunter.LockTarget.Alive ? S.Hunter.LockTarget
                 : S.Monsters.Where(m => m && m.Alive && !m.Passive && m.Brain.Engaged && Vector3.Distance(m.transform.position, h.position) < 12)
                             .OrderBy(m => Vector3.Distance(m.transform.position, transform.position)).FirstOrDefault();
-            if (State == HoundState.Called && (dist < 3.5f || Time.time - biteReadyAt > 8)) State = HoundState.Follow;
+            if (State == HoundState.Called && (dist < 3.5f || Time.time - calledAt > 8)) State = HoundState.Follow;
             if (target && State != HoundState.Called) State = HoundState.Assist;
             else if (State == HoundState.Assist) State = HoundState.Follow;
 
-            if (biteAt > 0 && Time.time >= biteAt) LandBite();
-            if (Busy("Bite")) return;
+            UpdateAction(dt);
+            if (Acting)
+            {
+                // The combo carries on while the monster stays in reach and is not winding up at the hound.
+                if (comboStep >= 0 && Time.time >= actionEnd - .04f && State == HoundState.Assist) ContinueCombo(target);
+                return;
+            }
+            if (comboStep >= 0) { comboStep = -1; comboReadyAt = Time.time + HoundTactics.ComboCooldown; }
             if (Busy("Howl")) return;
 
-            Vector3 goal; float stopAt;
-            if (State == HoundState.Assist)
+            if (State == HoundState.Assist) { AssistTick(target, dt); return; }
+            Action = HoundAction.Follow;
+            // Heel behind and to the right; beside the hunter when they sprint, matching their pace.
+            bool hunterRunning = S.Hunter.Velocity.magnitude > S.Hunter.WalkSpeed * 1.2f;
+            Vector3 goal = hunterRunning ? h.position + (h.right * 2.2f - h.forward * .4f) * Size : h.position - (h.forward * 2.6f - h.right * 1.8f) * Size;
+            MoveToward(goal, hunterRunning ? .9f : 1.2f, State == HoundState.Called || hunterRunning, h.forward, dt, hunterRunning ? S.Hunter.Velocity.magnitude * 1.15f : 0);
+        }
+
+        void AssistTick(MonsterActor target, float dt)
+        {
+            float now = Time.time, body = target.Def.bodyRadius, reach = 1.9f * Size;
+            Vector3 toM = Flat(target.transform.position - transform.position);
+            float gap = toM.magnitude - body;
+            var h = S.Hunter.transform.position;
+            var (fx, fz) = HoundTactics.FlankPoint(target.transform.position.x, target.transform.position.z, h.x, h.z, body + 1.3f * Size);
+            var flank = new Vector3(fx, transform.position.y, fz);
+            bool atFlank = Vector3.Distance(Flat(flank), Flat(transform.position)) < 1.4f * Size;
+            bool danger = Danger(target);
+            PincerAngle = HoundTactics.PincerAngle(target.transform.position.x, target.transform.position.z, h.x, h.z, transform.position.x, transform.position.z);
+            Action = HoundTactics.Choose(gap, reach, danger, now >= evadeReadyAt, now >= comboReadyAt, now >= pounceReadyAt, atFlank);
+            switch (Action)
             {
-                var side = transform.position - target.transform.position; side.y = 0;
-                goal = target.transform.position + (side.sqrMagnitude > .01f ? side.normalized : -target.transform.forward) * (target.Def.bodyRadius + 1.3f * Size);
-                stopAt = .5f;
-                float reach = Vector3.Distance(Flat(transform.position), Flat(target.transform.position));
-                if (reach < target.Def.bodyRadius + 1.9f * Size && Time.time >= biteReadyAt) { StartBite(target); return; }
+                case HoundAction.Evade:
+                {
+                    // Hop clear of the swing: away from the monster and a little to the side.
+                    var away = toM.sqrMagnitude > .01f ? -toM.normalized : -transform.forward;
+                    var side = Vector3.Cross(Vector3.up, away) * (Random.value < .5f ? .5f : -.5f);
+                    Hop(away + side, HoundTactics.EvadeDistance * Size, HoundTactics.EvadeTime, true);
+                    evadeReadyAt = now + HoundTactics.EvadeCooldown; Evades++;
+                    LastEvent = "hopped clear of " + target.DisplayName;
+                    return;
+                }
+                case HoundAction.Attack:
+                    StartStrike(HoundTactics.Combo[0], 0, target);
+                    return;
+                case HoundAction.Pounce:
+                {
+                    StartStrike(HoundTactics.PounceStrike, -1, target);
+                    Travel(toM, Mathf.Max(0, gap - reach * .5f), HoundTactics.PounceStrike.Length * .3f, HoundTactics.PounceStrike.Length * .7f, true);
+                    pounceReadyAt = now + HoundTactics.PounceCooldown; comboReadyAt = now + HoundTactics.PounceStrike.Length + .1f;
+                    Pounces++;
+                    return;
+                }
+                case HoundAction.Reposition when danger:
+                {
+                    // No hop ready: trot out of reach.
+                    var atk = target.Brain.CurrentAttack;
+                    var away = toM.sqrMagnitude > .01f ? -toM.normalized : -transform.forward;
+                    MoveToward(target.transform.position + away * (body + (atk != null ? atk.range + atk.radius : 2) + HoundTactics.DangerMargin * Size + .5f), .3f, true, toM, dt, 0);
+                    return;
+                }
+                default:
+                    // Approach or circle to the flank (across the monster from the hunter).
+                    MoveToward(flank, .5f, gap > 7, toM, dt, 0);
+                    return;
             }
-            else
-            {
-                // Heel: behind and to the right of the hunter.
-                goal = h.position - (h.forward * 2.6f - h.right * 1.8f) * Size;
-                stopAt = 1.2f;
-            }
+        }
+
+        public float PincerAngle { get; private set; }
+
+        /// <summary>After each strike: the next one while the monster is in reach and not winding up.</summary>
+        void ContinueCombo(MonsterActor target)
+        {
+            int next = HoundTactics.NextStrike(comboStep);
+            if (next < 0 || !target || !target.Alive || Danger(target)) { comboStep = -1; comboReadyAt = Time.time + HoundTactics.ComboCooldown; return; }
+            float gap = Vector3.Distance(Flat(target.transform.position), Flat(transform.position)) - target.Def.bodyRadius;
+            if (gap > 1.9f * Size + .8f) { comboStep = -1; comboReadyAt = Time.time + HoundTactics.ComboCooldown * .5f; return; }
+            StartStrike(HoundTactics.Combo[next], next, target);
+        }
+
+        /// <summary>Walks or gallops to <paramref name="goal"/> (stops within <paramref name="stopAt"/>), then faces
+        /// <paramref name="face"/>. <paramref name="pace"/> &gt; 0 sets the speed (matching a running hunter).</summary>
+        void MoveToward(Vector3 goal, float stopAt, bool gallop, Vector3 face, float dt, float pace)
+        {
             Vector3 to = goal - transform.position; to.y = 0;
             // Dead zone: stop inside stopAt, start again only past stopAt + 0.6 m (no idle/walk flicker at heel).
             moving = moving ? to.magnitude > stopAt : to.magnitude > stopAt + .6f;
             if (moving)
             {
-                bool gallop = to.magnitude > 7 || State == HoundState.Called;
-                float speed = gallop ? GallopSpeed : WalkSpeed;
+                gallop = gallop || to.magnitude > 7;
+                float speed = pace > 0 ? Mathf.Clamp(pace, WalkSpeed, GallopSpeed) : gallop ? GallopSpeed : WalkSpeed;
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(to), 1 - Mathf.Exp(-dt * 7));
                 Vector3 step = transform.forward * Mathf.Min(speed * dt, to.magnitude);
                 Vector3 before = transform.position;
@@ -202,12 +422,11 @@ namespace FH.Game
                 float moved = Vector3.Distance(Flat(before), Flat(transform.position));
                 stuckFor = moved < speed * dt * .2f ? stuckFor + dt : 0;
                 if (stuckFor > 1.5f) { Warp(S.SafeGround(goal), transform.eulerAngles.y); stuckFor = 0; }
-                PlayGait(gallop, speed);
+                PlayGait(speed > WalkSpeed * 1.3f, speed);
                 idleFor = 0;
             }
             else
             {
-                var face = State == HoundState.Assist ? target.transform.position - transform.position : h.forward;
                 face.y = 0;
                 if (face.sqrMagnitude > .01f) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(face), 1 - Mathf.Exp(-dt * 5));
                 idleFor += dt;
@@ -222,30 +441,6 @@ namespace FH.Game
             // Playback rate keeps the paws planted: authored stride at the speed actually travelled.
             float natural = gallop ? GallopSpeed : WalkSpeed;
             Anim.Play(gallop ? "Gallop" : "Walk", true, Mathf.Clamp(speed / Mathf.Max(.1f, natural), .4f, 2f));
-        }
-
-        void StartBite(MonsterActor target)
-        {
-            biteTarget = target;
-            var face = target.transform.position - transform.position; face.y = 0;
-            if (face.sqrMagnitude > .01f) transform.rotation = Quaternion.LookRotation(face);
-            Anim.Play("Bite", false, 1.1f, true, .05f);
-            biteAt = Time.time + .38f;
-            biteReadyAt = Time.time + 3.2f;
-            LastEvent = "bite";
-        }
-
-        void LandBite()
-        {
-            biteAt = -1;
-            var m = biteTarget;
-            if (!m || !m.Alive) return;
-            var box = m.Hurtboxes.OrderBy(b => Vector3.Distance(b.transform.position, transform.position + (transform.forward * 1.2f + Vector3.up) * Size)).FirstOrDefault();
-            if (!box || Vector3.Distance(Flat(box.transform.position), Flat(transform.position)) > m.Def.bodyRadius + 2.4f * Size) { LastEvent = "bite missed"; return; }
-            if (m.HuntRules) m.PendingStun = 3;
-            m.ReceiveHit(box, box.transform.position, (part, broken) => new HitInfo { Damage = 9, Poise = 6 });
-            Bites++;
-            LastEvent = "bit " + m.DisplayName;
         }
 
         /// <summary>A monster blow aimed at the hunter while riding: the hound shies and throws the rider.</summary>
