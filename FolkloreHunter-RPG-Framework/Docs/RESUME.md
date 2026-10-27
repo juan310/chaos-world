@@ -21,6 +21,18 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
   `Docs\ClaudeEyes\Inspections\hands_trial`. Relaxed hand, bow-string hook, sword and katana grips look right; lance, bow
   and shields close to a fist that sinks 1 to 4 cm into their thick handles (22 "likely" findings).
 
+## Tripo hunters (2026-10-27, later)
+- The owner's Tripo downloads replace both slim hunters: `SourceArt\Tripo\MaleHunter_Tripo_Animated.fbx` and
+  `FemaleHunter_Tripo_Animated.fbx` on the PC (not in git), built by `C:\AW\briarhound_work\slimall.ps1` with
+  `--height 1.83/1.72 --own-hair --fingers --keep-clips ...` (the female's Idle comes from the male pack: `--lib-clips`).
+  The Codex bodies they replaced are kept in `C:\AW\briarhound_work\models_before_tripo_20261027`.
+- Tripo's own clips play as Idle (male), Walking_A/Gait_Walk, Running_A/Gait_Jog/Hunt_Jog, Dodge_Forward, Idle_Combat,
+  plus Dig and Run_Upstairs; every other move stays the game's own (attacks, bow, blocks...).
+- SightForge motion library (`motionlib add/list/show`, `%LOCALAPPDATA%\ClaudeEyesStudio\motionlib`): packs
+  `tripo_male` (7 clips) and `tripo_female` (6). Any slim body takes them with `build_slim --lib-clips`.
+- First game run with the Tripo male (1 m tall build): 219 checks, 7 failures; weapons floated off the hands (fixed by
+  building at real height), a hairstyle sat on the modelled hair (fixed: `_info.json` ownHair). Next run verifies both.
+
 ## Next
 1. Fingers: solve against the skin, not a centre-line cylinder (fingers stop at the piece's surface); check the index and
    ring order on the right hand; then build all bodies with `--fingers`, run `hands`, and check the grips in the game
