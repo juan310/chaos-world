@@ -19,6 +19,7 @@ NAMES = ('thumb', 'index', 'middle', 'ring', 'pinky')
 SEGS = {'thumb': (.40, .33, .27), 'index': (.46, .30, .24), 'middle': (.46, .30, .24), 'ring': (.46, .30, .24), 'pinky': (.46, .30, .24)}
 LIMITS = {'thumb': (55, 65, 75), 'index': (90, 105, 75), 'middle': (90, 105, 75), 'ring': (90, 105, 75), 'pinky': (90, 105, 75)}
 RELAXED = {'thumb': (8, 10, 6), 'index': (10, 16, 8), 'middle': (13, 20, 10), 'ring': (16, 24, 12), 'pinky': (19, 28, 14)}
+FIST = {'thumb': (35, 30, 25), 'index': (80, 95, 55), 'middle': (82, 95, 55), 'ring': (84, 95, 55), 'pinky': (86, 95, 55)}
 HOOK = {'thumb': (20, 18, 10), 'index': (12, 75, 45), 'middle': (12, 75, 45), 'ring': (14, 75, 45), 'pinky': (30, 70, 40)}
 THUMB_TILT = .7          # the thumb closes across the palm: its curl leans toward the little finger by this much
 
@@ -308,7 +309,10 @@ def solve(f, nm, n, tp, o, u, r):
     def touch(pts, k0):
         segs = [(pts[0] + (pts[1] - pts[0]) * .35, pts[1]) if k == 0 else (pts[k], pts[k + 1]) for k in range(k0, 3)]
         return min(_seg_dist_to_line(a, b, o, u) for a, b in segs) <= r + fr
-    if touch(fk(f, nm, ang, n, tp), 0): return ang, 'through'
+    if touch(fk(f, nm, ang, n, tp), 0):
+        # the handle already crosses the finger with the hand open (it lies over the finger's root): a closed fist,
+        # whose overlap with the piece the hands check measures
+        return list(FIST[nm]), 'fist'
     state = 'free'
     for k in range(3):
         a = 0.0

@@ -9,8 +9,8 @@ against the held piece's own mesh (hands_blender.py):
   finger clear of the piece   a finger the solver closed on the handle that still stays more than 8 mm from it
   finger stopped at its limit a finger that reached its joint limits without meeting the handle (a handle too thin
                               or too far from the palm for a closed hand)
-  the handle through a finger  the handle already passed through the finger with the hand open (the grip point or
-                              the finger's place is wrong)
+  the handle through a finger  the handle already passed through the finger with the hand open (older grips files;
+                              the build now closes such a finger to a fist, and "finger inside the piece" measures it)
 Pictures of each grip from the back of the hand, the palm and the thumb side show what the numbers mean."""
 import json
 import os
@@ -54,6 +54,8 @@ def findings(rep, grips):
             if r.get("solver") == "free":
                 out.append(finding("uncertain", "hands: finger stopped at its limit", where, "curled to its joint limits without meeting the handle (gap %s mm)" % (round(r["gap"] * 1000) if r.get("gap") is not None else "?"),
                                    measured=r.get("gap")))
+            if r.get("solver") == "fist" and r["inside"] < 4:
+                pass
             if r.get("solver") == "through":
                 out.append(finding("likely", "hands: the handle through a finger", where, "the handle passes through the finger with the hand open", fix="move the grip point (hand slot) into the palm"))
     return out
