@@ -705,16 +705,26 @@ def battle_clips(rig):
         (.36, 'Idle', .35, pose(0, st=ARCHER, shield=False, fn=bow_pose(.15, cant=25, lean=6, release=1))),
         (.55, 'Idle', .5, pose(0, st=ARCHER, shield=False, fn=bow_pose(.3, cant=20, release=.5))),
         (.8, 'Idle', .7, pose(0, st=ARCHER, shield=False, fn=bow_pose(.7)))]))
-    # Jump dash (the drawn evade to the side, in place of the KayKit slide): a quick crouch, a spring sideways with the
-    # legs spread in the air and the body leaning into the dash, a low landing. Arms from the KayKit side dodges.
-    AIRWIDE = (.32, .05, .05, 0)
+    # Jump dash (the drawn evade to the side, in place of the KayKit slide): a quick crouch, a spring sideways off the
+    # trailing leg, in the air the leading knee tucked high and the trailing leg flung out, the body leaning into the
+    # dash, then a low landing. Arms from the KayKit side dodges. (Tucked legs show the jump without lifting the hips
+    # above the stock jump: see the note on jump heights above.)
+    legl = P.length('upperleg.l') + P.length('lowerleg.l')
+
+    def airlegs(s, k):
+        lead, trail = ('l', 'r') if s > 0 else ('r', 'l')
+        def f(P):
+            hl, ht = P.head('upperleg.' + lead), P.head('upperleg.' + trail)
+            P.leg(lead, hl + Vector((s * .22 * k * legl, -.18 * k * legl, -(1 - .45 * k) * legl)), (s * .4, -1, .2))
+            P.leg(trail, ht + Vector((-s * .42 * k * legl, .08 * k * legl, -(1 - .12 * k) * legl)), (-s * .3, -1, 0))
+        return f
     for side, base, s in (('L', 'Dodge_Left', 1), ('R', 'Dodge_Right', -1)):
         made.append(P.clip('Hunt_JumpDash_' + side, [
-            (0, base, 0, pose(0, take, lean=6, roll=-5 * s, shield=False)),
-            (.07, base, .15, pose(.3, air, .8, lean=2, roll=8 * s, shield=False)),
-            (.16, base, .35, pose(.65, air, st=AIRWIDE, roll=14 * s, shield=False)),
-            (.26, base, .55, pose(.5, air, .8, st=AIRWIDE, roll=12 * s, shield=False)),
-            (.34, base, .75, pose(0, st=LAND, lean=8, roll=5 * s, shield=False)),
+            (0, base, 0, pose(0, take, lean=8, roll=-6 * s, shield=False)),
+            (.07, base, .15, pose(.45, air, .8, lean=2, roll=10 * s, shield=False, fn=airlegs(s, .6))),
+            (.16, base, .35, pose(.9, air, roll=18 * s, shield=False, fn=airlegs(s, 1))),
+            (.26, base, .55, pose(.7, air, .8, roll=15 * s, shield=False, fn=airlegs(s, .8))),
+            (.34, base, .75, pose(0, st=LAND, lean=10, roll=6 * s, shield=False)),
             (.5, base, 1, pose(0, None, shield=False))]))
     P.use(None)
     return made
