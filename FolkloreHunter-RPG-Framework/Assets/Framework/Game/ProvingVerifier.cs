@@ -574,6 +574,17 @@ namespace FH.Game
             Time.timeScale = ts;
         }
 
+        /// <summary>Where the held piece, its slot and the hand are (world, metres) and the slot's offset from the hand:
+        /// a slot that does not ride on the hand shows up here.</summary>
+        static string Where(Transform piece, Transform visual, System.Globalization.CultureInfo ci)
+        {
+            string V(Vector3 v) => "[" + v.x.ToString("0.###", ci) + ", " + v.y.ToString("0.###", ci) + ", " + v.z.ToString("0.###", ci) + "]";
+            var slot = piece.parent; var hand = slot ? slot.parent : null; var bound = WorldKit.Find(visual, "hand.r");
+            return ", \"piece\": " + V(piece.position) + ", \"slot\": " + V(slot.position) + ", \"slotParent\": \"" + (hand ? hand.name : "") + "\""
+                + ", \"slotLocal\": " + V(slot.localPosition) + ", \"handR\": " + V(bound ? bound.position : Vector3.zero)
+                + ", \"handSkinned\": " + (visual.GetComponentsInChildren<SkinnedMeshRenderer>().Any(r => r.bones.Contains(bound)) ? "true" : "false");
+        }
+
         static readonly string[] HeldWeapons = { "1H_Sword", "Hunt_Katana", "Hunt_Lance" };
 
         /// <summary>Close views (front and side, plain background, its own light) of a character's model in chosen poses,
@@ -619,7 +630,7 @@ namespace FH.Game
                         if (WeaponSkin.WeaponPoints(held[0].transform, held[0].transform.parent, out var gw, out var tw, out var bw))
                             pts = ", \"guard\": " + Px(gw) + ", \"tip\": " + Px(tw) + ", \"butt\": " + Px(bw);
                         File.WriteAllText(shot + "_weapon.json", "{\"weapon\": \"" + string.Join(",", held.Select(r => r.name)) + "\", \"pixelsPerMetre\": "
-                                          + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", ci) + pts + "}");
+                                          + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", ci) + pts + Where(held[0].transform, visual, ci) + "}");
                         foreach (var (o, _) in keep) if (o) o.layer = Layers.Review;
                     }
                 }
