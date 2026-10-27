@@ -468,14 +468,15 @@ if '--no-resolve' not in argv and any(o.type == 'MESH' and o.parent_type == 'BON
             for pn in held:
                 o = pobj[pn]; side = o.parent_bone[-1]; hand = 'hand.' + side
                 M = o.matrix_world; pts = [M @ c for c in local_pts[pn]]
-                d0 = depth(bvh, pts, own(side))
+                skip = own(side) | (own('l' if side == 'r' else 'r') if 'Katana' in pn else set())
+                d0 = depth(bvh, pts, skip)
                 if d0 < .02: continue
                 w = AW @ PB[hand].head; R = (AW.to_3x3() @ PB[hand].matrix.to_3x3()).normalized()
                 best = None
                 for ang in (10, 20, 30, 40):
                     for ax in (R.col[0], -R.col[0], R.col[2], -R.col[2]):
                         q = Quaternion(ax.normalized(), math.radians(ang))
-                        d = depth(bvh, [w + q @ (p - w) for p in pts], own(side))
+                        d = depth(bvh, [w + q @ (p - w) for p in pts], skip)
                         if d < .01 and (best is None or ang < best[0]): best = (ang, q)
                     if best: break
                 if best: fix[(f, hand)] = best[1]

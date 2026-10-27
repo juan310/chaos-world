@@ -68,6 +68,7 @@ def main_bone(vi):
     gs = rest_me.vertices[vi].groups
     return groups.get(max(gs, key=lambda g: g.weight).group, '?') if len(gs) else '?'
 face_bone = [main_bone(f[0]) for f in faces]
+TWO_HANDED = ('Katana',)               # held in both hands: both hands and forearms meet it by design
 # a held piece meets the hand and forearm that hold it by design (a fist round a grip, inside a shield's boss): only the
 # rest of the body counts. The holding side is the side of the bone the piece rides on (handslot.l: the left hand).
 def holder(pn):
@@ -75,7 +76,8 @@ def holder(pn):
     b = o.parent_bone if o.parent_type == 'BONE' else ''
     side = b[-1] if b[-2:-1] == '.' else None
     if not side: return set()
-    return {n for n in groups.values() if n.endswith('.' + side) and (n.split('.')[0] in ('hand', 'lowerarm', 'handslot') or n.split('_')[0] in ('thumb', 'index', 'middle', 'ring', 'pinky'))}
+    sides = ('l', 'r') if any(k in pn for k in TWO_HANDED) else (side,)
+    return {n for n in groups.values() if n[-2:] in tuple('.' + x for x in sides) and (n.split('.')[0] in ('hand', 'lowerarm', 'handslot') or n.split('_')[0] in ('thumb', 'index', 'middle', 'ring', 'pinky'))}
 
 def crossings(bvh, p, d):
     n, q = 0, p.copy()

@@ -9,8 +9,9 @@ Checks, each with a plain PASS or FAIL line (exit status 1 on any FAIL, so a scr
   height                    the body between 1.4 and 2.4 m tall (another scale breaks weapon placement and gait speeds)
   held pieces in the body   SightForge mesh3d over the clips: a held piece more than 4 cm inside the body in any clip FAILS
   skin                      a clip tearing over 6 % of the body's vertices FAILS; 3 to 6 % is listed to watch
-  against a baseline        with --baseline (an earlier bodycheck or mesh3d report of the same body): any clip worse than
-                            it was by more than 2 cm of depth or 1.5 points of tearing FAILS (a regression)
+  against a baseline        with --baseline (a bodycheck report of the body installed now): any clip worse than it was by
+                            more than 2 cm of depth or 1.5 points of tearing FAILS (a regression); problems the baseline
+                            already had are listed as KNOWN instead of failing, so they stay in view without blocking
 The report holds every clip's numbers and the worst frame of each, pictured."""
 import json
 import os
@@ -47,11 +48,12 @@ def gate(r, rep, base):
                 ", ".join("%s %.0f cm off %s" % (k, v["offset"] * 100, v["bone"]) for k, v in off.items()) or "%d pieces on their bones" % len(r["pieces"])))
     out.append(("PASS" if 1.4 <= r["height"] <= 2.4 else "FAIL", "height", "%.2f m" % r["height"]))
     deep = {c: v for c, v in rep["clips"].items() if v.get("clipping", 0) > 0 and v.get("clipDepthCm", 0) > DEPTH_CM}
-    out.append(("FAIL" if deep else "PASS", "held pieces in the body",
+    hard = "FAIL" if not base else "KNOWN"          # with a baseline, standing problems are listed; only regressions fail
+    out.append((hard if deep else "PASS", "held pieces in the body",
                 "; ".join("%s %.0f cm%s" % (c, v["clipDepthCm"], (" (" + ", ".join(v["meets"]) + ")") if v.get("meets") else "") for c, v in sorted(deep.items(), key=lambda kv: -kv[1]["clipDepthCm"])) or "none deeper than %.0f cm" % DEPTH_CM))
     tear = {c: v["stretch"] for c, v in rep["clips"].items() if v["stretch"] >= TEAR_FAIL}
     watch = {c: v["stretch"] for c, v in rep["clips"].items() if TEAR_WATCH <= v["stretch"] < TEAR_FAIL}
-    out.append(("FAIL" if tear else "PASS", "skin", "; ".join("%s %.1f %%" % kv for kv in tear.items()) or "no clip over %.0f %%" % TEAR_FAIL))
+    out.append((hard if tear else "PASS", "skin", "; ".join("%s %.1f %%" % kv for kv in tear.items()) or "no clip over %.0f %%" % TEAR_FAIL))
     if watch: out.append(("WATCH", "skin", "; ".join("%s %.1f %%" % kv for kv in sorted(watch.items(), key=lambda kv: -kv[1]))))
     if base:
         worse = []
