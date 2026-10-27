@@ -95,9 +95,9 @@ def _insert(src, at, block, marker, what):
 def studio_page(studio, page):
     """the WorldForge page: routes in studio.py, the page and its menu entry in studio_page.html"""
     s = open(studio, encoding="utf-8").read()
-    s = _insert(s, GET_AT, GET_ROUTES, 'u.path.startswith("/api/wf/")', "studio.py: WorldForge GET routes")
+    s = _insert(s, GET_AT, GET_ROUTES, "WFS.get(", "studio.py: WorldForge GET routes")
     s = _insert(s, POST_LIMIT_AT, POST_LIMIT, 'path == "/api/wf/save"', "studio.py: WorldForge recipe size limit")
-    s = _insert(s, POST_ROUTE_AT, POST_ROUTE, 'path.startswith("/api/wf/")', "studio.py: WorldForge POST routes")
+    s = _insert(s, POST_ROUTE_AT, POST_ROUTE, "WFS.post(", "studio.py: WorldForge POST routes")
     s = _insert(s, SELFTEST_AT, SELFTEST, "WorldForge files: path escape refused", "studio.py: WorldForge self-test checks")
     open(studio, "w", encoding="utf-8").write(s)
     h = open(page, encoding="utf-8").read()
