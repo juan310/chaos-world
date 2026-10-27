@@ -99,11 +99,19 @@ class Rig:
         self.leg_len = self.len['upperleg.l'] + self.len['lowerleg.l']
 
     # ---- matrices -------------------------------------------------------------------------------------------
+    def posed(self, W, n):
+        """Bone n's posed matrix; a bone the poses do not set (a rig's extra UpperChest or neck twist) rides on its
+        parent as at rest"""
+        if n not in W:
+            p = self.parent[n]
+            W[n] = self.rest[n].copy() if not p else self.posed(W, p) @ (self.rest[p].inverted() @ self.rest[n])
+        return W[n]
+
     def carried(self, W, n):
         """Head of bone n when its parent is posed as W[parent] (it rides on the parent as at rest)."""
         p = self.parent[n]
         if not p: return self.h0[n].copy()
-        return W[p] @ (self.rest[p].inverted() @ self.h0[n])
+        return self.posed(W, p) @ (self.rest[p].inverted() @ self.h0[n])
 
     def put(self, W, n, R, head=None):
         h = self.carried(W, n) if head is None else head
