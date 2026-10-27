@@ -55,14 +55,16 @@ class Source:
         M = arm.matrix_world
         return {b.name: M @ b.matrix for b in arm.pose.bones}
 
-    def pose(self, rig, arm, Wp):
+    def pose(self, rig, arm, Wp, pin=False):
         rest, flip = self.rest[arm.name], self.flip[arm.name]
         fi = flip.inverted()
         def dq(n): return flip @ (Wp[n].to_quaternion() @ rest[n].to_quaternion().inverted()) @ fi
         def pos(n): return flip @ Wp[n].translation
         def rpos(n): return flip @ rest[n].translation
         sl = rig.leg_len / arm['m2m_leg']; sa = rig.arm_len / arm['m2m_arm']
-        P = {'qhips': dq('pelvis'), 'hipsAt': rig.h0['hips'] + (pos('pelvis') - rpos('pelvis')) * sl,
+        # pinned: the capture's travel over the ground is taken out (the game moves the hunter)
+        drift = Vector((*((pos('pelvis') - rpos('pelvis')).xy), 0)) * sl if pin else Vector()
+        P = {'qhips': dq('pelvis'), 'hipsAt': rig.h0['hips'] + (pos('pelvis') - rpos('pelvis')) * sl - drift,
              'qspine': dq('spine_01'), 'qchest': dq('spine_03'), 'qneck': dq('neck_01'), 'qhead': dq('head'),
              'qshL': dq('clavicle_l'), 'qshR': dq('clavicle_r')}
         for s, S in (('l', 'L'), ('r', 'R')):
@@ -73,11 +75,11 @@ class Source:
                       'blade' + S: tuple(thumbside.normalized()), 'edge' + S: tuple(fingers.normalized()),
                       'elbow' + S: tuple(el - (sh + wr) / 2)})
             hip, kn, an = pos('thigh_' + s), pos('calf_' + s), pos('foot_' + s)
-            P.update({'ankle' + S: tuple(rig.h0['foot.' + s] + (an - rpos('foot_' + s)) * sl),
+            P.update({'ankle' + S: tuple(rig.h0['foot.' + s] + (an - rpos('foot_' + s)) * sl - drift),
                       'qfoot' + S: dq('foot_' + s), 'qtoes' + S: dq('ball_' + s), 'knee' + S: tuple(kn - (hip + an) / 2)})
         return P
 
-    def clip(self, rig, name, src, loop=False, start=0.0, end=None, speed=1.0, then=None):
+    def clip(self, rig, name, src, loop=False, start=0.0, end=None, speed=1.0, then=None, pin=False):
         """A game clip from one capture (or two, `then` played after it: an attack and its recovery)."""
         parts = [src] + ([then] if then else [])
         segs = []
@@ -94,7 +96,7 @@ class Source:
             fr = t * choreo.FPS * speed
             for arm, act, a, b in segs:
                 if fr <= (b - a) or (arm, act, a, b) == segs[-1]:
-                    return self.pose(rig, arm, self.sample(arm, act, a + min(fr, b - a)))
+                    return self.pose(rig, arm, self.sample(arm, act, a + min(fr, b - a)), pin)
                 fr -= (b - a)
         act = choreo.bake_fn(rig, name, fn, total, loop=loop)
         rig.arm.animation_data.action = None
@@ -118,15 +120,21 @@ MOCAP = [
     ('Gait_Jog', 'Jog', True, {}), ('Running_A', 'Jog', True, {}), ('Hunt_Jog', 'Jog', True, {}),
     ('Gait_Sprint', 'Sprint', True, {}), ('Hunt_Sprint', 'Sprint', True, {}),
     ('Walking_Backwards', 'Walk_Backwards', True, {}), ('Running_Strafe_Left', 'Strafe_left', True, {}), ('Running_Strafe_Right', 'Strafe_right', True, {}),
-    ('Dodge_Forward', 'Roll', False, {}), ('Dodge_Backward', 'Dodge_back', False, {}),
-    ('Hit_A', 'Hit_Chest', False, {}), ('Hit_B', 'Hit_Head', False, {}), ('Death_A', 'Death_A', False, {}),
+    ('Dodge_Forward', 'Roll', False, {'pin': True}), ('Dodge_Backward', 'Dodge_back', False, {'pin': True}),
+    ('Hit_A', 'Hit_Chest', False, {'pin': True}), ('Hit_B', 'Hit_Head', False, {'pin': True}), ('Death_A', 'Death_A', False, {}),
     ('Lie_StandUp', 'LayToIdle', False, {}), ('Use_Item', 'Consume', False, {}), ('Interact', 'Interact', False, {}),
     ('Spellcast_Shoot', 'Spell_Simple_Shoot', False, {}), ('Sit_Chair_Idle', 'Sitting_Idle', True, {}),
 ]
 
 
 def apply(rig, src, table=MOCAP, only=None):
+    """Bakes the table's clips (only those named, if given; a name not in the table is taken as a capture's own
+    name, for review)."""
     made = []
+    if only:
+        known = set(t[0] for t in table)
+        table = list(table) + [(n.replace(' ', '_'), n, False, {}) for n in only if n not in known]
+        only = set(only) | set(n.replace(' ', '_') for n in only)
     for name, cap, loop, opt in table:
         if only and name not in only: continue
         if cap not in src.clips: print('M2M_MISSING', cap, flush=True); continue
