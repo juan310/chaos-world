@@ -77,3 +77,17 @@ if ($Stage -in 'hairmodels') {
         & $py Tools\forge_queue.py model "Hair$g$n" "$w\Hair$g${n}_front.png" $who "$b\edit_1.png"
     } }
 }
+
+# The hunter's starting weapon set (Docs/Concepts/Weapons-0.9/starting-weapon-set.png): clean item pictures in its
+# style, then (once they are done) static models the game swaps in for the KayKit weapons (Models/Weapons/<piece>).
+if ($Stage -in 'weapons') {
+    & $py Tools\forge_queue.py items StartingWeapons "$r\Docs\Concepts\Weapons-0.9\starting-weapon-set.png" "longsword, steel blade, curved iron cross-guard, brown leather-wrapped grip, iron pommel" "round shield, dark wooden planks, iron rim and cross straps, studded iron boss, painted tree emblems" "recurve bow, carved wooden limbs with vine pattern, leather-wrapped grip and limb bands, taut string" "leather quiver with four fletched arrows, carved tree emblem, iron bands, shoulder strap" "spear, long leaf-shaped steel head, wooden shaft with leather wraps and iron bands, iron butt spike" "kite shield, wooden planks, riveted iron rim and spine, studded boss, painted antlered stag and vines"
+}
+if ($Stage -in 'weaponmodels') {
+    & $py Tools\forge_queue.py static Weapon_Sword (Item 'items_StartingWeapons_*' 'longsword') "longsword with a steel blade, curved iron cross-guard and leather-wrapped grip" 1.1
+    & $py Tools\forge_queue.py static Weapon_RoundShield (Item 'items_StartingWeapons_*' 'round_shield') "round wooden shield with an iron rim, cross straps and a central boss" .8
+    & $py Tools\forge_queue.py static Weapon_Bow (Item 'items_StartingWeapons_*' 'recurve_bow') "wooden recurve bow with carved limbs, leather grip and a taut string" 1.5
+    & $py Tools\forge_queue.py static Weapon_Quiver (Item 'items_StartingWeapons_*' 'quiver') "leather quiver holding four fletched arrows" .8
+    & $py Tools\forge_queue.py static Weapon_Spear (Item 'items_StartingWeapons_*' 'spear') "long spear with a leaf-shaped steel head and banded wooden shaft" 2.4
+    & $py Tools\forge_queue.py static Weapon_KiteShield (Item 'items_StartingWeapons_*' 'kite_shield') "wooden kite shield with an iron rim and spine, studded boss, stag emblem" 1.3
+}

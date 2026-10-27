@@ -17,7 +17,7 @@ namespace FH.Game
     {
         public const float HallFloor = .6f;                   // the hallway stands above the lair; steps go down at the door
         public static readonly Vector3 LairCentre = new Vector3(0, 0, 6);
-        public const float LairRadius = 12.5f, WallRadius = 14f, HallHalfWidth = 4f, HallStart = -28f, DoorZ = -10f;
+        public const float LairRadius = 12.5f, WallRadius = 14f, HallHalfWidth = 5.4f, HallStart = -28f, DoorZ = -10f, HallHeight = 10f;
         const string Tex = "Environment/WardenLair/";
 
         static Transform g;
@@ -36,7 +36,7 @@ namespace FH.Game
             Altar();
             Fog();
             // The wet stone reflects the fires: one box-projected probe per room, drawn when the hunter first comes down.
-            Probe("Hallway reflections", new Vector3(0, HallFloor + 3.5f, (DoorZ + HallStart) / 2), new Vector3(HallHalfWidth * 2 + 1, 7.5f, DoorZ - HallStart + 1));
+            Probe("Hallway reflections", new Vector3(0, HallFloor + HallHeight / 2, (DoorZ + HallStart) / 2), new Vector3(HallHalfWidth * 2 + 1, HallHeight, DoorZ - HallStart + 1));
             Probe("Lair reflections", LairCentre + new Vector3(0, 5f, 2.5f), new Vector3(WallRadius * 2, 11f, 34f));
         }
 
@@ -46,10 +46,11 @@ namespace FH.Game
             if (WorldKit.Materials.TryGetValue(name, out var m) && m) return m;
             m = new Material(Shader.Find("Standard")) { name = name, color = tint ?? Color.white };
             // a picture made from the concept art on this PC (Models/Lair/<name>_art, e.g. the banner) wins over the drawn one
-            m.mainTexture = Resources.Load<Texture2D>("Models/Lair/" + tex + "_art") ?? Resources.Load<Texture2D>(Tex + tex);
+            string kit = tex == "cobble_floor" ? "Floor_texture" : tex == "wall_stone" ? "Masonry_texture" : tex == "banner" ? "Banner_texture" : null;
+            m.mainTexture = (kit != null ? Resources.Load<Texture2D>(KitPath + kit) : null) ?? Resources.Load<Texture2D>("Models/Lair/" + tex + "_art") ?? Resources.Load<Texture2D>(Tex + tex);
             m.SetFloat("_Glossiness", gloss);
             // relief: a normal map beside the texture (<tex>_n), when there is one
-            var bump = Resources.Load<Texture2D>("Models/Lair/" + tex + "_art_n") ?? Resources.Load<Texture2D>(Tex + tex + "_n");
+            var bump = (kit != null ? Resources.Load<Texture2D>(KitPath + kit + "_n") : null) ?? Resources.Load<Texture2D>("Models/Lair/" + tex + "_art_n") ?? Resources.Load<Texture2D>(Tex + tex + "_n");
             if (bump) { m.SetTexture("_BumpMap", bump); m.SetFloat("_BumpScale", 1.1f); m.EnableKeyword("_NORMALMAP"); }
             if (cutout)
             {
@@ -123,6 +124,70 @@ namespace FH.Game
             return holder;
         }
 
+        // ---------------- the carved kit ----------------
+        // Detailed carved meshes with 4K atlases, reconstructed on this PC with the local Forge for the Codex combat test
+        // (FolkloreHunter-CombatTest-Codex, Assets/Resources/Crypt) and copied here unchanged (Docs/Assets/crypt-kit.json:
+        // sources and hashes). Each piece is fitted into a box of the size it should fill and turned to face the room;
+        // a plain box collider keeps the fine carving from snagging the hunter. Without the kit the drawn stand-ins are used.
+        const string KitPath = "Models/Lair/Kit/";
+        static bool Kit(string part) => Resources.Load<GameObject>(KitPath + part);
+
+        static Bounds RenderBounds(Renderer[] rr)
+        {
+            var b = rr[0].bounds; foreach (var r in rr) b.Encapsulate(r.bounds); return b;
+        }
+
+        /// <summary>A kit piece filling a box of `size` (width, height, depth) standing on `local`, its carved face looking
+        /// along `facing`; null when the piece is not in the build.</summary>
+        static Transform Place(string part, Vector3 local, Vector3 size, Vector3 facing, bool solid, Transform parent = null)
+        {
+            var prefab = Resources.Load<GameObject>(KitPath + part);
+            if (!prefab) return null;
+            var holder = new GameObject(part + " (carved)").transform; holder.SetParent(parent ? parent : g, false);
+            holder.position = o + local;
+            var wrapper = new GameObject(part + " fit").transform; wrapper.SetParent(holder, false);
+            var model = Object.Instantiate(prefab, wrapper); model.name = part;
+            foreach (var a in model.GetComponentsInChildren<Animation>()) a.enabled = false;
+            var rr = model.GetComponentsInChildren<Renderer>();
+            if (rr.Length == 0) { Object.Destroy(holder.gameObject); return null; }
+            // Z-up or Y-up: whichever way round gives the height:depth the box asks for; the carved face then toward -Z.
+            var b = RenderBounds(rr);
+            float want = size.y / size.z;
+            if (Mathf.Abs(Mathf.Log(b.size.z / Mathf.Max(1e-4f, b.size.y) / want)) < Mathf.Abs(Mathf.Log(b.size.y / Mathf.Max(1e-4f, b.size.z) / want)))
+                model.transform.localRotation = Quaternion.Euler(-90, 0, 0);
+            model.transform.localRotation = Quaternion.Euler(0, 180, 0) * model.transform.localRotation;
+            b = RenderBounds(rr);
+            wrapper.localScale = new Vector3(size.x / Mathf.Max(1e-3f, b.size.x), size.y / Mathf.Max(1e-3f, b.size.y), size.z / Mathf.Max(1e-3f, b.size.z));
+            b = RenderBounds(rr);
+            wrapper.position += holder.position - new Vector3(b.center.x, b.min.y, b.center.z);
+            holder.rotation = Quaternion.LookRotation(-facing.normalized, Vector3.up);
+            var mat = KitMaterial(part);
+            var rear = KitMaterial("Rear stone");
+            foreach (var r in rr) r.sharedMaterials = System.Array.ConvertAll(r.sharedMaterials, m => m && m.name.Contains("CryptRearStone") ? rear : mat);
+            if (solid)
+            {
+                var box = holder.gameObject.AddComponent<BoxCollider>();
+                box.center = new Vector3(0, size.y / 2, 0); box.size = size;
+            }
+            return holder;
+        }
+
+        static Material KitMaterial(string part)
+        {
+            string name = "Crypt kit " + part;
+            if (WorldKit.Materials.TryGetValue(name, out var m) && m) return m;
+            m = new Material(Shader.Find("Standard")) { name = name };
+            bool rear = part == "Rear stone";
+            m.mainTexture = Resources.Load<Texture2D>(rear ? KitPath + "CryptLimestone-Albedo" : KitPath + part + "_texture");
+            if (rear) m.color = new Color(.62f, .62f, .59f);
+            var bump = Resources.Load<Texture2D>(KitPath + part + "_texture_n");
+            if (bump) { m.SetTexture("_BumpMap", bump); m.EnableKeyword("_NORMALMAP"); }
+            bool metal = part == "Brazier" || part == "Leaves" || part == "Skull";
+            m.SetFloat("_Glossiness", metal ? .26f : .16f); m.SetFloat("_Metallic", metal ? .3f : .03f);
+            WorldKit.Materials[name] = m;
+            return m;
+        }
+
         // ---------------- fire ----------------
         static void Fire(Vector3 local, float size, float light, Transform parent = null)
         {
@@ -191,6 +256,11 @@ namespace FH.Game
 
         static void Brazier(Vector3 local, float yaw)
         {
+            if (Place("Brazier", local, new Vector3(.95f, 1.8f, .95f), Quaternion.Euler(0, yaw, 0) * Vector3.forward, true))
+            {
+                Fire(local + Vector3.up * 1.6f, 1f, 1f);
+                return;
+            }
             var p = Prop("SkullPedestal", local, 1.9f, yaw);
             if (!p)
             {
@@ -263,30 +333,42 @@ namespace FH.Game
         // ---------------- the hallway ----------------
         static void Hallway()
         {
-            float len = DoorZ - HallStart, mid = (DoorZ + HallStart) / 2;
+            float len = DoorZ - HallStart, mid = (DoorZ + HallStart) / 2, inner = HallHalfWidth;   // the wall's inner face
+            bool bays = Kit("WallBay");
             TiledBox("Hallway floor", new Vector3(0, HallFloor - .25f, mid), new Vector3(HallHalfWidth * 2 + 2, .5f, len + 2), Floor, 2.4f);
-            TiledBox("Hallway ceiling", new Vector3(0, HallFloor + 7.5f, mid), new Vector3(HallHalfWidth * 2 + 2, .5f, len + 2), Wall, 3);
+            TiledBox("Hallway ceiling", new Vector3(0, HallFloor + HallHeight, mid), new Vector3(HallHalfWidth * 2 + 2, .5f, len + 2), Wall, 3);
             foreach (int s in new[] { -1, 1 })
             {
-                TiledBox("Hallway wall", new Vector3(s * (HallHalfWidth + .4f), HallFloor + 3.5f, mid), new Vector3(.8f, 7.5f, len + 2), Wall, 2.5f);
+                TiledBox("Hallway wall", new Vector3(s * (inner + .4f), HallFloor + HallHeight / 2, mid), new Vector3(.8f, HallHeight, len + 2), Wall, 2.5f);
+                var toHall = new Vector3(-s, 0, 0);
                 for (int i = 0; i < 4; i++)
                 {
                     float z = HallStart + 3 + i * 4.6f;
-                    TiledBox("Hallway pillar", new Vector3(s * (HallHalfWidth - .2f), HallFloor + 3.5f, z), new Vector3(.9f, 7f, .9f), Stone, 1.5f);
+                    var pillarAt = new Vector3(s * (inner - .45f), HallFloor, z);
+                    if (!Place("Pillar", pillarAt, new Vector3(1.05f, HallHeight, .9f), toHall, true))
+                        TiledBox("Hallway pillar", pillarAt + Vector3.up * HallHeight / 2, new Vector3(.9f, HallHeight, .9f), Stone, 1.5f);
                     if (i < 3)
                     {
-                        Brazier(new Vector3(s * (HallHalfWidth - 1.1f), HallFloor, z + 2.3f), s > 0 ? -90 : 90);
-                        Banner(new Vector3(s * (HallHalfWidth - .02f), HallFloor + 4.6f, z + 2.3f), s > 0 ? -90 : 90);
-                        Candles(new Vector3(s * (HallHalfWidth - .6f), HallFloor, z + 1.2f), 7, .28f);
-                        Candles(new Vector3(s * (HallHalfWidth - .7f), HallFloor, z + 3.4f), 4, .2f, false);
+                        float bz = z + 2.3f;
+                        // a carved burial bay between the pillars (or the brazier against the bare wall)
+                        if (bays) Place("WallBay", new Vector3(s * (inner - .5f), HallFloor, bz), new Vector3(3.6f, 7.6f, 1f), toHall, true);
+                        float front = bays ? inner - 1.6f : inner - 1.1f;
+                        Brazier(new Vector3(s * front, HallFloor, bz), s > 0 ? -90 : 90);
+                        if (bays) Banner(new Vector3(s * (inner - .93f), HallFloor + 5.6f, z), s > 0 ? -90 : 90, 3.2f);
+                        else Banner(new Vector3(s * (inner - .02f), HallFloor + 4.6f, bz), s > 0 ? -90 : 90);
+                        Candles(new Vector3(s * (front + .3f), HallFloor, z + 1.2f), 7, .28f);
+                        Candles(new Vector3(s * (front + .2f), HallFloor, z + 3.4f), 4, .2f, false);
+                        Chain(new Vector3(s * (inner - .2f), HallFloor + 8.6f, z), new Vector3(s * (inner - .2f), HallFloor + 8.6f, z + 4.6f), .9f);
                     }
-                    if (i < 3) Chain(new Vector3(s * (HallHalfWidth - .2f), HallFloor + 6.6f, z), new Vector3(s * (HallHalfWidth - .2f), HallFloor + 6.6f, z + 4.6f), .9f);
                 }
-                BarredAlcove(new Vector3(s * (HallHalfWidth - .05f), HallFloor, HallStart + 1.6f), s > 0 ? 90 : -90, false);   // beside the stairs, clear of the braziers
+                BarredAlcove(new Vector3(s * (inner - .05f), HallFloor, HallStart + 1.6f), s > 0 ? 90 : -90, false);   // beside the stairs, clear of the braziers
                 // knight statues flanking the door, facing the hallway
-                KnightStatue(new Vector3(s * 2.9f, HallFloor, DoorZ - 1.4f), 180, 3.4f);
+                KnightStatue(new Vector3(s * 3.4f, HallFloor, DoorZ - 1.6f), 180, 3.4f);
             }
-            TiledBox("Entrance wall", new Vector3(0, HallFloor + 3.5f, HallStart - 1), new Vector3(HallHalfWidth * 2 + 2, 7.5f, .8f), Wall, 2.5f);
+            // carved ribs across the vault at every pair of pillars
+            for (int i = 0; i < 4; i++)
+                Place("VaultRib", new Vector3(0, HallFloor + HallHeight - 3.4f, HallStart + 3 + i * 4.6f), new Vector3(HallHalfWidth * 2 - .3f, 3.4f, .5f), Vector3.back, false);
+            TiledBox("Entrance wall", new Vector3(0, HallFloor + HallHeight / 2, HallStart - 1), new Vector3(HallHalfWidth * 2 + 2, HallHeight, .8f), Wall, 2.5f);
             for (int i = 0; i < 3; i++)                      // stairs up to the graveyard, against the entrance wall
             {
                 float top = .3f * (i + 1);
@@ -296,6 +378,8 @@ namespace FH.Game
 
         static Transform KnightStatue(Vector3 local, float yaw, float height)
         {
+            var kit = Place("Guardian", local + Vector3.up * .45f, new Vector3(1.5f, 4.05f, .95f) * (height / 4.05f), Quaternion.Euler(0, yaw, 0) * Vector3.forward, true);
+            if (kit) { TiledBox("Statue plinth", local + Vector3.up * .22f, new Vector3(1.4f, .45f, 1.4f) * Mathf.Max(1, height / 4.05f), Stone, 1.2f); return kit; }
             var t = Prop("KnightStatue", local + Vector3.up * .45f, height, yaw);
             TiledBox("Statue plinth", local + Vector3.up * .22f, new Vector3(1.4f, .45f, 1.4f), Stone, 1.2f);
             if (t) return t;
@@ -314,10 +398,12 @@ namespace FH.Game
             float w = 4.4f, h = 6f, y0 = HallFloor;
             // the wall the door is set in, with the doorway left open between the jambs
             foreach (int s in new[] { -1, 1 })
-                TiledBox("Door wall", new Vector3(s * (w / 2 + (HallHalfWidth + 1 - w / 2) / 2 + .4f), y0 + 3.75f, DoorZ), new Vector3(HallHalfWidth + 1 - w / 2 + .8f, 7.5f, .8f), Wall, 2.5f);
-            TiledBox("Door lintel wall", new Vector3(0, y0 + h + .75f, DoorZ), new Vector3(w + .2f, 1.5f, .8f), Wall, 2.5f);
+                TiledBox("Door wall", new Vector3(s * (w / 2 + (HallHalfWidth + 1 - w / 2) / 2 + .4f), y0 + HallHeight / 2, DoorZ), new Vector3(HallHalfWidth + 1 - w / 2 + .8f, HallHeight, .8f), Wall, 2.5f);
+            TiledBox("Door lintel wall", new Vector3(0, y0 + (h + HallHeight) / 2, DoorZ), new Vector3(w + .2f, HallHeight - h, .8f), Wall, 2.5f);
+            // the carved portal: piers, tracery and the plaque over the leaves
+            bool portal = Place("Portal", new Vector3(0, y0, DoorZ - .05f), new Vector3(9.4f, 9.6f, 1f), Vector3.back, false);
             var inscription = Textured("The dead obey the Warden", "inscription", .3f);
-            Quad("Inscription: THE DEAD OBEY THE WARDEN", new Vector3(0, y0 + h + .55f, DoorZ - .42f), new Vector2(5.6f, .53f), inscription, Quaternion.Euler(0, 0, 0));
+            Quad("Inscription: THE DEAD OBEY THE WARDEN", new Vector3(0, y0 + h + .5f, DoorZ - (portal ? .62f : .42f)), new Vector2(5.6f, .53f), inscription, Quaternion.Euler(0, 0, 0));
             var door = new GameObject("Great door").AddComponent<GreatDoor>(); door.transform.SetParent(g, false);
             door.transform.position = o + new Vector3(0, y0 + 1.2f, DoorZ - .8f);
             door.Id = "warden_door"; door.Range = 3.2f;
@@ -332,6 +418,22 @@ namespace FH.Game
                 var back = Quad("Door back", leaf.transform.position - o + new Vector3(0, 0, .13f), new Vector2(w / 2, h), face, Quaternion.Euler(0, 180, 0));
                 back.transform.SetParent(leaf.transform, true);
                 if (s < 0) door.LeftHinge = hinge; else door.RightHinge = hinge;
+            }
+            // The carved leaves and the horned skull: each split down the seam onto its hinge, so the door still swings open;
+            // the plain leaves stay as the solid part, unseen.
+            var leaves = Place("Leaves", new Vector3(0, y0, DoorZ), new Vector3(w, h, .36f), Vector3.back, false);
+            var skull = Place("Skull", new Vector3(0, y0 + 2.2f, DoorZ - .3f), new Vector3(2.1f, 2.3f, .45f), Vector3.back, false);
+            if (leaves)
+            {
+                foreach (var t in new[] { door.LeftHinge, door.RightHinge })
+                    foreach (var r in t.GetComponentsInChildren<Renderer>()) r.enabled = false;
+                foreach (var part in new[] { leaves, skull })
+                {
+                    if (!part) continue;
+                    foreach (var r in part.GetComponentsInChildren<Renderer>())
+                        r.transform.SetParent(r.bounds.center.x < (o.x) ? door.LeftHinge : door.RightHinge, true);
+                    Object.Destroy(part.gameObject);
+                }
             }
         }
 
@@ -368,13 +470,16 @@ namespace FH.Game
                 bool doorway = k == 0 || k == n - 1;            // the south wall opens onto the steps from the door
                 bool altar = k == 7 || k == 8;                  // the north wall opens onto the altar
                 if (!doorway && !altar) TiledBox("Lair wall", mid + Vector3.up * 5.5f + (mid - c).normalized * .5f, new Vector3(seg + .4f, 11f, .9f), Wall, 2.5f, true, rot);
+                bool bay = !doorway && !altar && Place("WallBay", mid + (c - mid).normalized * .5f, new Vector3(seg - 1.4f, 7.6f, 1f), c - mid, true);
                 var pil = p0 + (c - p0).normalized * .6f;
                 if (k != 0 && k != n / 2)                        // none at the foot of the door steps or in the altar's way
-                    TiledBox("Lair pillar", pil + Vector3.up * 5f, new Vector3(1.3f, 10f, 1.3f), Stone, 1.5f, true, rot);
+                    if (!Place("Pillar", pil, new Vector3(1.3f, 10f, 1.1f), c - pil, true))
+                        TiledBox("Lair pillar", pil + Vector3.up * 5f, new Vector3(1.3f, 10f, 1.3f), Stone, 1.5f, true, rot);
+                if (bay && k % 4 == 2) Place("Ossuary", mid + (c - mid).normalized * 1.75f, new Vector3(2.6f, 1.25f, 1.1f), c - mid, true);
                 if (k % 2 == 1 && !altar) Banner(pil + (c - pil).normalized * .67f + Vector3.up * 5.4f, Quaternion.LookRotation(pil - c).eulerAngles.y + 180, 4.2f);
                 var pNext = p1 + (c - p1).normalized * .6f;
                 if (!doorway && !altar) Chain(pil + Vector3.up * 8.6f, pNext + Vector3.up * 8.6f, 1.4f);
-                if (!doorway && !altar && k % 2 == 0) BarredAlcove(mid + (c - mid).normalized * .1f, rot.eulerAngles.y + 180, k % 4 == 0);
+                if (!bay && !doorway && !altar && k % 2 == 0) BarredAlcove(mid + (c - mid).normalized * .1f, rot.eulerAngles.y + 180, k % 4 == 0);
                 if (!doorway && !altar && k % 2 == 1)
                 {
                     Brazier(c + (pil - c).normalized * (WallRadius - 2.2f), rot.eulerAngles.y);
@@ -402,7 +507,7 @@ namespace FH.Game
             }
             float top = 1.5f, zd = z0 + 5.25f;
             TiledBox("Altar dais", new Vector3(0, top / 2, zd), new Vector3(10f, top, 4.2f), Stone, 1.5f);
-            var sar = Prop("Sarcophagus", new Vector3(0, top, zd), 1.2f, 0);
+            var sar = Place("Sarcophagus", new Vector3(0, top, zd), new Vector3(4f, 1.85f, 2.1f), Vector3.back, true) ?? Prop("Sarcophagus", new Vector3(0, top, zd), 1.2f, 0);
             if (!sar)
             {
                 TiledBox("Altar sarcophagus", new Vector3(0, top + .55f, zd), new Vector3(2.8f, 1.1f, 1.5f), Stone, 1);
