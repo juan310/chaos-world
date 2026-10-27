@@ -58,6 +58,8 @@ namespace FH.Game
                 rr.sharedMaterials = Enumerable.Repeat(own ? own : IsWeapon(rr.name) ? weaponMat : mat, rr.sharedMaterials.Length).ToArray();
             }
             foreach (var smr in o.GetComponentsInChildren<SkinnedMeshRenderer>()) smr.updateWhenOffscreen = true;
+            // fingers closed round what each hand holds (a slim body built with finger bones and its grips file)
+            if (Slim(resource)) HandGrip.Attach(o, resource);
             return o.transform;
         }
 

@@ -108,6 +108,17 @@ def detect(body, arm, side, log=print):
                 for t in grp:
                     if t not in web: web[t] = g[i]
         if len(web) == 5: break
+    # a tip on an island of its own (a finger modelled as a separate piece) never joins: its web is the island's lowest point
+    for t in tips:
+        if t not in web:
+            seen = {t}; st = [t]
+            while st:
+                a = st.pop()
+                for b in adj[a]:
+                    if b not in seen and g[b] < math.inf: seen.add(b); st.append(b)
+            web[t] = min(g[i] for i in seen)
+            log('FINGERS hand.%s: a tip on its own island (%d vertices)' % (side, len(seen)))
+    log('FINGERS hand.%s tips: %s' % (side, ', '.join('%d g %.3f web %.3f' % (t, g[t], web[t]) for t in tips)))
     # each finger's own vertices: the piece holding its tip, just above its web
     pieces = {}
     for t in tips:
