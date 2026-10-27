@@ -115,6 +115,7 @@ namespace FH.Game
             var idle = Anim.State("Idle");
             if (idle != null) { foreach (AnimationState st in Anim.Anim) { st.enabled = false; st.weight = 0; } idle.enabled = true; idle.weight = 1; idle.time = 0; Anim.Anim.Sample(); }
             hand = WorldKit.Find(Visual, "handslot.r");
+            WeaponSkin.Apply(Visual, hand);       // the starting weapon set's models, where they have been made
             footL = WorldKit.Find(Visual, "foot.l");
             footR = WorldKit.Find(Visual, "foot.r");
             sword = WorldKit.Find(Visual, "1H_Sword");

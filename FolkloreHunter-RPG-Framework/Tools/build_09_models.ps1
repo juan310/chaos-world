@@ -53,3 +53,18 @@ if ($Stage -in 'all', 'props') {
     }
     if (Test-Path C:\AW\briarhound_work\prep\banner_art.png) { Copy-Item C:\AW\briarhound_work\prep\banner_art.png "$dst\banner_art.png" -Force; 'PROP banner_art' }
 }
+
+# The starting weapon set (static jobs Weapon_*): the game swaps them in for the KayKit pieces (WeaponSkin.cs).
+if ($Stage -in 'all', 'weapons') {
+    $dst = "$r\Assets\Resources\Models\Weapons"; New-Item -ItemType Directory -Force $dst | Out-Null
+    foreach ($n in 'Weapon_Sword', 'Weapon_RoundShield', 'Weapon_Bow', 'Weapon_Quiver', 'Weapon_Spear', 'Weapon_KiteShield') {
+        $job = Latest "static_${n}_*"
+        if (-not $job) { "MISSING weapon $n"; continue }
+        $fbx = Get-ChildItem $job -Filter *.fbx | Select-Object -First 1
+        $alb = Get-ChildItem $job -Filter *_albedo.png | Select-Object -First 1
+        if (-not $alb) { $alb = Get-Item "$job\texture.png" -ErrorAction SilentlyContinue }
+        Copy-Item $fbx.FullName "$dst\$n.fbx" -Force
+        if ($alb) { Copy-Item $alb.FullName "$dst\${n}_texture.png" -Force }
+        "WEAPON $n $($fbx.Name) $($alb.Name)"
+    }
+}
