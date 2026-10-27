@@ -46,9 +46,7 @@ bpy.ops.import_scene.fbx(filepath=str(fbx))
 src_fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
 KEEP = {}
 for _a in list(bpy.data.actions):
-    LOOPED = {'Idle', 'Idle_Combat', 'Idle_B', 'Walking_A', 'Gait_Walk', 'Gait_Jog', 'Gait_Sprint', 'Running_A', 'Hunt_Jog', 'Hunt_Sprint',
-          'Walking_Backwards', 'Running_Strafe_Left', 'Running_Strafe_Right', 'Blocking', '2H_Melee_Idle', 'Run_Upstairs'}
-if opt('--keep-clips'):
+    if opt('--keep-clips'):
         _a.use_fake_user = True; KEEP['KEEP__' + _a.name.split('|')[-1].split('.')[0]] = _a; _a.name = 'KEEP__' + _a.name.split('|')[-1].split('.')[0]
 bpy.context.scene.render.fps = 30; bpy.context.scene.render.fps_base = 1
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
@@ -231,6 +229,8 @@ if m2m:
     src.remove()
     made = [a for a in bpy.data.actions if not a.name.startswith('KEEP__')]     # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
+LOOPED = {'Idle', 'Idle_Combat', 'Idle_B', 'Walking_A', 'Gait_Walk', 'Gait_Jog', 'Gait_Sprint', 'Running_A', 'Hunt_Jog', 'Hunt_Sprint',
+          'Walking_Backwards', 'Running_Strafe_Left', 'Running_Strafe_Right', 'Blocking', '2H_Melee_Idle', 'Run_Upstairs'}
 if opt('--keep-clips'):
     # the source's clips under the game's names: sampled at 30 fps, every bone keyed, the hips' travel taken out
     sc = bpy.context.scene
@@ -238,7 +238,7 @@ if opt('--keep-clips'):
     for pair in opt('--keep-clips').split(','):
         src_name, targets = pair.split('=')
         src = next((a for k, a in KEEP.items() if k[6:].startswith(src_name.strip())), None)
-        if not src: print('SLIM_KEEP missing source clip', src_name, flush=True); continue
+        if not src: print('SLIM_KEEP missing source clip', src_name, '(the source has: %s)' % ', '.join(k[6:] for k in KEEP), flush=True); continue
         # its curves still name the source's bones (renaming bones only updates the clip the rig wears): the game's names
         def _curves(a):
             try: return list(a.fcurves)
