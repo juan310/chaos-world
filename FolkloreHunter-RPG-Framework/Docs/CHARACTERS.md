@@ -35,7 +35,10 @@ unchanged from that project) on their own slim, human-proportioned skeleton, wit
   show the model's own armour and colours), and the profiles are projected onto only the side-facing surface each one
   sees, inside the profile's figure, baked into a copy of the texture (`build_slim.py --texture`). Done for the Grave
   Warden (`SourceArt/Repaired/GraveWarden_sides_texture.png`); the Codex originals are unchanged.
-- The 3D mesh check (`Tools/slim/mesh_check.py`, the SightForge mesh system's idea for 3D models): every clip of an
+- The 3D mesh system, built into SightForge itself (Studio 0.16: `eyeslib/mesh3d.py`, `eyeslib/mesh3d_blender.py`, the
+  `eyes_inspect.py mesh3d <model>` command with the standard findings and report; source and installer in
+  `Tools/sightforge/`, Folklore's piece config `Tools/sightforge/folklore_mesh3d.json`; `slimall.ps1` runs it on every
+  re-exported model). Its first version was the project tool `Tools/slim/mesh_check.py`: every clip of an
   exported model is played and its skinned body measured against its rest shape: triangles stretched past 1.7x or
   collapsed under 0.45x (by bone), held weapons inside the body (ray parity), the body under the floor. Thresholds are
   calibrated on the calm clips (idle, walk: 0.4-0.8 % of the vertices stretch with the cloth). It found the jump dashes,
