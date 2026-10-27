@@ -56,15 +56,68 @@ namespace FH.Game
         static Mesh Source(string model)
         {
             if (combined.TryGetValue(model, out var cached)) return cached;
+            var made = Combined(model);
+            // The Forge sword came with a hilt 40 % of its length, its grip twice a real one's thickness and a very wide
+            // guard: the hilt is brought to a one-handed sword's proportions (the blade keeps its shape).
+            if (made && model == "Weapon_Sword") made = ReshapeHilt(made, HiltShare, GripThickness, GuardWidth);
+            combined[model] = made;
+            return made;
+        }
+
+        /// <summary>Grip and pommel together as a share of the blade's length, the grip's and pommel's thickness kept, and
+        /// the cross-guard's width kept, when the sword's hilt is reshaped.</summary>
+        public const float HiltShare = .24f, GripThickness = .5f, GuardWidth = .72f;
+
+        static Mesh Combined(string model)
+        {
             var prefab = Resources.Load<GameObject>("Models/Weapons/" + model);
-            if (!prefab) { combined[model] = null; return null; }
+            if (!prefab) return null;
             var parts = prefab.GetComponentsInChildren<MeshFilter>(true).Where(f => f.sharedMesh).ToArray();
-            if (parts.Length == 0) { combined[model] = null; return null; }
+            if (parts.Length == 0) return null;
             var ci = parts.Select(f => new CombineInstance { mesh = f.sharedMesh, transform = prefab.transform.worldToLocalMatrix * f.transform.localToWorldMatrix }).ToArray();
             var mesh = new Mesh { name = model + " (combined)", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.CombineMeshes(ci, true, true);
-            combined[model] = mesh;
             return mesh;
+        }
+
+        /// <summary>The hilt (everything on the pommel side of the cross-guard, the widest band) shortened to
+        /// <paramref name="share"/> of the blade's length and thinned to <paramref name="thick"/> about the sword's centre
+        /// line; the guard band narrowed to <paramref name="guard"/>. The blade is untouched.</summary>
+        static Mesh ReshapeHilt(Mesh src, float share, float thick, float guard)
+        {
+            var v = src.vertices; var b = src.bounds; int ax = AxesBySize(b.size)[0];
+            const int bands = 20; int best = 0; float widest = -1;
+            for (int k = 0; k < bands; k++) { float w = Width(v, b, ax, k / (float)bands, (k + 1) / (float)bands); if (w > widest) { widest = w; best = k; } }
+            // the guard band grows while its neighbours are nearly as wide (a guard can span two bands)
+            int g0 = best, g1 = best;
+            while (g0 > 0 && Width(v, b, ax, (g0 - 1) / (float)bands, g0 / (float)bands) > widest * .75f) g0--;
+            while (g1 < bands - 1 && Width(v, b, ax, (g1 + 1) / (float)bands, (g1 + 2) / (float)bands) > widest * .75f) g1++;
+            float lo = b.min[ax], len = b.size[ax];
+            float gLo = lo + len * g0 / bands, gHi = lo + len * (g1 + 1) / bands;
+            bool hiltAtMin = best < bands / 2;
+            float blade = hiltAtMin ? b.max[ax] - gHi : gLo - lo, hilt = hiltAtMin ? gLo - lo : b.max[ax] - gHi;
+            float s = Mathf.Min(1, share * blade / Mathf.Max(1e-5f, hilt));
+            // the centre line: the middle of the guard band's cross-section
+            Vector3 c = Vector3.zero; int n = 0;
+            foreach (var p in v) if (p[ax] >= gLo && p[ax] <= gHi) { c += p; n++; }
+            c = n > 0 ? c / n : b.center;
+            var o = new Vector3[v.Length];
+            for (int i = 0; i < v.Length; i++)
+            {
+                var p = v[i]; float t = p[ax];
+                bool inHilt = hiltAtMin ? t < gLo : t > gHi, inGuard = t >= gLo && t <= gHi;
+                if (inHilt || inGuard)
+                {
+                    float f = inHilt ? thick : guard;
+                    for (int a = 0; a < 3; a++) if (a != ax) p[a] = c[a] + (p[a] - c[a]) * f;
+                    if (inHilt) p[ax] = hiltAtMin ? gLo - (gLo - t) * s : gHi + (t - gHi) * s;
+                }
+                o[i] = p;
+            }
+            var m = Object.Instantiate(src); m.name = src.name + " (hilt reshaped)";
+            m.vertices = o; m.RecalculateBounds();
+            Debug.Log("FH_WEAPON " + src.name + ": hilt " + (hilt / len * 100).ToString("0") + " % of the length -> " + (hilt * s / (len - hilt + hilt * s) * 100).ToString("0") + " %, guard bands " + g0 + "-" + g1);
+            return m;
         }
 
         static int[] AxesBySize(Vector3 size)
