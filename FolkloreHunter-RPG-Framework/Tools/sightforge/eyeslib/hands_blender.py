@@ -15,6 +15,7 @@ G = json.loads(gpath.read_text())
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=str(fbx))
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+if arm.animation_data: arm.animation_data.action = None      # the import leaves a clip on the rig: grips are judged on the rest pose
 meshes = [o for o in bpy.data.objects if o.type == 'MESH']
 body = next((o for o in meshes if o.name.endswith('_Body')), max(meshes, key=lambda o: len(o.data.vertices)))
 pieces = {o.name: o for o in meshes if o is not body and o.parent == arm and o.parent_type == 'BONE'}
