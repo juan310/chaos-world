@@ -74,6 +74,17 @@ def _job_view():
     return j
 
 
+def _latest_report(prj, name):
+    """the newest report of a recipe: worldforge_<name>, or worldforge_<name>_<date>_<time> once there are several"""
+    best = None
+    if os.path.isdir(prj.inspections):
+        for d in os.listdir(prj.inspections):
+            if d == "worldforge_" + name or re.match(r"^worldforge_%s_\d{8}_\d{6}$" % re.escape(name), d):
+                rj = os.path.join(prj.inspections, d, "report.json")
+                if os.path.isfile(rj) and (best is None or os.path.getmtime(rj) > best[1]): best = (d, os.path.getmtime(rj))
+    return best[0] if best else None
+
+
 def state(prj):
     rd = _recipes_dir(prj)
     if not os.path.isfile(os.path.join(prj.root, "WorldForge", "package.json")):
@@ -83,14 +94,15 @@ def state(prj):
         n = os.path.basename(p)[:-5]
         if not NAME_RE.match(n): continue
         cap = _capture(n)
-        rep = os.path.join(prj.inspections, "worldforge_" + n, "report.json")
+        rd_ = _latest_report(prj, n)
+        rep = os.path.join(prj.inspections, rd_, "report.json") if rd_ else ""
         tested = os.path.getmtime(os.path.join(cap, "done.txt")) if os.path.isfile(os.path.join(cap, "done.txt")) else None
         totals = None
         if os.path.isfile(rep):
             try: totals = json.load(open(rep, encoding="utf-8")).get("summary")
             except ValueError: pass
         recipes.append({"name": n, "saved": _when(os.path.getmtime(p)), "tested": _when(tested), "totals": totals,
-                        "report": ("Inspections/worldforge_%s/index.html" % n) if os.path.isfile(rep) else None})
+                        "report": ("Inspections/%s/index.html" % rd_) if rd_ and os.path.isfile(os.path.join(prj.inspections, rd_, "index.html")) else None})
     exe = _exe()
     return {"available": True, "recipes": recipes, "sandbox": WF.SANDBOX, "sandboxReady": os.path.isdir(os.path.join(WF.SANDBOX, "Assets")),
             "preview": _when(os.path.getmtime(exe)) if os.path.isfile(exe) else None, "unity": os.path.isfile(WF.UNITY), "job": _job_view()}
@@ -98,19 +110,20 @@ def state(prj):
 
 def result(prj, name):
     _name(name)
-    rep = os.path.join(prj.inspections, "worldforge_" + name, "report.json")
+    rd = _latest_report(prj, name)
+    rep = os.path.join(prj.inspections, rd, "report.json") if rd else ""
     cap = _capture(name)
     out = {"name": name, "report": None, "summary": "", "findings": [], "shots": [], "video": None, "map": None, "sheet": None, "charts": []}
     if os.path.isfile(rep):
         d = json.load(open(rep, encoding="utf-8"))
-        out["report"] = "Inspections/worldforge_%s/index.html" % name
+        out["report"] = "Inspections/%s/index.html" % rd
         out["totals"] = d.get("summary")
         out["created"] = d.get("created")
         out["findings"] = [{k: f.get(k) for k in ("kind", "check", "subject", "detail", "measured", "threshold", "suggestedFix")} for f in d.get("findings", [])][:120]
         for s in d.get("sections") or []:
             if s.get("heading") == "Summary": out["summary"] = (s.get("text") or "")[:8000]
-        ev = os.path.join(prj.inspections, "worldforge_" + name, "evidence")
-        rel = lambda f: "Inspections/worldforge_%s/evidence/%s" % (name, f)
+        ev = os.path.join(prj.inspections, rd, "evidence")
+        rel = lambda f: "Inspections/%s/evidence/%s" % (rd, f)
         if os.path.isfile(os.path.join(ev, "map_%s.png" % name)): out["map"] = rel("map_%s.png" % name)
         if os.path.isfile(os.path.join(ev, "walk_sheet.jpg")): out["sheet"] = rel("walk_sheet.jpg")
         out["charts"] = [rel(f) for f in ("feet.png", "camera.png", "brightness.png") if os.path.isfile(os.path.join(ev, f))]

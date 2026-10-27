@@ -92,6 +92,7 @@ try {
   check("the last test shows its video", await js("!!document.querySelector('video')"));
   const vid = await js("(async () => { const v = document.querySelector('video'); if (!v) return 'none'; for (let i = 0; i < 40 && v.readyState < 1; i++) await new Promise(r => setTimeout(r, 250)); return v.readyState + ' ' + v.duration.toFixed(1) + ' s ' + v.videoWidth + 'x' + v.videoHeight; })()");
   check("the video loads in the page", /^\d+ \d/.test(vid) && !/^0 /.test(vid), vid);
+  await js("(() => { document.querySelectorAll('img[loading=lazy]').forEach(i => i.loading = 'eager'); return 1; })()"); await sleep(2500);
   check("the viewpoints show", await js("Array.from(document.querySelectorAll('.wf-shots img')).filter(i => i.complete && i.naturalWidth > 0).length"));
   await shot("5_results");
 } catch (e) { check("the run went through", false, e.message); }
