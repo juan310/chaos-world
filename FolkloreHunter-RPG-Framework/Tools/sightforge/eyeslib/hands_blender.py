@@ -91,13 +91,17 @@ cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.ob
 
 
 def shoot(side, tag):
-    hb = bone('hand.' + side); pb = arm.pose.bones['hand.' + side]
+    pb = arm.pose.bones['hand.' + side]
     M = AM @ pb.matrix
-    c = M @ Vector((0, hb.length * .45, 0))
+    # in world units (an imported armature may be in centimetres): the hand's middle, a little past its knuckles
+    h0, h1 = M @ Vector((0, 0, 0)), M @ Vector((0, pb.bone.length, 0))
+    L = (h1 - h0).length
+    tip = bone('middle_3.' + side)
+    c = (h0 + (AM @ arm.pose.bones[tip.name].tail)) / 2 if tip else h0 + (h1 - h0) * .45
     pics = []
     for nm, d in (('back', Vector((0, 0, -1))), ('palm', Vector((0, 0, 1))), ('thumb side', Vector((1 if side == 'l' else -1, 0, 0)))):
         dw = (M.to_3x3() @ d).normalized()
-        cam.location = c + dw * (hb.length * 2.6 + .12)
+        cam.location = c + dw * (L * 2.2 + .15)
         cam.rotation_euler = (c - cam.location).to_track_quat('-Z', 'Y').to_euler()
         fn = out / ('%s_%s_%s.png' % (tag, side, nm.replace(' ', '_')))
         sc.render.filepath = str(fn); bpy.ops.render.render(write_still=True); pics.append(fn.name)
