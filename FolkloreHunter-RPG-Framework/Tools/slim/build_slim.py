@@ -363,14 +363,28 @@ if opt('--lib-clips'):
     for pb in arm.pose.bones: pb.matrix_basis = Matrix()
 if AUTH:
     # the shield where the keyposes hold it, relative to the hips (so the captured chest's twist through a lunge does
-    # not tip it), reached by the replacing clip's own left arm: two-bone IK to the keyposed wrist, the elbow toward the
-    # keyposed elbow, the hand turned as the keyposes turn it. Rigs without the bones: the arm's turns are copied instead.
+    # not tip it), reached by the replacing clip's own left arm: a two-bone solve from the clip's shoulder to the
+    # keyposed wrist, the elbow on the reachable circle nearest the keyposed elbow, and each bone rolled about its own
+    # length as the keyposes roll it, the hand turned as they turn it. (Blender's IK solver leaves the bones' roll to
+    # chance: its arms wrung the skin at the elbow and wrist, which the bodycheck gate caught.) Rigs without the bones:
+    # the arm's turns are copied instead.
     ad = arm.animation_data or arm.animation_data_create(); sc = bpy.context.scene
-    PB = arm.pose.bones; AW = arm.matrix_world
-    ik_ok = all(b in PB for b in ('hips', 'upperarm.l', 'lowerarm.l', 'hand.l'))
-    tgt = bpy.data.objects.new('ShieldWrist', None); pol = bpy.data.objects.new('ShieldElbow', None)
-    sc.collection.objects.link(tgt); sc.collection.objects.link(pol)
+    PB = arm.pose.bones; AW = arm.matrix_world; RB = arm.data.bones
+    ARM = ('upperarm.l', 'lowerarm.l', 'hand.l')
+    ik_ok = all(b in PB for b in ('hips',) + ARM) and PB['hand.l'].parent == PB['lowerarm.l'] and PB['lowerarm.l'].parent == PB['upperarm.l']
     def world(n): return AW @ PB[n].matrix
+    if ik_ok:
+        L1 = (RB['lowerarm.l'].head_local - RB['upperarm.l'].head_local).length
+        L2 = (RB['hand.l'].head_local - RB['lowerarm.l'].head_local).length
+    def frame(head, y, xk):
+        y = y.normalized(); x = xk - y * xk.dot(y)
+        if x.length < 1e-6: x = y.orthogonal()
+        x.normalize(); z = x.cross(y)
+        M = Matrix((x, y, z)).transposed().to_4x4(); M.translation = head
+        return M
+    def basis(n, M, Mparent):
+        b = RB[n]
+        return (Mparent @ b.parent.matrix_local.inverted() @ b.matrix_local).inverted() @ M
     for nm, A in AUTH.items():
         B = bpy.data.actions.get(nm)
         if not B: continue
@@ -380,53 +394,39 @@ if AUTH:
         smp = []
         for i in range(n):
             f = fa0 + (fa1 - fa0) * (i / max(1, n - 1)); sc.frame_set(int(f), subframe=f - int(f))
-            H = world('hips'); Hi = H.inverted()
-            smp.append({'wrist': Hi @ (AW @ PB['hand.l'].head), 'elbow': Hi @ (AW @ PB['lowerarm.l'].head),
-                        'hand': Hi @ world('hand.l'), 'fore': Hi @ world('lowerarm.l'), 'local': {b: PB[b].matrix_basis.copy() for b in ('shoulder.l', 'upperarm.l', 'lowerarm.l', 'hand.l') if b in PB}})
+            Hi = world('hips').inverted()
+            smp.append({'elbow': Hi @ (AW @ PB['lowerarm.l'].head), **{b: Hi @ world(b) for b in ARM},
+                        'local': {b: PB[b].matrix_basis.copy() for b in ('shoulder.l',) + ARM if b in PB}})
         ad.action = B
-        keys = []
-        if ik_ok:
-            c = PB['lowerarm.l'].constraints.new('IK'); c.target = tgt; c.pole_target = pol; c.chain_count = 2
-            # the pole angle depends on how the rig's arm bones are rolled: the one that puts the elbow nearest the
-            # keyposed elbow on this clip's first frame
-            sc.frame_set(int(fb0)); H = world('hips')
-            tgt.matrix_world = Matrix.Translation(H @ smp[0]['wrist']); pol.matrix_world = Matrix.Translation(H @ smp[0]['elbow'])
-            best = None
-            for ang in (0.0, 1.5708, -1.5708, 3.14159):
-                c.pole_angle = ang; bpy.context.view_layer.update()
-                e = ((AW @ PB['lowerarm.l'].head) - (H @ smp[0]['elbow'])).length
-                if best is None or e < best[0]: best = (e, ang)
-            c.pole_angle = best[1]
+        keys = []; short = 0
         for i, d in enumerate(smp):
             sc.frame_set(int(fb0 + i))
-            if ik_ok:
-                H = world('hips')
-                tgt.matrix_world = Matrix.Translation(H @ d['wrist']); pol.matrix_world = Matrix.Translation(H @ d['elbow'])
-                bpy.context.view_layer.update()
-                # the forearm rolled about its own length as the keyposes roll it (the solver leaves the roll to chance),
-                # so the hand only bends at the wrist; a hand twisted against its forearm wrings the wrist's skin
-                F = PB['lowerarm.l'].matrix.copy(); y = F.col[1].to_3d().normalized(); x = F.col[0].to_3d()
-                xk = (AW.inverted() @ (H @ d['fore'])).col[0].to_3d(); xk = (xk - y * xk.dot(y)).normalized()
-                roll = math.atan2(x.cross(xk).dot(y), x.dot(xk))
-                head = F.translation.copy()
-                F = Matrix.Translation(head) @ Matrix.Rotation(roll, 4, y) @ Matrix.Translation(-head) @ F
-                k = {'upperarm.l': arm.convert_space(pose_bone=PB['upperarm.l'], matrix=PB['upperarm.l'].matrix, from_space='POSE', to_space='LOCAL'),
-                     'lowerarm.l': arm.convert_space(pose_bone=PB['lowerarm.l'], matrix=F, from_space='POSE', to_space='LOCAL')}
-                want = AW.inverted() @ (H @ d['hand'])
-                bl, bh = arm.data.bones['lowerarm.l'].matrix_local, arm.data.bones['hand.l'].matrix_local
-                k['hand.l'] = ((F @ bl.inverted() @ bh).inverted() @ want if PB['hand.l'].parent == PB['lowerarm.l'] else
-                               arm.convert_space(pose_bone=PB['hand.l'], matrix=want, from_space='POSE', to_space='LOCAL'))
-            else:
-                k = d['local']
-            keys.append(k)
-        if ik_ok: PB['lowerarm.l'].constraints.remove(c)
+            if not ik_ok:
+                keys.append(d['local']); continue
+            Hp = AW.inverted() @ world('hips')
+            P = PB['upperarm.l'].head.copy()
+            U, F, Hd = (Hp @ d[b] for b in ARM)
+            W = Hd.translation.copy(); E = Hp @ d['elbow']
+            u = W - P; D = u.length
+            if D > (L1 + L2) * .999: W = P + u.normalized() * (L1 + L2) * .999; short += 1
+            elif D < abs(L1 - L2) * 1.001 + 1e-4: W = P + u.normalized() * (abs(L1 - L2) * 1.001 + 1e-4)
+            u = W - P; D = u.length; u.normalize()
+            a = (L1 * L1 - L2 * L2 + D * D) / (2 * D); r = math.sqrt(max(0.0, L1 * L1 - a * a))
+            v = (E - P) - u * (E - P).dot(u)
+            if v.length < 1e-6: v = (PB['lowerarm.l'].head - P) - u * (PB['lowerarm.l'].head - P).dot(u)
+            Ep = P + u * a + v.normalized() * r
+            Mu = frame(P, Ep - P, U.col[0].to_3d())
+            Mf = frame(Ep, W - Ep, F.col[0].to_3d())
+            Mh = Hd.to_3x3().normalized().to_4x4(); Mh.translation = W
+            keys.append({'upperarm.l': basis('upperarm.l', Mu, PB['upperarm.l'].parent.matrix),
+                         'lowerarm.l': basis('lowerarm.l', Mf, Mu), 'hand.l': basis('hand.l', Mh, Mf)})
         for i, k in enumerate(keys):
             for b, M in k.items():
                 loc, q, _ = M.decompose()
                 pb = PB[b]; pb.rotation_mode = 'QUATERNION'; pb.location = loc; pb.rotation_quaternion = q
                 pb.keyframe_insert('location', frame=fb0 + i); pb.keyframe_insert('rotation_quaternion', frame=fb0 + i)
-        print('SLIM_SHIELD %s: the shield held as the keyposes hold it (%s, %d frames)' % (nm, 'reached by IK' if ik_ok else 'arm copied', n), flush=True)
-    bpy.data.objects.remove(tgt); bpy.data.objects.remove(pol)
+        print('SLIM_SHIELD %s: the shield held as the keyposes hold it (%s, %d frames%s)' % (
+            nm, 'two-bone solve, the keyposes\' roll' if ik_ok else 'arm copied', n, (', %d out of reach' % short) if short else ''), flush=True)
     for A in AUTH.values(): bpy.data.actions.remove(A)
     ad.action = None
     for pb in arm.pose.bones: pb.matrix_basis = Matrix()
