@@ -35,7 +35,7 @@ namespace FH.Game
             { "upperleg.r", "RightUpperLeg" }, { "lowerleg.r", "RightLowerLeg" }, { "foot.r", "RightFoot" }, { "toes.r", "RightToes" },
         };
 
-        class Link { public Transform target, source, end; public Vector3 restLocal, restDirection, sourceDirection; public Quaternion restRotation, sourceRotation; }
+        class Link { public Transform target, source, end; public Vector3 restLocal, restDirection, sourceDirection; public Quaternion restRotation, sourceRotation; public bool arm; }
         /// <summary>A source bone moved onto the body after the pose copy. Put back next frame unless the clip wrote it.</summary>
         class Nudge { public Transform t; public Vector3 before, set; public bool on; }
 
@@ -125,7 +125,7 @@ namespace FH.Game
                 var end = m[3] == "" ? null : S(m[3]);
                 list.Add(new Link
                 {
-                    target = t, source = s, end = end, restLocal = t.localPosition,
+                    target = t, source = s, end = end, restLocal = t.localPosition, arm = m[0].EndsWith("UpperArm") || m[0].EndsWith("LowerArm"),
                     restDirection = root.InverseTransformDirection(child ? (child.position - t.position).normalized : t.up),
                     sourceDirection = root.InverseTransformDirection(end ? (end.position - s.position).normalized : s.up),
                     restRotation = Quaternion.Inverse(root.rotation) * t.rotation, sourceRotation = Quaternion.Inverse(root.rotation) * s.rotation,
@@ -157,6 +157,13 @@ namespace FH.Game
 
         void LateUpdate() => Sync();
 
+        /// <summary>Copies the pose now (after an Animation.Sample, before a render in the same frame).</summary>
+        public void Refresh() => Sync();
+
+        /// <summary>How far hanging arms are brought in toward the body: the KayKit clips hold them out from a broad chibi
+        /// torso, which on these slimmer bodies reads as arms spread stiffly (1 = as the clip has them).</summary>
+        public const float ArmsIn = .4f;
+
         void Sync()
         {
             if (!model) return;
@@ -167,6 +174,12 @@ namespace FH.Game
             {
                 l.target.localPosition = l.restLocal;
                 Vector3 direction = inv * (l.end ? (l.end.position - l.source.position).normalized : l.source.up);
+                if (l.arm)
+                {
+                    float down = Mathf.Clamp01(-direction.y * 1.4f);           // only arms that hang: raised or reaching ones stay
+                    direction.x *= Mathf.Lerp(1, ArmsIn, down);
+                    direction = direction.normalized;
+                }
                 var delta = inv * l.source.rotation * Quaternion.Inverse(l.sourceRotation);
                 var swing = Quaternion.FromToRotation(l.sourceDirection, direction);
                 var raw = delta * Quaternion.Inverse(swing);

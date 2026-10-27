@@ -169,6 +169,7 @@ namespace FH.Game
                     for (int i = 0; i < 16; i++)
                     {
                         st.time = st.length * (from + (1 - from) * i / 16f); anim.Anim.Sample();
+                        if (H.Double) H.Double.Refresh();                // the worn body takes the sampled pose before the render
                         F.KeepBladeOffGround();                          // as LateUpdate does in play
                         lowest = Mathf.Min(lowest, F.BladeTipClearance);
                         yield return Render(cam, rt, Path.Combine(folder, prefix + "_" + label + "_E_" + i.ToString("00") + ".png")); written++;
@@ -462,6 +463,7 @@ namespace FH.Game
                 else Note(m.Def.name + ": its new model is not in this build (art paused); shown with the older " + m.Model + " model and its sword");
                 Check(m.Def.name + " spawns and stands ready with its model and clips", m.Alive && m.Anim.Has("Idle") && m.Anim.Has("1H_Melee_Attack_Chop"), m.Model);
                 yield return Snap("s01-" + id);
+                yield return Portraits(m);
                 if (id == "gravebound_mage")
                 {
                     m.Passive = false; m.Brain.AttackFilter = null;
@@ -476,6 +478,39 @@ namespace FH.Game
                 }
             }
             S.ProvingRig.ClearMonsters();
+        }
+
+        /// <summary>Close views of a monster for review by eye (Captures/Proving/Monsters): front and side, standing, walking,
+        /// winding up and striking, at the moment's pose (sampled, the worn body refreshed).</summary>
+        IEnumerator Portraits(MonsterActor m)
+        {
+            string folder = Path.Combine(root, "Monsters"); Directory.CreateDirectory(folder);
+            var keep = new List<(GameObject go, int layer)>();
+            foreach (var x in m.Visual.GetComponentsInChildren<Transform>(true)) { keep.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; }
+            var go = new GameObject("Monster review camera"); var cam = go.AddComponent<Camera>();
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.24f, .24f, .26f, 1);
+            cam.orthographic = true; cam.orthographicSize = m.Def.height * .62f;
+            var rt = new RenderTexture(560, 640, 24); cam.targetTexture = rt;
+            var light = new GameObject("Review light").AddComponent<Light>(); light.type = LightType.Directional; light.cullingMask = 1 << Layers.Review; light.intensity = 1.1f;
+            m.enabled = false;
+            Vector3 c = m.transform.position + Vector3.up * m.Def.height * .5f;
+            foreach (var (clip, at) in new[] { ("Idle", 0f), ("Walking_A", .25f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Chop", .55f), ("Spellcast_Shoot", .5f) })
+            {
+                var st = m.Anim.State(clip); if (st == null) continue;
+                foreach (AnimationState o in m.Anim.Anim) { o.enabled = false; o.weight = 0; }
+                st.enabled = true; st.weight = 1; st.time = st.length * at; m.Anim.Anim.Sample();
+                if (m.Double) m.Double.Refresh();
+                foreach (var (view, dir) in new[] { ("front", m.transform.forward), ("side", m.transform.right) })
+                {
+                    cam.transform.position = c + dir * 6; cam.transform.LookAt(c);
+                    light.transform.rotation = Quaternion.LookRotation(-dir + Vector3.down * .6f + m.transform.right * .3f);
+                    yield return Render(cam, rt, Path.Combine(folder, m.MonsterId + "_" + clip + "_" + (int)(at * 100) + "_" + view + ".png"));
+                }
+            }
+            m.enabled = true;
+            foreach (var (o, layer) in keep) if (o) o.layer = layer;
+            cam.targetTexture = null; rt.Release(); Destroy(rt); Destroy(go); Destroy(light.gameObject);
+            m.Anim.Current = ""; m.Anim.Play("Idle");
         }
 
         static IEnumerator Render(Camera cam, RenderTexture rt, string path)
