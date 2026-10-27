@@ -12,10 +12,13 @@ M2M_FILES = ['human-base-animations.glb', 'human-addon-animations.glb', 'human-m
 
 
 class Source:
-    def __init__(self, folder):
+    """Captured motion on another human rig. The bone names are the Mesh2Motion ones; `names` maps them to another
+    rig's (MotionBricks' SOMA skeleton, see Tools/motionbricks/mb_bridge.py)."""
+    def __init__(self, folder=None, names=None):
         self.clips = {}
+        self.names = names or {}
         bpy.context.scene.render.fps = choreo.FPS
-        for f in M2M_FILES:
+        for f in (M2M_FILES if folder else []):
             p = folder + '/' + f
             before_o, before_a = set(bpy.data.objects), set(bpy.data.actions)
             bpy.ops.import_scene.gltf(filepath=p)
@@ -36,9 +39,10 @@ class Source:
         M = arm.matrix_world
         rest = {b.name: M @ b.matrix_local for b in arm.data.bones}
         # facing: the toes point forward; the slim skeleton faces -Y
-        f = rest['ball_l'].translation - rest['foot_l'].translation
+        N = lambda x: self.names.get(x, x)
+        f = rest[N('ball_l')].translation - rest[N('foot_l')].translation
         flip = Quaternion((0, 0, 1), 3.14159265) if f.y > 0 else Quaternion()
-        L = lambda a, b: (rest[b].translation - rest[a].translation).length
+        L = lambda a, b: (rest[N(b)].translation - rest[N(a)].translation).length
         arm['m2m_leg'] = L('thigh_l', 'calf_l') + L('calf_l', 'foot_l')
         arm['m2m_arm'] = L('upperarm_l', 'lowerarm_l') + L('lowerarm_l', 'hand_l')
         self.__dict__.setdefault('rest', {})[arm.name] = rest
@@ -58,9 +62,10 @@ class Source:
     def pose(self, rig, arm, Wp, pin=False):
         rest, flip = self.rest[arm.name], self.flip[arm.name]
         fi = flip.inverted()
-        def dq(n): return flip @ (Wp[n].to_quaternion() @ rest[n].to_quaternion().inverted()) @ fi
-        def pos(n): return flip @ Wp[n].translation
-        def rpos(n): return flip @ rest[n].translation
+        N = lambda x: self.names.get(x, x)
+        def dq(n): return flip @ (Wp[N(n)].to_quaternion() @ rest[N(n)].to_quaternion().inverted()) @ fi
+        def pos(n): return flip @ Wp[N(n)].translation
+        def rpos(n): return flip @ rest[N(n)].translation
         sl = rig.leg_len / arm['m2m_leg']; sa = rig.arm_len / arm['m2m_arm']
         # pinned: the capture's travel over the ground is taken out (the game moves the hunter)
         drift = Vector((*((pos('pelvis') - rpos('pelvis')).xy), 0)) * sl if pin else Vector()

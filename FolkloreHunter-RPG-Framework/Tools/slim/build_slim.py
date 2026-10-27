@@ -2,7 +2,7 @@
 # the game's names, hand slots, the hunter's weapons gripped in them (the hunt pieces from SourceArt/Hunter.blend,
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
-#       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>]
+#       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
 # mesh (named "Helmet", so the helm part breaks it off) on the head.
 import bpy, sys, shutil, math
@@ -138,6 +138,13 @@ if helmet:
         print('SLIM_HELMET scale %.3f' % s, flush=True)
 
 made = [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+mb = opt('--mb'); soma = opt('--soma')
+if mb and soma:
+    # the game's own moves with MotionBricks' natural motion between their key poses (Tools/motionbricks)
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'motionbricks'))
+    import mb_bridge
+    mb_bridge.load(rig, mb_bridge.Soma(soma), mb)
+    rig.arm.animation_data.action = None
 m2m = opt('--m2m')
 if m2m:
     # the everyday moves from CC0 motion capture (Mesh2Motion), replacing the keyposed versions of the same name
