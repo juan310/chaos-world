@@ -5,7 +5,7 @@
 #       the body in the game's relaxed standing pose (moves.RELAX), seen from the front, on a plain dark background: the
 #       Forge input, so the side profiles it draws show this model's own armour, cloth and colours
 #   (Forge edit, twice: "turn the character 90 degrees to show the left / right side ..." -> left.png, right.png)
-#   blender -b --python Tools/slim/paint_sides.py -- paint <body .fbx> <texture .png> <left.png> <right.png> <out .png>
+#   blender -b --python Tools/slim/paint_sides.py -- paint <body .fbx> <texture .png> <left.png> <right.png> <out .png> [--below <share>]
 #       the same pose; each profile is fitted to the body's silhouette seen from that side, and only surface that faces
 #       that side and is seen from it (a ray to the camera hits nothing) takes the profile's colour, blended in from
 #       grazing angles; the front and back stay as they were. Baked into a copy of the texture (<out>); the original
@@ -68,6 +68,9 @@ if mode == 'render':
 import numpy as np
 from mathutils.bvhtree import BVHTree
 left_png, right_png, out = argv[3], argv[4], argv[5]
+# --below f: repaint only the body below that share of its height (faded over 4 %): where a profile's hanging arm sits
+# over the hip, a looser pose would paint the arm onto the skirt; the legs and boots are never covered that way
+below = float(argv[argv.index('--below') + 1]) if '--below' in argv else None
 bvh = BVHTree.FromPolygons(P, polys)
 me = body.data
 sides = {}
@@ -97,6 +100,9 @@ for side, png in ((1, left_png), (-1, right_png)):
         if facing > .35:
             hit = bvh.ray_cast(p + Vector((side * .004, 0, 0)), Vector((side, 0, 0)), 10)
             if hit[0] is None: wgt = min(1.0, (facing - .35) / .3)
+        if below is not None:
+            u = (p.z - lo.z) / (hi.z - lo.z)
+            wgt *= min(1.0, max(0.0, (below - u) / .04))
         wts.append(wgt)
     sides[side] = (pim, uvs, wts)
     print('SIDES_FIT', 'left' if side > 0 else 'right', 'silhouette', int(c0), int(r0), int(c1), int(r1), 'painted vertices', sum(1 for x in wts if x > .5), flush=True)
