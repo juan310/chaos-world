@@ -31,18 +31,23 @@ ws.addEventListener("message", e => { const m = JSON.parse(e.data); if (m.id && 
   if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") consoleErrors.push(m.params.args.map(a => a.value ?? a.description).join(" ")); });
 const cdp = (method, params = {}) => new Promise(ok => { const id = ++seq; waiting.set(id, ok); ws.send(JSON.stringify({ id, method, params })); });
 const js = async expr => { const r = await cdp("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); if (r.result?.exceptionDetails) throw new Error(expr.slice(0, 80) + ": " + JSON.stringify(r.result.exceptionDetails).slice(0, 400)); return r.result?.result?.value; };
-const shot = async name => { const r = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true }); fs.writeFileSync(path.join(out, name + ".png"), Buffer.from(r.result.data, "base64")); log("screenshot", name); };
+// the whole page at a desktop size (the main column scrolls, so it is measured, not the window)
+const shot = async name => { const h = Math.min(7000, Math.max(1000, await js("Math.max(document.getElementById('main').scrollHeight, document.body.scrollHeight)").catch(() => 1000)));
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: h, deviceScaleFactor: 1, mobile: false }); await sleep(400);
+  const r = await cdp("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(path.join(out, name + ".png"), Buffer.from(r.result.data, "base64"));
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false }); log("screenshot", name); };
 const until = async (expr, ms = 15000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await js(expr).catch(() => false)) return true; await sleep(250); } throw new Error("timed out: " + expr); };
 const report = { checks: [] }; const check = (name, ok, detail) => { report.checks.push({ name, ok: !!ok, detail }); log((ok ? "PASS " : "FAIL ") + name + (detail ? ": " + detail : "")); };
 
 try {
   await cdp("Runtime.enable"); await cdp("Page.enable");
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await cdp("Page.navigate", { url: url + "#worldforge" });
   await until("typeof PRJ !== 'undefined' && PRJ !== null && typeof R !== 'undefined'", 20000);
   // the game project (the one with a WorldForge folder), whatever Studio opened first
   const prj = await js("(async () => { const ps = await api('/api/projects'); const p = ps.find(p => /FolkloreHunter-RPG-Framework$/i.test(p.root)); return p ? p.id : null; })()");
   check("the game project is in Studio's list", prj, prj);
-  await js(`(() => { PRJ = ${JSON.stringify(prj)}; const t = document.getElementById('tour'); if (t) t.style.display = 'none'; go('worldforge'); return 1; })()`);
+  await js(`(() => { PRJ = ${JSON.stringify(prj)}; const sel = document.querySelector('header select, #project'); if (sel) sel.value = PRJ; const t = document.getElementById('tour'); if (t) t.style.display = 'none'; go('worldforge'); return 1; })()`);
   await until("!!document.querySelector('.wf-recipes') || !!document.querySelector('#main .notice')");
   check("the menu has WorldForge under Tools", await js("!!document.querySelector('#nav a[data-v=worldforge]')"));
   check("the page lists the recipes", await js("document.querySelectorAll('tr[data-wfr]').length"), await js("Array.from(document.querySelectorAll('tr[data-wfr] b')).map(b => b.textContent).join(', ')"));
