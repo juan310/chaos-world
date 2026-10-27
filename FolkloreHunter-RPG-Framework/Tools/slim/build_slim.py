@@ -419,6 +419,88 @@ if AUTH:
     for A in AUTH.values(): bpy.data.actions.remove(A)
     ad.action = None
     for pb in arm.pose.bones: pb.matrix_basis = Matrix()
+HELD_BY_CLIP = (('1H_', ('1H_Sword', 'Round_Shield')), ('SnS_', ('1H_Sword', 'Round_Shield')), ('Block', ('1H_Sword', 'Round_Shield')),
+                ('Idle_Combat', ('1H_Sword', 'Round_Shield')), ('2H_', ('Hunt_Katana',)), ('Katana_', ('Hunt_Katana',)),
+                ('Lance_', ('Hunt_Lance', 'Hunt_TowerShield')))
+if '--no-resolve' not in argv and any(o.type == 'MESH' and o.parent_type == 'BONE' and o.parent_bone.startswith('handslot.') for o in bpy.data.objects):
+    # held pieces out of the body: in each frame where a piece is inside the body (beyond the hand and forearm that hold
+    # it), that hand is turned about the wrist by the smallest angle that clears it (up to 40 degrees), the turn eased in
+    # and out over the frames around it. SightForge's bodycheck gate measures the same thing on the exported model.
+    import numpy as np
+    from mathutils import Quaternion
+    from mathutils.bvhtree import BVHTree
+    sc = bpy.context.scene; ad = arm.animation_data or arm.animation_data_create(); PB = arm.pose.bones; AW = arm.matrix_world
+    gi = {g.index: g.name for g in body.vertex_groups}
+    vbone = [gi.get(max(v.groups, key=lambda g: g.weight).group, '?') if len(v.groups) else '?' for v in body.data.vertices]
+    faces = [tuple(p.vertices) for p in body.data.polygons]
+    fbone = [vbone[f[0]] for f in faces]
+    def own(side): return {n for n in set(vbone) if n.endswith('.' + side) and (n.split('.')[0] in ('hand', 'lowerarm') or n.split('_')[0] in ('thumb', 'index', 'middle', 'ring', 'pinky'))}
+    def inside(bvh, p):
+        c = 0
+        for d in (Vector((1, 0, 0)), Vector((-1, 0, 0)), Vector((0, 1, 0)), Vector((0, -1, 0))):
+            n_, q_ = 0, p.copy()
+            for _ in range(16):
+                h = bvh.ray_cast(q_, d, 10.0)
+                if h[0] is None: break
+                n_ += 1; q_ = h[0] + d * 1e-4
+            c += n_ % 2
+        return c >= 3
+    def depth(bvh, pts, skip):
+        worst = 0.0
+        for p in pts:
+            h = bvh.find_nearest(p)
+            if h[0] is None or h[3] < .015 or h[3] > .3 or fbone[h[2]] in skip: continue
+            if inside(bvh, p): worst = max(worst, h[3])
+        return worst
+    pobj = {o.name: o for o in bpy.data.objects if o.type == 'MESH' and o.parent_type == 'BONE' and o.parent_bone.startswith('handslot.')}
+    local_pts = {n: [v.co.copy() for v in o.data.vertices][::3] for n, o in pobj.items()}
+    for act in [a for a in bpy.data.actions]:
+        held = next((names for pre, names in HELD_BY_CLIP if act.name.startswith(pre)), ())
+        held = [h for h in held if h in pobj]
+        if not held: continue
+        ad.action = act
+        f0, f1 = int(act.frame_range[0]), int(act.frame_range[1])
+        fix = {}                                          # (frame, hand) -> rotation (world, about the wrist)
+        for f in range(f0, f1 + 1):
+            sc.frame_set(f)
+            dg = bpy.context.evaluated_depsgraph_get(); ev = body.evaluated_get(dg); me = ev.to_mesh()
+            bvh = BVHTree.FromPolygons([body.matrix_world @ v.co for v in me.vertices], faces); ev.to_mesh_clear()
+            for pn in held:
+                o = pobj[pn]; side = o.parent_bone[-1]; hand = 'hand.' + side
+                M = o.matrix_world; pts = [M @ c for c in local_pts[pn]]
+                d0 = depth(bvh, pts, own(side))
+                if d0 < .02: continue
+                w = AW @ PB[hand].head; R = (AW.to_3x3() @ PB[hand].matrix.to_3x3()).normalized()
+                best = None
+                for ang in (10, 20, 30, 40):
+                    for ax in (R.col[0], -R.col[0], R.col[2], -R.col[2]):
+                        q = Quaternion(ax.normalized(), math.radians(ang))
+                        d = depth(bvh, [w + q @ (p - w) for p in pts], own(side))
+                        if d < .01 and (best is None or ang < best[0]): best = (ang, q)
+                    if best: break
+                if best: fix[(f, hand)] = best[1]
+        if not fix: continue
+        # eased: each fixed frame's turn spreads to the 4 frames either side, the strongest turn winning
+        spread = {}
+        for (f, hand), q in fix.items():
+            for k in range(-4, 5):
+                w_ = 1 - abs(k) / 5
+                qq = Quaternion().slerp(q, w_)
+                key = (f + k, hand)
+                if f0 <= f + k <= f1 and (key not in spread or qq.angle > spread[key].angle): spread[key] = qq
+        keys = []
+        for (f, hand), q in sorted(spread.items()):
+            sc.frame_set(f)
+            w = PB[hand].head.copy(); Q = (AW.to_3x3().inverted() @ q.to_matrix() @ AW.to_3x3()).to_4x4()
+            want = Matrix.Translation(w) @ Q @ Matrix.Translation(-w) @ PB[hand].matrix
+            keys.append((f, hand, arm.convert_space(pose_bone=PB[hand], matrix=want, from_space='POSE', to_space='LOCAL')))
+        for f, hand, Mb in keys:
+            loc, q_, _ = Mb.decompose(); pb = PB[hand]; pb.rotation_mode = 'QUATERNION'
+            pb.location = loc; pb.rotation_quaternion = q_
+            pb.keyframe_insert('location', frame=f); pb.keyframe_insert('rotation_quaternion', frame=f)
+        print('SLIM_RESOLVE %s: %d frames had a held piece in the body, turned clear (up to %d deg)' % (act.name, len(fix), max(int(round(math.degrees(q.angle))) for q in fix.values())), flush=True)
+    ad.action = None
+    for pb in arm.pose.bones: pb.matrix_basis = Matrix()
 if '--footlock' in argv:
     # walks, jogs and runs with their planted feet held on the travelling ground (SightForge's foot-slide fixer)
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'sightforge' / 'eyeslib'))
