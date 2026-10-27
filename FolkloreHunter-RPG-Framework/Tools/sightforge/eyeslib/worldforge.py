@@ -116,11 +116,19 @@ def build(prj, sb, recipe):
 def run_test(sb, recipe, out, timeout=900):
     exe = os.path.join(sb, "Build", "WorldForgePreview.exe")
     if not os.path.isfile(exe): raise FileNotFoundError("no preview build: run worldforge build first")
-    if os.path.isdir(out): shutil.rmtree(out)
+    # a preview left running (a test that failed half way) holds its files: close it first
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/IM", "WorldForgePreview.exe", "/F"], capture_output=True)
+        time.sleep(1)
+    if os.path.isdir(out): shutil.rmtree(out, ignore_errors=True)
     os.makedirs(out, exist_ok=True)
     t0 = time.time()
-    subprocess.run([exe, "--wf-test", "--wf-quit", "--wf-recipe", os.path.abspath(recipe), "--wf-out", out, "-screen-width", "1280", "-screen-height", "720",
-                    "-screen-fullscreen", "0", "-logFile", os.path.join(out, "player.log")], timeout=timeout)
+    p = subprocess.Popen([exe, "--wf-test", "--wf-quit", "--wf-recipe", os.path.abspath(recipe), "--wf-out", out, "-screen-width", "1280", "-screen-height", "720",
+                          "-screen-fullscreen", "0", "-logFile", os.path.join(out, "player.log")])
+    try:
+        p.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
     return time.time() - t0
 
 

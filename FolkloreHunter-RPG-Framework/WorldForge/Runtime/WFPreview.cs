@@ -38,9 +38,19 @@ namespace FH.WorldForge
             {
                 help = false;
                 var t = gameObject.AddComponent<WFTester>(); t.World = World; t.Walker = Walker; t.Cam = Cam;
+                StartCoroutine(Watchdog(900));
                 int o = Array.IndexOf(Environment.GetCommandLineArgs(), "--wf-out");
                 if (o >= 0) t.Out = Path.GetFullPath(Environment.GetCommandLineArgs()[o + 1]);
             }
+        }
+
+        /// <summary>A test that stops part way (an error in a check) still ends the player, so nothing is left running.</summary>
+        IEnumerator Watchdog(float seconds)
+        {
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < seconds) yield return null;
+            Debug.LogError("WF_TEST watchdog: the test did not finish in " + seconds + " s");
+            Application.Quit(3);
         }
 
         IEnumerator Rebuild(bool spawn)
