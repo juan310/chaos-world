@@ -45,6 +45,10 @@ unchanged from that project) on their own slim, human-proportioned skeleton, wit
   dodges, katana spins and leap slash sinking 8-27 cm into the ground: the clip baker now lifts any pose whose feet,
   toes or knees would go under the floor (`choreo.grounded`). `build_slim.py --smooth` softens the auto-rig's sharp
   weight hand-over at shoulders, hips and spine, measured with the same check.
+- SightForge 0.17 development tools (`Tools/sightforge/README.md`): originality scan, weapon fitter, smear finder, hit
+  viewer, F9 problem capture, performance capture, spring bones (follow-through on tails, ears and capes), the map and
+  terrain mesh system, the foot-slide fixer (`build_slim.py --footlock` holds the ball of each planted foot still on the
+  travelling ground in every walk, jog and run), and MotionBricks for any humanoid rig (in-betweens and transitions).
 - Claude Eyes reviews of the live game (SightForge's AI joint finder on player pictures): `Tools/review_grips_sightforge.py`
   (the hand on the grip below the guard, every held weapon, hunters and skeletons) and `Tools/review_bow_sightforge.py`
   (the real draw and release: bow hand on the grip, bow upright, string inward, arrow on the string and across the bow,
