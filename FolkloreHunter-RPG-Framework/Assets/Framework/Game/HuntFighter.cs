@@ -63,6 +63,8 @@ namespace FH.Game
         // 0.9 (after Monster Hunter Wilds, this game's own way): Hunter's Sight and Rend strikes on wounds, Resolve,
         // the sword and shield's Thorn Rush, the shield weapons' power clash, the bow's Thorn Tracer.
         public bool Sight { get; private set; }
+        /// <summary>What Hunter's Sight last saw (weapon out, LT held and for how long): for the overlay and the checks.</summary>
+        public string SightState { get; private set; } = "";
         public HunterResolve Resolve { get; } = new HunterResolve();
         public int Rends { get; private set; }
         public int WoundsTorn { get; private set; }
@@ -1087,6 +1089,7 @@ namespace FH.Game
             }
             bool want = !Sheathed && !H.Dead && (InputRouter.Held(GameAction.Sight) || spellHeldAt >= 0 && now - spellHeldAt >= SightHold);
             SetSight(want);
+            SightState = (Sheathed ? "sheathed" : "drawn") + ", LT " + (InputRouter.Held(GameAction.Spell) ? "held" : "up") + (spellHeldAt >= 0 ? " " + (now - spellHeldAt).ToString("0.00") + " s" : " (no press seen)");
         }
 
         void SetSight(bool on)

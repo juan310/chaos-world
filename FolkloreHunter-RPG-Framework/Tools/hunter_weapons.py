@@ -541,6 +541,15 @@ def battle_clips(rig):
     take = _rots(P, 'Jump_Start', .6, LEGS)
     land = _rots(P, 'Jump_Land', .15, LEGS)
     guard = _rots(P, 'Blocking', .5, ARM_L)
+    # Jump heights are shares of the stock jump's (Jump_Full_Short) lift of the feet. Never higher: Unity sizes a model by
+    # bounds that include every clip, and the new hunters scale the hips' movement by their leg ratio (a higher jump here
+    # shrank the hunters in the game and threw them about 1.4 m into the air).
+    jf = bpy.data.actions['Jump_Full_Short']; j0, j1 = jf.frame_range
+    jump = 0.0
+    for i in range(int(j1 - j0) + 1):
+        P.snapshot(jf, j0 + i)
+        jump = max(jump, min(P.pb[f].head.z for f in ('foot.l', 'foot.r')) - foot0)
+    if jump < .02 * tall: jump = .1 * tall
 
     def plant(P, lift):
         # the lowest ankle exactly `lift` over the ground: bent legs crouch the body instead of lifting the feet
@@ -554,7 +563,7 @@ def battle_clips(rig):
             if lean: P.turn('spine', (1, 0, 0), lean)
             if twist: P.turn('spine', (0, 0, 1), twist)
             if fn: fn(P)
-            plant(P, max(0.0, lift) * tall)
+            plant(P, min(.9, max(0.0, lift)) * jump)
         return f
 
     # Stances from the 0.9 pose study (Docs/Concepts/Poses-0.9): (wide, front foot, back foot, hip drop) as shares of leg length.
@@ -568,8 +577,8 @@ def battle_clips(rig):
     # Leaping Slash: crouch, spring forward with the sword raised, cut down as the hunter lands.
     D = '1H_Melee_Attack_Chop'
     made.append(P.clip('SnS_Leap_Slash', [
-        (0, D, 0, pose(0, take, lean=8)), (.12, D, .2, pose(.08, air, lean=-4)), (.24, D, .38, pose(.16, air, .9, lean=-8)),
-        (.32, D, .5, pose(.08, air, .6, lean=6)), (.4, D, .62, pose(0, st=LAND, lean=14)), (.58, D, .8, pose(0, st=THROUGH, lean=10)),
+        (0, D, 0, pose(0, take, lean=8)), (.12, D, .2, pose(.45, air, lean=-4)), (.24, D, .38, pose(.85, air, .9, lean=-8)),
+        (.32, D, .5, pose(.45, air, .6, lean=6)), (.4, D, .62, pose(0, st=LAND, lean=14)), (.58, D, .8, pose(0, st=THROUGH, lean=10)),
         (.8, D, 1, pose(0, None, lean=2))]))
     # Thorn Rush I: a rising diagonal cut (the diagonal slice played upward), from the loaded rear leg through to the front.
     R = '1H_Melee_Attack_Slice_Diagonal'
@@ -582,22 +591,22 @@ def battle_clips(rig):
     # Thorn Rush III: a leaping spin, sword out wide, landing low.
     S3 = '2H_Melee_Attack_Spin'
     made.append(P.clip('SnS_Rush_3', [
-        (0, S3, 0, pose(0, take, lean=6)), (.14, S3, .25, pose(.12, air, lean=-2)), (.26, S3, .5, pose(.2, air, lean=0)),
-        (.38, S3, .72, pose(.1, air, .6, lean=6)), (.5, S3, .86, pose(0, st=LAND, lean=12)), (.8, S3, 1, pose(0, None, lean=2))]))
+        (0, S3, 0, pose(0, take, lean=6)), (.14, S3, .25, pose(.6, air, lean=-2)), (.26, S3, .5, pose(.85, air, lean=0)),
+        (.38, S3, .72, pose(.45, air, .6, lean=6)), (.5, S3, .86, pose(0, st=LAND, lean=12)), (.8, S3, 1, pose(0, None, lean=2))]))
     # Shield Crash: jump high with the shield raised overhead, then slam it down on landing.
     B = 'Block_Attack'
     made.append(P.clip('SnS_Shield_Crash', [
         (0, B, 0, pose(0, take, lean=6, shield=False, fn=lambda P: _shield_up(P, .2))),
-        (.16, B, .1, pose(.18, air, lean=-10, shield=False, fn=lambda P: _shield_up(P, .9))),
-        (.3, B, .2, pose(.26, air, lean=-12, shield=False, fn=lambda P: _shield_up(P, 1.0, .2))),
-        (.38, B, .4, pose(.1, air, .6, lean=12, shield=False, fn=lambda P: _shield_up(P, .1, .8))),
+        (.16, B, .1, pose(.5, air, lean=-10, shield=False, fn=lambda P: _shield_up(P, .9))),
+        (.3, B, .2, pose(.6, air, lean=-12, shield=False, fn=lambda P: _shield_up(P, 1.0, .2))),
+        (.38, B, .4, pose(.45, air, .6, lean=12, shield=False, fn=lambda P: _shield_up(P, .1, .8))),
         (.44, B, .5, pose(0, st=LAND, lean=26, shield=False, fn=lambda P: _shield_up(P, -.45, .9))),
         (.68, B, .7, pose(0, st=LAND, lean=22, shield=False, fn=lambda P: _shield_up(P, -.4, .8))),
         (1.0, B, 1, pose(0, None, lean=4))]))
     # Rending Leap: a low lunge onto the wound, a diagonal cut, then a back-hand horizontal cut through it.
     H2 = '1H_Melee_Attack_Slice_Horizontal'
     made.append(P.clip('SnS_Rend', [
-        (0, R, 0, pose(0, take, lean=14)), (.1, R, .2, pose(.06, air, .7, lean=2)), (.2, R, .45, pose(0, st=LUNGE, lean=16)),
+        (0, R, 0, pose(0, take, lean=14)), (.1, R, .2, pose(.3, air, .7, lean=2)), (.2, R, .45, pose(0, st=LUNGE, lean=16)),
         (.32, R, .7, pose(0, st=LUNGE, lean=14)), (.42, H2, .25, pose(0, st=THROUGH, lean=12, twist=-10)),
         (.54, H2, .5, pose(0, st=THROUGH, lean=10, twist=12)), (.7, H2, .75, pose(0, None, lean=6)), (1.0, H2, 1, pose(0, None))]))
     # Piercing Rend: braced behind the tower shield, three driving thrusts into the wound (lunging on each).
@@ -614,7 +623,7 @@ def battle_clips(rig):
     K1, K2 = '2H_Melee_Attack_Slice', '2H_Melee_Attack_Chop'
     made.append(P.clip('Katana_Rend', [
         (0, K1, 0, pose(0, take, lean=16, shield=False)), (.12, K1, .3, pose(0, st=LOADED, lean=10, shield=False)),
-        (.22, K1, .55, pose(0, st=THROUGH, lean=-2, twist=12, shield=False)), (.34, K2, .3, pose(.04, None, lean=-6, shield=False)),
+        (.22, K1, .55, pose(0, st=THROUGH, lean=-2, twist=12, shield=False)), (.34, K2, .3, pose(.2, None, lean=-6, shield=False)),
         (.46, K2, .55, pose(0, st=LUNGE, lean=20, shield=False)), (.62, K2, .75, pose(0, st=LUNGE, lean=16, shield=False)),
         (.9, K2, 1, pose(0, None, lean=4, shield=False))]))
     # Seeker Thorn: a deep, braced draw from the archer's wide base, the bow canted a little, and a hard release.

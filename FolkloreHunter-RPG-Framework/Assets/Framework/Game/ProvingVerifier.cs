@@ -198,11 +198,13 @@ namespace FH.Game
             return box;
         }
 
+        bool sightSeen; string sightNote = "";
         /// <summary>LT held (Hunter's Sight), then Y: the weapon's Rend. Returns once the move has run.</summary>
         IEnumerator SightRend()
         {
             Hold(PadButton.LT);
             yield return Until(() => F.Sight, 2f);           // game time, not a fixed real wait: a busy GPU stretches frames
+            sightSeen = F.Sight; sightNote = F.SightState;
             yield return Frames(2);
             Pad(PadButton.LT | PadButton.Y); yield return Frames(3);
             Hold(PadButton.LT); yield return Frames(2);
@@ -367,7 +369,7 @@ namespace FH.Game
             OpenWoundFixture(m);
             int bt0 = m.Wounds.Torn, planted0 = F.TracersPlanted, bursts0 = F.Tracer.Bursts;
             yield return SightRend();
-            Check("bow: Y in Sight looses the Seeker Thorn", F.LastMove == "Seeker Thorn", F.LastMove);
+            Check("bow: Y in Sight looses the Seeker Thorn", F.LastMove == "Seeker Thorn", F.LastMove + " (sight seen " + sightSeen + ", " + sightNote + ", event " + F.LastEvent + ")");
             yield return Until(() => F.TracersPlanted > planted0, 2f);
             Release(); yield return UntilNeutral();
             Check("the tracer arrow tears the wound and stays in the monster", F.TracersPlanted > planted0 && m.Wounds.Torn > bt0 && F.Tracer.Active(Time.time), "planted " + F.TracersPlanted + ", torn " + m.Wounds.Torn);
