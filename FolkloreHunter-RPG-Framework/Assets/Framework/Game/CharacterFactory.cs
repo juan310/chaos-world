@@ -80,17 +80,19 @@ namespace FH.Game
         public static Bounds PosedBounds(IEnumerable<Renderer> renderers)
         {
             bool any = false; var b = new Bounds();
-            var mesh = new Mesh();
             foreach (var r in renderers)
             {
                 if (!r.enabled) continue;
-                Vector3[] v;
-                if (r is SkinnedMeshRenderer smr) { smr.BakeMesh(mesh, true); v = mesh.vertices; for (int i = 0; i < v.Length; i++) v[i] = smr.transform.position + smr.transform.rotation * v[i]; }
-                else if (r.GetComponent<MeshFilter>() && r.GetComponent<MeshFilter>().sharedMesh) { v = r.GetComponent<MeshFilter>().sharedMesh.vertices; for (int i = 0; i < v.Length; i++) v[i] = r.transform.TransformPoint(v[i]); }
+                Bounds rb;
+                if (r is SkinnedMeshRenderer smr) rb = ActualBounds(smr);
+                else if (r.GetComponent<MeshFilter>() && r.GetComponent<MeshFilter>().sharedMesh)
+                {
+                    var v = r.GetComponent<MeshFilter>().sharedMesh.vertices; rb = new Bounds(r.transform.TransformPoint(v[0]), Vector3.zero);
+                    foreach (var p in v) rb.Encapsulate(r.transform.TransformPoint(p));
+                }
                 else continue;
-                foreach (var p in v) { if (!any) { b = new Bounds(p, Vector3.zero); any = true; } else b.Encapsulate(p); }
+                if (!any) { b = rb; any = true; } else b.Encapsulate(rb);
             }
-            UnityEngine.Object.Destroy(mesh);
             return b;
         }
 
@@ -102,6 +104,7 @@ namespace FH.Game
             var model=UnityEngine.Object.Instantiate(prefab,wrapper);
             model.transform.localPosition=Vector3.zero;model.transform.localRotation=Quaternion.identity;
             var material=Resources.Load<Material>("Monsters/"+resource);
+            if(resource=="Briarhound")material=BriarCoat(model)??material;
             foreach(var skin in model.GetComponentsInChildren<SkinnedMeshRenderer>()){
                 skin.sharedMaterials=Enumerable.Repeat(material,skin.sharedMaterials.Length).ToArray();skin.updateWhenOffscreen=true;
             }
@@ -116,10 +119,33 @@ namespace FH.Game
             return wrapper;
         }
 
-        public static Bounds ActualBounds(GameObject o) {
+        /// <summary>True once the Briarhound wears the repaired coat (Codex's coat repair V2, Docs/Briarhound-Coat.md).</summary>
+        public static bool BriarCoatOn { get; private set; }
+
+        /// <summary>Codex's Briarhound coat repair: the same mesh with its rest positions, normals and coat mask in spare
+        /// vertex channels (Monsters/Briarhound_FurMeshV2), drawn by the fur shader that lays a matte fur tile over the
+        /// smeared coat (charcoal, cream chest, tan legs) and keeps the face, saddle and gear from the original atlas.</summary>
+        static Material BriarCoat(GameObject model)
+        {
+            var repaired = Resources.Load<Mesh>("Monsters/Briarhound_FurMeshV2");
+            var fur = Resources.Load<Material>("Monsters/Briarhound_FurV2");
+            BriarCoatOn = false;
+            var shader = Shader.Find("Folklore/BriarhoundFurRepair");          // Framework/Resources/Shaders (Codex's, unchanged)
+            if (!repaired || !fur || !shader || !shader.isSupported) return null;
+            foreach (var skin in model.GetComponentsInChildren<SkinnedMeshRenderer>())
+                if (skin.sharedMesh && skin.sharedMesh.vertexCount == repaired.vertexCount) { skin.sharedMesh = repaired; BriarCoatOn = true; }
+            if (!BriarCoatOn) return null;
+            var coat = new Material(fur) { name = "Briarhound coat", shader = shader, mainTexture = Resources.Load<Texture2D>("Monsters/Briarhound_basecolor") };
+            if (!coat.GetTexture("_FurTex")) coat.SetTexture("_FurTex", Resources.Load<Texture2D>("Monsters/Briarhound_fur_detail_v2"));
+            return coat;
+        }
+
+        public static Bounds ActualBounds(GameObject o) => ActualBounds(o.GetComponentsInChildren<SkinnedMeshRenderer>());
+
+        public static Bounds ActualBounds(params SkinnedMeshRenderer[] skins) {
             // Standard skinning in world space, including all 8 influences. Avoid BakeMesh scale ambiguity.
             bool first=true;var result=new Bounds();
-            foreach(var skin in o.GetComponentsInChildren<SkinnedMeshRenderer>()) {
+            foreach(var skin in skins) {
                 var mesh=skin.sharedMesh;var vertices=mesh.vertices;var bind=mesh.bindposes;var bones=skin.bones;
                 var matrices=bones.Select((b,i)=>b.localToWorldMatrix*bind[i]).ToArray();
                 var counts=mesh.GetBonesPerVertex();var weights=mesh.GetAllBoneWeights();int cursor=0;

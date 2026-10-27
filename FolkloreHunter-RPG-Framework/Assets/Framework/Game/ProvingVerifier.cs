@@ -1712,6 +1712,11 @@ namespace FH.Game
             Check("the Briarhound is in the ring", hound, (S.Hound ? S.Hound.name + " (" + HoundCompanion.Model + ")" : "none"));
             if (hound)
             {
+                var coat = S.Hound.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Select(r => r.sharedMaterial ? r.sharedMaterial.shader.name : "-").FirstOrDefault();
+                Check("the Briarhound wears the repaired coat (fur over the smeared atlas)", CharacterFactory.BriarCoatOn && coat == "Folklore/BriarhoundFurRepair", "shader " + coat);
+            }
+            if (hound)
+            {
                 // Release the lock from the enrage test: a locked target sends the hound to assist instead of heeling.
                 if (H.LockTarget) yield return Tap(PadButton.RightStick);
                 var spot = S.World.ProvingOrigin + new Vector3(-14, 0, -14);
