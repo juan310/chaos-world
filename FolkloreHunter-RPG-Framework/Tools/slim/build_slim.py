@@ -143,9 +143,9 @@ if m2m:
     # the everyday moves from CC0 motion capture (Mesh2Motion), replacing the keyposed versions of the same name
     import retarget
     src = retarget.Source(m2m)
-    caps = retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP)
+    retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP)
     src.remove()
-    made = [a for a in made if a.name in bpy.data.actions and a not in caps] + caps
+    made = list(bpy.data.actions)                 # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
 assert all('.' not in a.name for a in made) and len(bpy.data.actions) == len(made), 'stray clips: ' + ', '.join(a.name for a in bpy.data.actions)
 arm.animation_data.action = None
