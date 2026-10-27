@@ -330,6 +330,14 @@ namespace FH.Game
         IEnumerator AcceptHunt()
         {
             var mira = Npc("mira");
+            // the villagers are slim bodies like the hunter's (no chibi figures), with hair, playing their own idle
+            foreach (var id in new[] { "mira", "bram", "lady_elowen" })
+            {
+                var n = Npc(id);
+                var model = n.Visual ? n.Visual.name.Replace(" visual", "") : "-";
+                Check(id + " is a slim villager with hair, playing its idle", model.StartsWith("Villager_") && n.Visual.GetComponentsInChildren<Transform>(true).Any(t => t.name == "Hair anchor") && n.Anim != null && (n.Anim.Current.EndsWith("Idle") || n.Anim.Current.EndsWith("Interact")),
+                      model + ", clip " + (n.Anim != null ? n.Anim.Current : "none"));
+            }
             yield return InteractWith(mira);
             var d = Top as DialogueScreen;
             Check("interacting with Mira opens dialogue", d != null, S.Ui.Describe());
