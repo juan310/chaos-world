@@ -42,13 +42,10 @@ namespace FH.Game
             GamePad.Inject(null);
             // Spring bones (follow-through on the hound's tail and ears): they moved, stayed sane, and were not held at
             // their limit most of the time. The recorders go to SightForge (hits, perf, springs reports).
-            var springs = SpringBone.All.Where(x => x && x.Frames > 0).ToList();
-            if (springs.Count > 0)
-            {
-                Check("spring bones follow through (tail and ears trail on turns and stops) and settle",
-                      springs.Any(x => x.MaxLagSeen > 3) && springs.All(x => !x.Broke && x.PinnedFrames < x.Frames * .25f),
-                      string.Join("; ", springs.Select(x => x.Label + " max " + x.MaxLagSeen.ToString("0") + "/" + x.MaxAngle.ToString("0") + " deg, at the limit " + (100f * x.PinnedFrames / x.Frames).ToString("0") + " %" + (x.Broke ? " BROKE" : ""))));
-            }
+            var springs = SpringBone.History.Values.Where(x => x.Frames > 0).ToList();
+            Check("spring bones follow through (tail and ears trail on turns and stops) and settle",
+                  springs.Count > 0 && springs.Any(x => x.MaxLag > 3) && springs.All(x => !x.Broke && x.Pinned < x.Frames * .25f),
+                  springs.Count == 0 ? "no spring bones ran" : string.Join("; ", springs.Select(x => x.Label + " max " + x.MaxLag.ToString("0") + "/" + x.MaxAngle.ToString("0") + " deg, at the limit " + (100f * x.Pinned / x.Frames).ToString("0") + " %" + (x.Broke ? " BROKE" : ""))));
             if (DevCapture.I) { DevCapture.I.Write(Path.Combine(root, "DevCapture"), "proving run"); Note("hit tests, frame times and spring lag written to Captures/Proving/DevCapture for SightForge (hits, perf, springs)"); }
             File.WriteAllText(Path.Combine(root, "verification.txt"), string.Join("\n", lines) + "\nFAILURES " + failures + "\nVersion " + Application.version + "  ·  " + DateTime.Now.ToString("u"));
             Debug.Log("FH_PROVING " + lines.Count(l => !l.StartsWith("NOTE")) + " checks; failures " + failures);
@@ -991,6 +988,10 @@ namespace FH.Game
             foreach (var (label, button, want, clip) in new[] { ("full stick jogs", PadButton.None, HunterController.JogSpeed, H.JogClip), ("RT sprints", PadButton.RT, HunterController.SprintSpeed, H.SprintClip) })
             {
                 H.Stamina.Current = H.Stamina.Max;
+                // standing still first: how high each ball-of-foot bone sits above the ground when the foot is flat
+                yield return Wait(.4f);
+                float Above(Transform ball) => Physics.Raycast(ball.position + Vector3.up * .5f, Vector3.down, out var g0, 1.5f, Layers.WorldMask, QueryTriggerInteraction.Ignore) ? ball.position.y - g0.point.y : 99;
+                float restL = Above(ballL), restR = Above(ballR);
                 Hold(button, new Vector2(0, 1));
                 yield return Wait(.5f);
                 var planted = new List<float>(); var body = new List<float>(); var sweep = new List<float>(); var grounded = new List<float>();
@@ -1004,11 +1005,11 @@ namespace FH.Game
                     // The slower foot is the one on the ground: how fast does it slide? (Height is no guide on this rig:
                     // the swinging foot's ankle often rides lower than the planted one.)
                     planted.Add(Mathf.Min(vl, vr));
-                    // Planted feet, measured properly: the ball of a foot while it is on the ground (within 4 cm), against
+                    // Planted feet, measured properly: the ball of a foot while it is on the ground (within 3 cm of its standing height), against
                     // the ground. Frames with both feet in the air (a run's flight) do not count as slide.
                     frames++;
-                    foreach (var (ball, prev) in new[] { (ballL, bl), (ballR, br) })
-                        if (Physics.Raycast(ball.position + Vector3.up * .5f, Vector3.down, out var gh, 1.5f, Layers.WorldMask, QueryTriggerInteraction.Ignore) && ball.position.y - gh.point.y < .04f)
+                    foreach (var (ball, prev, rest) in new[] { (ballL, bl, restL), (ballR, br, restR) })
+                        if (rest < 1 && Above(ball) < rest + .03f)
                         { grounded.Add(Vector3.Distance(Flat(ball.position), Flat(prev)) / dt); down++; }
                     bl = ballL.position; br = ballR.position;
                     // Diagnostic: the lower foot's sweep relative to the hunter (what the clip itself does at this rate).

@@ -19,6 +19,10 @@ namespace FH.Game
         public string Label = "";
 
         public static readonly List<SpringBone> All = new List<SpringBone>();
+
+        /// <summary>Every spring's record, kept after its character is gone (a verification run ends on the title).</summary>
+        public class Record { public string Label; public float MaxAngle, MaxLag; public int Frames, Pinned; public bool Broke; }
+        public static readonly Dictionary<string, Record> History = new Dictionary<string, Record>();
         /// <summary>The largest angle (degrees) between a chain bone and its animated direction this frame.</summary>
         public float Lag { get; private set; }
         /// <summary>Over the bone's life: the largest lag, frames run, frames held at the limit, and whether it ever went bad.</summary>
@@ -88,6 +92,8 @@ namespace FH.Game
             Frames++; MaxLagSeen = Mathf.Max(MaxLagSeen, lag);
             if (lag >= MaxAngle - .01f) PinnedFrames++;
             if (float.IsNaN(lag) || pos.Any(p => float.IsNaN(p.x))) { Broke = true; Init(); }
+            if (!History.TryGetValue(Label, out var rec)) History[Label] = rec = new Record { Label = Label, MaxAngle = MaxAngle };
+            rec.Frames++; rec.MaxLag = Mathf.Max(rec.MaxLag, float.IsNaN(lag) ? 0 : lag); if (lag >= MaxAngle - .01f) rec.Pinned++; rec.Broke |= Broke;
         }
 
         /// <summary>Springs on a character's loose parts, found by bone name: a tail chain (tail_1, tail_2 ...), ears, and any

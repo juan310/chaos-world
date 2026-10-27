@@ -30,6 +30,8 @@ namespace FH.Game
         readonly Queue<string> frames = new Queue<string>(), events = new Queue<string>(), log = new Queue<string>();
         ProfilerRecorder gc, draws, batches, setpass, tris;
         string lastClip = "", lastEvent = "", lastArea = "";
+        readonly List<(string, float)> springLabels = new List<(string, float)>();
+        readonly Dictionary<string, int> springIndex = new Dictionary<string, int>();
         float lastHealth = -1;
         bool busy;
 
@@ -106,9 +108,11 @@ namespace FH.Game
               .Append(",\"setpass\":").Append(Val(setpass)).Append(",\"tris\":").Append(Val(tris)).Append(",\"monsters\":").Append(s.Monsters.Count(m => m && m.isActiveAndEnabled));
             if (SpringBone.All.Count > 0)
             {
-                sb.Append(",\"springs\":[");
-                for (int i = 0; i < SpringBone.All.Count; i++) { if (i > 0) sb.Append(','); sb.Append(F(SpringBone.All[i].Lag)); }
-                sb.Append(']');
+                // one column per spring, in the order first seen (a spring gone or not yet made: null)
+                foreach (var b in SpringBone.All) if (b && !springIndex.ContainsKey(b.Label)) { springIndex[b.Label] = springLabels.Count; springLabels.Add((b.Label, b.MaxAngle)); }
+                var row = new string[springLabels.Count];
+                foreach (var b in SpringBone.All) if (b) row[springIndex[b.Label]] = F(b.Lag);
+                sb.Append(",\"springs\":[").Append(string.Join(",", row.Select(x => x ?? "null"))).Append(']');
             }
             frames.Enqueue(sb.Append('}').ToString());
             while (frames.Count > FrameCapacity) frames.Dequeue();
@@ -157,7 +161,7 @@ namespace FH.Game
             sb.Append("{\"time\":").Append(F(Time.time)).Append(",\"targetFps\":").Append(Application.targetFrameRate)
               .Append(",\"quality\":").Append(Q(QualitySettings.names.Length > 0 ? QualitySettings.names[QualitySettings.GetQualityLevel()] : ""))
               .Append(",\"screen\":[").Append(Screen.width).Append(',').Append(Screen.height).Append(']')
-              .Append(",\"gpu\":").Append(Q(SystemInfo.graphicsDeviceName)).Append(",\"springs\":[").Append(string.Join(",", SpringBone.All.Select(x => "{\"label\":" + Q(x.Label) + ",\"max\":" + F(x.MaxAngle) + "}"))).Append(']')
+              .Append(",\"gpu\":").Append(Q(SystemInfo.graphicsDeviceName)).Append(",\"springs\":[").Append(string.Join(",", springLabels.Select(x => "{\"label\":" + Q(x.Item1) + ",\"max\":" + F(x.Item2) + "}"))).Append(']')
               .Append(",\"frames\":[\n").Append(string.Join(",\n", frames)).Append("\n],\"events\":[\n").Append(string.Join(",\n", events)).Append("\n]}");
             return sb.ToString();
         }
