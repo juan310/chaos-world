@@ -23,7 +23,9 @@ for s, S in (('l', 'Left'), ('r', 'Right')):
 MB_CLIPS = ['SnS_Rush_1', 'SnS_Rush_2', 'SnS_Leap_Slash', 'SnS_Shield_Crash', 'SnS_Rend', '1H_Melee_Attack_Stab', 'Block_Hit',
             'Hunt_JumpDash_L', 'Hunt_JumpDash_R', 'Dodge_Left', 'Dodge_Right', 'Jump_Full_Short', 'Lie_Down',
             '2H_Melee_Attack_Chop', '2H_Melee_Attack_Slice', '2H_Melee_Attack_Stab', '2H_Melee_Attack_Spin', '2H_Melee_Attack_Spinning', 'Katana_Rend',
-            'Lance_High_Thrust', 'Lance_Rend', 'Bow_Power_Shoot', 'Bow_Arc_Shoot', 'Bow_Piercer', 'Bow_Tracer']
+            'Lance_High_Thrust', 'Lance_Rend', 'Bow_Power_Shoot', 'Bow_Arc_Shoot', 'Bow_Piercer', 'Bow_Tracer',
+            'Katana_Iai', 'Hunt_Clash', 'Bow_Step_L', 'Bow_Step_R', '2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle']
+LOOPS = {'2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle'}   # their last key pose is their first: they stay seamless
 MIN_GAP = .25                                   # key poses closer than this are merged into one target
 
 
@@ -173,6 +175,7 @@ def key_times(name, length):
     out = []
     for t in ts:
         if not out or t - out[-1] >= MIN_GAP: out.append(t)
+    if not out: return []                       # not made from key poses (a sampled function): nothing to generate between
     if length - out[-1] > 1e-3:
         if length - out[-1] < MIN_GAP and len(out) > 1: out[-1] = length
         else: out.append(length)
@@ -195,7 +198,9 @@ def export(rig, soma, names, path):
             W = {b.name: b.matrix.copy() for b in rig.arm.pose.bones}
             frames.append(soma.from_slim(rig, W))
         length = (f1 - f0) / choreo.FPS
-        clips.append({'name': nm, 'fps': choreo.FPS, 'keys': key_times(nm, length), 'frames': frames})
+        keys = key_times(nm, length)
+        if len(keys) < 2: print('MB_SKIP', nm, 'has no key poses'); continue
+        clips.append({'name': nm, 'fps': choreo.FPS, 'keys': keys, 'frames': frames})
         print('MB_EXPORT', nm, len(frames), 'frames, keys', clips[-1]['keys'], flush=True)
     rig.arm.animation_data.action = None
     json.dump({'clips': clips}, open(path, 'w'))
@@ -213,7 +218,7 @@ def load(rig, soma, path, pins=()):
     for c in data['clips']:
         old = bpy.data.actions.get(c['name'])
         if old: bpy.data.actions.remove(old)
-        made.append(src.clip(rig, c['name'], c['name'], pin=c['name'] in pins))
+        made.append(src.clip(rig, c['name'], c['name'], loop=c['name'] in LOOPS, pin=c['name'] in pins))
         print('MB_CLIP', c['name'], flush=True)
     for a in [a for a in bpy.data.actions if a.name.startswith('mb:')]: bpy.data.actions.remove(a)
     bpy.data.objects.remove(arm)
