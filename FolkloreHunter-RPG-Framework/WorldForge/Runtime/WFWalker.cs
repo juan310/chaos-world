@@ -41,10 +41,20 @@ namespace FH.WorldForge
                     r.enabled = body; r.sharedMaterials = Enumerable.Repeat(mat, r.sharedMaterials.Length).ToArray();
                     if (body && r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
                 }
-                // sized to 1.8 m from its bind pose
-                var body0 = v.GetComponentsInChildren<SkinnedMeshRenderer>(true).FirstOrDefault(r => r.name.EndsWith("_Body"));
-                if (body0 && body0.sharedMesh) { float h = body0.sharedMesh.bounds.size.y * body0.transform.lossyScale.y; if (h > .3f) v.transform.localScale *= 1.8f / h; }
                 w.Anim = v.GetComponentInChildren<Animation>();
+                // sized to 1.8 m, measured on the body as it stands (posed and skinned), not its file's units
+                var body0 = v.GetComponentsInChildren<SkinnedMeshRenderer>(true).FirstOrDefault(r => r.name.EndsWith("_Body"));
+                if (body0)
+                {
+                    var idle = w.Anim ? w.Anim.Cast<AnimationState>().FirstOrDefault(s => s.name.EndsWith("Idle")) : null;
+                    if (idle) { idle.enabled = true; idle.weight = 1; idle.time = 0; w.Anim.Sample(); idle.enabled = false; }
+                    var baked = new Mesh(); body0.BakeMesh(baked, true);
+                    float h = 0; var vs = baked.vertices;
+                    if (vs.Length > 0) { float lo = 1e9f, hi = -1e9f; foreach (var p in vs) { var wp = body0.transform.TransformPoint(Vector3.Scale(p, new Vector3(1 / body0.transform.lossyScale.x, 1 / body0.transform.lossyScale.y, 1 / body0.transform.lossyScale.z))); lo = Mathf.Min(lo, wp.y); hi = Mathf.Max(hi, wp.y); } h = hi - lo; }
+                    Destroy(baked);
+                    if (h > .3f) v.transform.localScale *= 1.8f / h;
+                    Debug.Log($"WorldForge walker: body {h:0.00} m tall as imported, scaled to 1.8 m");
+                }
                 Transform F(string n) => v.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == n);
                 w.FootL = F("foot.l"); w.FootR = F("foot.r"); w.BallL = F("toes.l") ?? w.FootL; w.BallR = F("toes.r") ?? w.FootR;
             }
@@ -68,6 +78,8 @@ namespace FH.WorldForge
                 foreach (var n in names) { clip = Anim.Cast<AnimationState>().Select(s => s.name).FirstOrDefault(s => s == n || s.EndsWith("|" + n)); if (clip != null) break; }
                 if (clip != null) gaits[key] = (clip, key == "idle" ? 0 : Natural(clip));
             }
+            // a clip whose planted feet could not be measured: from its neighbour gait
+            if (gaits.TryGetValue("sprint", out var sp) && sp.natural < .1f && gaits.TryGetValue("jog", out var jg)) gaits["sprint"] = (sp.clip, jg.natural * 1.45f);
             Debug.Log("WorldForge walker: " + string.Join(", ", gaits.Select(g => g.Key + " " + g.Value.clip + " " + g.Value.natural.ToString("0.00") + " m/s")));
             Play("idle", 1);
         }

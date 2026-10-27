@@ -258,7 +258,7 @@ namespace FH.WorldForge
                             {
                                 var q = sp.At(s); var side = Vector3.Cross(Vector3.up, sp.DirAt(s)).normalized * (k % 2 == 0 ? 1 : -1);
                                 if (Floor(q + Vector3.up * 1.2f, out var fl, 3)) q = fl.point;
-                                if (Wall(q + Vector3.up * l.mount, side, f.width * 1.5f, out var h)) Mount(h, l, sh);
+                                if (Wall(q + Vector3.up * l.mount, side, f.width * (1 + f.flare) * 1.6f, out var h)) Mount(h, l, sh);
                                 else Note($"torch_row {l.feature}: no wall at {s:0.0} m");
                             }
                             break;

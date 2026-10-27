@@ -39,8 +39,12 @@ namespace FH.WorldForge
         {
             while (!World || !World.Ready || !Walker || !Cam) yield return null;
             Out = Out ?? Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "Captures", "WorldForge", World.Recipe.name));
-            if (Directory.Exists(Out)) Directory.Delete(Out, true);
-            Directory.CreateDirectory(Path.Combine(Out, "frames")); Directory.CreateDirectory(Path.Combine(Out, "shots"));
+            foreach (var sub in new[] { "frames", "shots" })
+            {
+                var d = Path.Combine(Out, sub);
+                if (Directory.Exists(d)) Directory.Delete(d, true);     // only what this test writes (the player log may be open here)
+                Directory.CreateDirectory(d);
+            }
             Log("start " + World.Recipe.name);
             BuildRoute();
             File.WriteAllText(Path.Combine(Out, "info.json"), "{\"recipe\":" + Q(World.Recipe.name) + ",\"buildSeconds\":" + F(World.BuildSeconds) + ",\"chunks\":" + World.Result.Meshes.Count
