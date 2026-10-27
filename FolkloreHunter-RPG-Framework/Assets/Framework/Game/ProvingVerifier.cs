@@ -549,7 +549,11 @@ namespace FH.Game
                 var json = new List<string> { "\"moment\": \"" + moment + "\"", "\"view\": \"" + view + "\"", "\"clip\": \"" + H.Anim.Current + "\"",
                                               "\"pixelsPerMetre\": " + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", ci) };
                 if (WeaponSkin.BowPoints(bow, out var ta, out var tb, out var gp, out var sm))
+                {
+                    var bs = bow.GetComponent<BowString>();          // the live string: its ends, and where it is pulled to
+                    if (bs) { ta = bow.TransformPoint(bs.EndA); tb = bow.TransformPoint(bs.EndB); sm = bs.PulledTo ?? (ta + tb) * .5f; }
                     json.Add("\"bowTipA\": " + Px(ta) + ", \"bowTipB\": " + Px(tb) + ", \"bowGrip\": " + Px(gp) + ", \"stringMid\": " + Px(sm) + ", \"bowParent\": \"" + (bow.parent ? bow.parent.name : "-") + "\"");
+                }
                 if (arrowR && arrowR.enabled && WeaponSkin.ArrowPoints(arrow, handR, out var nk, out var tp))
                     json.Add("\"arrowNock\": " + Px(nk) + ", \"arrowTip\": " + Px(tp));
                 if (handL) json.Add("\"handSlotL\": " + Px(handL.position));
@@ -1474,6 +1478,9 @@ namespace FH.Game
             var nockR = R("Hunt_NockedArrow");
             Check("drawing: the bow in the left hand, the Bow_Draw clip, an arrow nocked", F.Drawing && bowT.parent.name.Contains(".l") && H.Anim.Current.Contains("Bow_Draw") && nockR && nockR.enabled,
                   bowT.parent.name + ", " + H.Anim.Current + ", nocked " + (nockR && nockR.enabled));
+            var liveString = bowT.GetComponent<BowString>();
+            Check("drawing pulls the bow's string back to the arrow's nock (the string is drawn live)", liveString && liveString.PulledTo.HasValue,
+                  liveString ? (liveString.PulledTo.HasValue ? "pulled " + Vector3.Distance(liveString.PulledTo.Value, bowT.TransformPoint((liveString.EndA + liveString.EndB) * .5f)).ToString("0.00") + " m" : "straight") : "no live string on this bow");
             yield return Snap("r04-bow-draw-range");
             yield return BowShots("draw_full");
             Release();

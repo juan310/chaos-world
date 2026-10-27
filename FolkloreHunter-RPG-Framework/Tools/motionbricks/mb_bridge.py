@@ -24,8 +24,9 @@ MB_CLIPS = ['SnS_Rush_1', 'SnS_Rush_2', 'SnS_Leap_Slash', 'SnS_Shield_Crash', 'S
             'Hunt_JumpDash_L', 'Hunt_JumpDash_R', 'Dodge_Left', 'Dodge_Right', 'Jump_Full_Short', 'Lie_Down',
             '2H_Melee_Attack_Chop', '2H_Melee_Attack_Slice', '2H_Melee_Attack_Stab', '2H_Melee_Attack_Spin', '2H_Melee_Attack_Spinning', 'Katana_Rend',
             'Lance_High_Thrust', 'Lance_Rend', 'Bow_Power_Shoot', 'Bow_Arc_Shoot', 'Bow_Piercer', 'Bow_Tracer',
-            'Katana_Iai', 'Hunt_Clash', 'Bow_Step_L', 'Bow_Step_R', '2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle']
-LOOPS = {'2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle'}   # their last key pose is their first: they stay seamless
+            'Katana_Iai', 'Hunt_Clash', 'Bow_Step_L', 'Bow_Step_R', '2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle',
+            'Bow_Draw', 'Bow_Shoot']
+LOOPS = {'2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle', 'Bow_Draw'}   # their last key pose is their first: they stay seamless
 MIN_GAP = .25                                   # key poses closer than this are merged into one target
 
 

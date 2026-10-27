@@ -135,8 +135,8 @@ MOCAP = [
     ('1H_Melee_Attack_Slice_Horizontal', 'Sword_Attack', False, {'pin': True}),
     ('SnS_Rush_3', 'Sword_Regular_C', False, {'pin': True}),
     ('Blocking', 'Idle_Shield', True, {}), ('Block', 'Idle_Shield', True, {}), ('Block_Attack', 'Shield_OneShot', False, {'pin': True}),
-    # bow: the draw (held at its end) and the release
-    ('Bow_Draw', 'Bow Pull Hold', True, {}), ('Bow_Shoot', 'Bow Release', False, {}),
+    # (the bow's draw and release stay the game's own: the captures are side-on, with the bow arm 90 degrees off the aim;
+    # MotionBricks makes their in-between motion, mb_bridge.MB_CLIPS)
 ]
 
 # townspeople: the everyday moves only

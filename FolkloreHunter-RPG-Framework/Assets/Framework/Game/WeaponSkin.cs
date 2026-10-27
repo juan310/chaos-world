@@ -39,6 +39,7 @@ namespace FH.Game
                 if (!src) continue;
                 var grip = kind == Kind.Bow ? WorldKit.Find(visual, "handslot.l") ?? hand : kind == Kind.Shield ? WorldKit.Find(visual, "handslot.l") ?? hand : hand;
                 mf.sharedMesh = Fit(src, mf.sharedMesh, t, grip, kind);
+                if (kind == Kind.Bow && mf.sharedMesh.subMeshCount > 1) BowString.Attach(t, mf);
                 var tex = Resources.Load<Texture2D>("Models/Weapons/" + model + "_texture");
                 var r = t.GetComponent<Renderer>();
                 if (r && tex)
@@ -46,7 +47,7 @@ namespace FH.Game
                     var m = new Material(Shader.Find("Standard")) { name = model, mainTexture = tex };
                     m.SetFloat("_Glossiness", kind == Kind.Blade || kind == Kind.Pole ? .45f : .2f);
                     m.SetFloat("_Metallic", kind == Kind.Blade ? .35f : .05f);
-                    r.sharedMaterials = Enumerable.Repeat(m, 1).ToArray();
+                    r.sharedMaterials = Enumerable.Repeat(m, mf.sharedMesh.subMeshCount).ToArray();
                 }
                 if (record) Applied.Add(piece);
             }
@@ -74,9 +75,14 @@ namespace FH.Game
             if (!prefab) return null;
             var parts = prefab.GetComponentsInChildren<MeshFilter>(true).Where(f => f.sharedMesh).ToArray();
             if (parts.Length == 0) return null;
-            var ci = parts.Select(f => new CombineInstance { mesh = f.sharedMesh, transform = prefab.transform.worldToLocalMatrix * f.transform.localToWorldMatrix }).ToArray();
+            CombineInstance Part(MeshFilter f) => new CombineInstance { mesh = f.sharedMesh, transform = prefab.transform.worldToLocalMatrix * f.transform.localToWorldMatrix };
             var mesh = new Mesh { name = model + " (combined)", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
-            mesh.CombineMeshes(ci, true, true);
+            var strings = parts.Where(f => f.name.EndsWith("String")).ToArray();
+            if (strings.Length == 0) { mesh.CombineMeshes(parts.Select(Part).ToArray(), true, true); return mesh; }
+            // a bow's string kept apart (the last submesh): the game draws it back to the nocked arrow (BowString)
+            var body = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 }; body.CombineMeshes(parts.Except(strings).Select(Part).ToArray(), true, true);
+            var str = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 }; str.CombineMeshes(strings.Select(Part).ToArray(), true, true);
+            mesh.CombineMeshes(new[] { new CombineInstance { mesh = body, transform = Matrix4x4.identity }, new CombineInstance { mesh = str, transform = Matrix4x4.identity } }, false, true);
             return mesh;
         }
 
@@ -294,7 +300,9 @@ namespace FH.Game
             var n = src.normals; var outN = new Vector3[n.Length];
             for (int i = 0; i < n.Length; i++) outN[i] = rot * n[i];
             var mesh = new Mesh { name = old.name + " (" + src.name + ")", indexFormat = src.indexFormat };
-            mesh.vertices = outV; mesh.normals = outN; mesh.uv = src.uv; mesh.triangles = src.triangles;
+            mesh.vertices = outV; mesh.normals = outN; mesh.uv = src.uv;
+            mesh.subMeshCount = src.subMeshCount;
+            for (int sm = 0; sm < src.subMeshCount; sm++) mesh.SetTriangles(src.GetTriangles(sm), sm);
             mesh.RecalculateBounds();
             return mesh;
         }

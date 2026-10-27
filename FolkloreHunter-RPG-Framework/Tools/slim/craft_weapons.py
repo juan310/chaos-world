@@ -60,18 +60,23 @@ def tube(bm, pts, radii, swatch, sides=10, flat=1.0, twist_up=Vector((0, 1, 0)))
         for l in f.loops: l[uv].uv = uv_of(swatch)
 
 
-def save(bm, name):
-    me = bpy.data.meshes.new(name); bm.normal_update(); bm.to_mesh(me); bm.free()
-    for p in me.polygons: p.use_smooth = True
-    o = bpy.data.objects.new(name, me); bpy.context.scene.collection.objects.link(o)
+def save(bm, name, extra=None):
+    objs = []
     mat = bpy.data.materials.new(name)
-    me.materials.append(mat)
-    bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
+    for nm, b in [(name, bm)] + list((extra or {}).items()):
+        me = bpy.data.meshes.new(nm); b.normal_update(); b.to_mesh(me); b.free()
+        for p in me.polygons: p.use_smooth = True
+        o = bpy.data.objects.new(nm, me); bpy.context.scene.collection.objects.link(o)
+        me.materials.append(mat); objs.append(o)
+    o = objs[0]; me = o.data
+    bpy.ops.object.select_all(action='DESELECT')
+    for x in objs: x.select_set(True)
+    bpy.context.view_layer.objects.active = o
     bpy.ops.export_scene.fbx(filepath=str(out / (name + '.fbx')), use_selection=True, object_types={'MESH'},
                              apply_scale_options='FBX_SCALE_ALL', axis_forward='-Z', axis_up='Y', bake_anim=False)
     palette(out / (name + '_texture.png'))
-    print('CRAFTED', name, len(me.vertices), 'verts', flush=True)
-    bpy.data.objects.remove(o)
+    print('CRAFTED', name, len(me.vertices), 'verts', ', '.join(x.name for x in objs), flush=True)
+    for x in objs: bpy.data.objects.remove(x)
 
 
 def bow():
@@ -95,8 +100,9 @@ def bow():
     for z in (-.12, .12):
         tube(bm, [Vector((0, 0, z - .012)), Vector((0, 0, z + .012))], [.038, .038], 'wood_dark', sides=10)
     t1, t2 = Vector((-.055, 0, L - .005)), Vector((-.055, 0, -L + .005))
-    tube(bm, [t2, t1], [.0035, .0035], 'string', sides=6)
-    save(bm, 'Weapon_Bow')
+    sb = bmesh.new()                        # the string is its own part: the game draws it back to the nocked arrow
+    tube(sb, [t2, t1], [.0035, .0035], 'string', sides=6)
+    save(bm, 'Weapon_Bow', extra={'Weapon_Bow_String': sb})
 
 
 def katana():
