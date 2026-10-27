@@ -11,6 +11,5 @@
   <ItemGroup>
     <Compile Include="..\..\WorldForge\**\*.cs" />
     <Reference Include="$(UnityManaged)\UnityEngine\*.dll" Private="false" />
-    <Reference Include="$(UnityManaged)\UnityEditor.dll" Condition="Exists('$(UnityManaged)\UnityEditor.dll')" Private="false" />
   </ItemGroup>
 </Project>
