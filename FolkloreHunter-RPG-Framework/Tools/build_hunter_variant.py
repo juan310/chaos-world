@@ -32,6 +32,12 @@ preview.mkdir(parents=True, exist_ok=True)
 report = {'name': NAME, 'job': str(JOB)}
 
 rig = bpy.data.objects['Rig']
+# Measure and fit against the rig's rest pose, whatever pose Hunter.blend was saved in (the export leaves the last clip it
+# authored on the rig: with the 0.9 archer's stance that was a crouch, and the body came out short).
+rig.animation_data_create(); rig.animation_data.action = None
+for pb in rig.pose.bones:
+    pb.matrix_basis = Matrix.Identity(4)
+bpy.context.view_layer.update()
 kb = {b.name: b for b in rig.data.bones}
 old_meshes = [o for o in bpy.data.objects if o.type == 'MESH' and (MONSTER or o.name.startswith('Knight_'))]
 weapons = [o for o in bpy.data.objects if o.type == 'MESH' and o not in old_meshes]
