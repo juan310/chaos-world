@@ -233,19 +233,25 @@ namespace FH.UI
                 "    sprinting away from a monster: dive (long, very safe, then a moment to get up)   Sprint Shift, RT (sheathes)   Sheathe X\n" +
                 "    Evade at the last moment (the blow lands right as you press): perfect evade, time slows and stamina comes back\n" +
                 "    Items 1-4, LB (D-pad picks)   Whistle G, D-pad up\n" +
+                "    <b>Wounds</b>: keep striking one spot and a wound opens (red glow). Hold LT / Left Alt (weapon out): Hunter's Sight shows\n" +
+                "    them bright; Y in Sight is your weapon's <b>Rend</b>: it leaps to the wound and tears it (big damage, the monster flinches,\n" +
+                "    +1 Resolve: more damage, quicker stamina). Every third wound torn in a fight topples the monster. Tap LT for the spell.\n" +
                 "<b>Sword and shield</b>  Light LMB, Y (slash, slash, overhead; forward: lunge)   Heavy RMB, B (hold: charge, level 2 spins)\n" +
                 "    Y+B shield bash (stun)   Guard Ctrl, RB (perfect guard, then light: counter)   light right after a roll: roll slash\n" +
+                "    Back-step then Y: Leaping Slash, then Y Thorn Rush I, II, III and the Shield Crash; press as the blade glints: perfect\n" +
+                "    Perfect guards fill the clash meter (sword and shield, lance): the next guarded blow is a POWER CLASH, mash Y to win\n" +
                 "<b>Lance</b>  Y mid thrust, B high thrust (mix up to three)   Y+B wide sweep   A hop (three in a row, the last is long)\n" +
                 "    Guard RB (wide, little chip)  then Y guard thrust (stick: guard dash), B counter stance (a blocked blow: Retribution Thrust),\n" +
                 "    Y+B dash attack (Y during it: finishing thrust)\n" +
                 "<b>Bow</b>  Hold Y to draw (three charge levels), release to shoot; quick follow-up shots rise a level   A charging sidestep (+1 level)\n" +
                 "    B after a shot: power shot   B: arc shot (arrows rain on the target)   Y+B Dragon Piercer   RB aim over the shoulder\n" +
+                "    Its Rend is the Thorn Tracer: the arrow stays in; your arrows bend toward it and the eighth one bursts it\n" +
                 "<b>Katana</b> (two-handed)  Y overhead, B thrust, then rising slash   Y+B fade slash (back; stick to the side: lateral fade)\n" +
                 "    RB Spirit Blade I, II, III, then Spirit Roundslash: a landed roundslash raises the spirit level (white, yellow, red)\n" +
                 "    Hits fill the spirit gauge; spirit moves spend it. RB+B Foresight Slash: step back, a blow caught in it is countered\n" +
                 "    RB+A iai stance: Y Iai Slash (the gauge refills itself), RB Iai Spirit Slash (a blow in its windup is countered: level up)\n\n" +
                 "<color=#f5d68c>Hunting tips</color>  Watch the raised weapon, red eyes and warning ring; roll through the blow, then punish.\n" +
-                "Orange numbers mean a soft hitzone. Shield bashes and overheads build stun: a toppled monster is wide open.", 19);
+                "Orange numbers mean a soft hitzone. Shield bashes and overheads build stun: a toppled monster is wide open.", 17);
             UiKit.Button(col, "Back", () => Ui.Close(this));
         }
     }

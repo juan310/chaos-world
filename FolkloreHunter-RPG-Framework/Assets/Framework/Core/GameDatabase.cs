@@ -145,7 +145,8 @@ namespace FH.Core
                 foreach (var opener in new[] { set.light, set.heavy, set.lightHeavy, set.forwardLight, set.drawAttack, set.rollAttack, set.counter,
                                                set.guardAttack, set.guardDash, set.counterRelease, set.retribution, set.dashAttack, set.dashFinisher,
                                                set.shot, set.chargedShot, set.powerShot, set.arcShot, set.dragonPiercer, set.spirit,
-                                               set.foresightCounter, set.foresightSlash, set.iaiSlash, set.iaiSpiritSlash, set.lateralFade })
+                                               set.foresightCounter, set.foresightSlash, set.iaiSlash, set.iaiSpiritSlash, set.lateralFade,
+                                               set.backstepAttack, set.rend, set.clashFinisher })
                     if (!string.IsNullOrEmpty(opener) && !ids.Contains(opener)) Errors.Add("Hunt moveset " + set.id + " opener '" + opener + "' is not one of its moves");
                 foreach (var mv in set.moves)
                 {
@@ -167,6 +168,10 @@ namespace FH.Core
                 }
                 if (wc == WeaponClass.Katana && (set.Move(set.spirit) == null || set.Move(set.foresightCounter) == null || set.Move(set.iaiSpiritSlash) == null || !set.moves.Any(m => m.spiritLevelUp)))
                     Errors.Add("Hunt moveset " + set.id + " (katana) needs a spirit opener, foresight counter, iai spirit slash and a level-up move");
+                if (!string.IsNullOrEmpty(set.rend) && set.Move(set.rend) != null && !set.Move(set.rend).rend) Errors.Add("Hunt moveset " + set.id + " rend move '" + set.rend + "' does not tear wounds (rend: true)");
+                if (set.clash && set.Move(set.clashFinisher) == null) Errors.Add("Hunt moveset " + set.id + " has the power clash but no clash finisher");
+                foreach (var mv in set.moves)
+                    if (mv.perfectBonus > 0 && !(mv.perfectFrom >= 0 && mv.perfectTo > mv.perfectFrom && mv.perfectTo <= 1)) Errors.Add("Hunt move " + set.id + "." + mv.id + " has an invalid perfect-link window");
                 if (set.weapon != null && set.weapon.baseDamage <= 0) Errors.Add("Hunt moveset " + set.id + " weapon needs base damage");
                 foreach (var mv in set.moves)
                     if (mv.shot != null && (mv.shot.arrows < 1 || mv.shot.speed <= 0)) Errors.Add("Hunt move " + set.id + "." + mv.id + " has an invalid shot");

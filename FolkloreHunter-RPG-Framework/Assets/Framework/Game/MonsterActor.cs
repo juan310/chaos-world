@@ -26,6 +26,8 @@ namespace FH.Game
         public bool Unkillable;
         public float HitstopUntil;
         public MonsterReactions Reactions { get; private set; }
+        /// <summary>Hunt rules: wounds opened by repeated blows on one spot, torn by Rend strikes.</summary>
+        public MonsterWounds Wounds { get; private set; }
         /// <summary>Hunt rules: 1 normal, 2 enraged, 3 desperate (HuntBoss).</summary>
         public int Phase { get; private set; } = 1;
         public int MaxPhase { get; private set; } = 1;
@@ -179,6 +181,9 @@ namespace FH.Game
             Brain.Health = hunt.maxHealth * frac;
             Brain.ModeChanged += OnMode;
             Reactions = new MonsterReactions(hunt);
+            Wounds = GetComponent<MonsterWounds>();
+            if (!Wounds) Wounds = gameObject.AddComponent<MonsterWounds>();
+            Wounds.Initialize(session, this);
             bossRng = new System.Random(InstanceKey.GetHashCode());
             Brain.Chooser = s => HuntBoss.Choose(Def.attacks, new BossSituation { Distance = s.distanceToPlayer, Angle = s.angleToPlayer, Phase = Phase, HunterHealing = s.playerHealing, Last = LastAttackId }, bossRng, Brain.AttackFilter);
             Brain.FollowUp = done => HuntBoss.FollowUp(Def.attacks, done, Phase, bossRng);
@@ -426,6 +431,13 @@ namespace FH.Game
             var part = box ? Parts.Resolve(box.Parts) : null;
             bool partBroken = part != null && Parts.Broken.Contains(part.id);
             var hit = computeHit(part, partBroken);
+            bool tore = false;
+            if (HuntRules && Wounds && box)
+            {
+                float k = Wounds.Scale(box, PendingRend, out tore);
+                if (k != 1) hit.Damage = Mathf.Max(1, Mathf.Round(hit.Damage * k));
+            }
+            PendingRend = false;
             if (part != null && Parts.Damage(part.id, hit.Damage)) BreakPart(part);
             if (!string.IsNullOrEmpty(statusId) && session.Core.Db.Statuses.TryGetValue(statusId, out var st)) Brain.Status.Add(st, statusBuildup);
             if (Unkillable && Brain.Health - hit.Damage <= 1) Brain.Health = Def.maxHealth;
@@ -438,7 +450,9 @@ namespace FH.Game
             WorldKit.Sound(point, "hit", soft ? .4f : .25f);
             WorldKit.DamageNumber(point + Vector3.up * .3f, hit.Damage, soft, hit.Critical);
             LastHitZone = zone;
+            LastHitTore = tore;
             if (HuntRules && !killed) HuntReact(hit);
+            if (HuntRules && !killed && Wounds && box) Wounds.Landed(box, point, hit.Damage, tore);
             if (Brain.Mode != MonsterMode.Stagger && !killed && Brain.Mode != MonsterMode.Telegraph && Brain.Mode != MonsterMode.Attack)
                 Anim.Play("Hit_A", false, 1.4f, true, .05f);
             session.OnMonsterHit(this, hit, part);
@@ -448,6 +462,10 @@ namespace FH.Game
         public float LastHitZone { get; private set; } = 1;
         /// <summary>Stun dealt by the blow being resolved (set by the hunter's move just before the hit lands).</summary>
         public float PendingStun;
+        /// <summary>The blow being resolved is a Rend strike (set by the hunter's move just before the hit lands).</summary>
+        public bool PendingRend;
+        /// <summary>The last blow tore a wound.</summary>
+        public bool LastHitTore { get; private set; }
 
         void HuntReact(HitInfo hit)
         {
@@ -537,6 +555,7 @@ namespace FH.Game
             if (!Ready) return;
             cc.enabled = false; transform.position = Home; cc.enabled = true;
             Brain.Health = Def.maxHealth;
+            if (Wounds) Wounds.Clear();
             Calm(2);
         }
     }

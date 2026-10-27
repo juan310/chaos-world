@@ -60,6 +60,24 @@ namespace FH.Game
         public EvadeKind LastEvade { get; private set; }
         public int Evades { get; private set; }
         public bool Recovering => Time.time < recoverUntil;
+        // 0.9 (after Monster Hunter Wilds, this game's own way): Hunter's Sight and Rend strikes on wounds, Resolve,
+        // the sword and shield's Thorn Rush, the shield weapons' power clash, the bow's Thorn Tracer.
+        public bool Sight { get; private set; }
+        public HunterResolve Resolve { get; } = new HunterResolve();
+        public int Rends { get; private set; }
+        public int WoundsTorn { get; private set; }
+        public int PerfectLinks { get; private set; }
+        public int Glints { get; private set; }
+        public RushTiming.Link LastLink { get; private set; }
+        /// <summary>The current Thorn Rush move's glint is showing: a press now is a perfect link.</summary>
+        public bool Glinting => Current != null && RushTiming.InWindow(Current, H.Attack.Normalized);
+        public ClashMeter ClashGauge { get; } = new ClashMeter();
+        public ClashBout Clash { get; private set; }
+        public bool Clashing => Clash != null;
+        public int ClashesWon { get; private set; }
+        public int ClashesLost { get; private set; }
+        public TracerMark Tracer { get; } = new TracerMark();
+        public int TracersPlanted { get; private set; }
 
         HunterController H;
         GameSession S;
@@ -76,7 +94,11 @@ namespace FH.Game
         int buffedSwing = -1, levelledSwing = -1, moveSerial;
         Transform chest, arrowTemplate, quiver, nocked, katanaGlow;
         Renderer glowRenderer; int shownGlow = -1; bool katanaScaled;
-        const float SimultaneousWindow = .07f, BufferLife = .5f;
+        const float SimultaneousWindow = .07f, BufferLife = .5f, SightHold = .22f;
+        float spellHeldAt = -1, rendQueuedAt = -1, rendAimUntil = -1;
+        Vector3 rendAim; MonsterActor rendTarget;
+        int rushPressSerial = -1, glintSerial = -1; float rushPressNorm;
+        MonsterActor clashMonster, tracerMonster; Hurtbox tracerBox; Vector3 tracerLocal; GameObject tracerOrb;
 
         /// <summary>A weapon's two pieces (main hand, off hand or back piece) and where each sits in hand and on the back.</summary>
         class Piece { public Transform t, hand; public Vector3 handPos, backPos; public Quaternion handRot, backRot; public bool onBackAlways; }
@@ -151,6 +173,8 @@ namespace FH.Game
         {
             Guarding = Charging = CounterStance = Aiming = IaiStance = false;
             bow?.CancelDraw();
+            EndClash();
+            SetSight(false); spellHeldAt = rendQueuedAt = -1;
             buffered = HuntInput.None; pendingLight = pendingHeavy = pendingSpirit = foresightAt = -1;
             if (S && S.CameraRig) S.CameraRig.Aiming = false;
         }
@@ -180,20 +204,20 @@ namespace FH.Game
 
         // ---------------- state the controller asks about ----------------
         /// <summary>Movement locked: charging, counter stance, knocked down, getting up, staggering, or sheathing.</summary>
-        public bool Locked => Charging || CounterStance || IaiStance || Time.time < reactionUntil || Downed || Time.time < getUpUntil || Time.time < recoverUntil;
+        public bool Locked => Charging || CounterStance || IaiStance || Clashing || Time.time < reactionUntil || Downed || Time.time < getUpUntil || Time.time < recoverUntil;
         public float SpeedScale => Guarding ? .3f : Drawing || Aiming ? .45f : Sheathed ? 1f : Set.drawnSpeed;
         public bool KeepFacing => H.LockTarget && H.LockTarget.Alive;
         /// <summary>A hop, sidestep, side slide, back-step or dive is under way: the hunter does not turn with the stick.</summary>
         public bool StepDodging => dodgeEndAt > 0 && H.Dodging;
         /// <summary>Guarding (raised shield), charging, the counter stance and the bow's draw own the idle pose.</summary>
-        public bool OwnsIdlePose => Guarding || Charging || CounterStance || IaiStance || Drawing || Aiming || Downed || Time.time < getUpUntil || Time.time < recoverUntil;
+        public bool OwnsIdlePose => Guarding || Charging || CounterStance || IaiStance || Clashing || Drawing || Aiming || Downed || Time.time < getUpUntil || Time.time < recoverUntil;
 
         /// <summary>Locked on and drawn, or aiming / drawing the bow: the hunter faces the target or the aim while moving.</summary>
         public bool FacesTarget(out Vector3 dir)
         {
             dir = Vector3.zero;
             if (Sheathed || H.Dodging || H.Attack.Committed || Locked) return false;
-            if (Aiming) { dir = Flat(S.CameraRig.Camera.transform.forward); return dir.sqrMagnitude > .01f; }
+            if (Aiming || Sight && !KeepFacing) { dir = Flat(S.CameraRig.Camera.transform.forward); return dir.sqrMagnitude > .01f; }
             if (!KeepFacing) return false;
             dir = H.LockTarget.transform.position - H.transform.position; dir.y = 0;
             return dir.sqrMagnitude > .01f;
@@ -205,7 +229,7 @@ namespace FH.Game
             clip = null; natural = 0;
             if (Guarding) { clip = "Blocking"; return true; }
             if ((Drawing || Aiming) && !Sheathed) { clip = "Bow_Aim_Walk"; natural = 1.2f; return true; }
-            if (!KeepFacing || Sheathed) return false;
+            if (!KeepFacing && !Sight || Sheathed) return false;
             float side = Vector3.Dot(dir, H.transform.right), front = Vector3.Dot(dir, H.transform.forward);
             if (front > Mathf.Abs(side)) return false;            // mostly forward: the normal walk/run
             if (front < -Mathf.Abs(side)) { clip = "Walking_Backwards"; natural = 1.1f; return true; }
@@ -217,14 +241,15 @@ namespace FH.Game
         public void HandleInput(Vector3 dir)
         {
             float now = Time.time;
-            if (H.Dead) { Guarding = Charging = CounterStance = IaiStance = false; bow?.CancelDraw(); SetAim(false); return; }
+            if (H.Dead) { Guarding = Charging = CounterStance = IaiStance = false; bow?.CancelDraw(); SetAim(false); EndClash(); SetSight(false); return; }
             Spirit?.Tick(now, Time.deltaTime);
             UpdateWeaponVisuals(now);
             if (InputRouter.Down(GameAction.LockOn)) H.ToggleLock();
             if (InputRouter.Down(GameAction.CycleSpell)) H.CycleSpell();
             if (InputRouter.Down(GameAction.Whistle) && S.Hound) S.Hound.Call();
-            if (InputRouter.Down(GameAction.Spell) && !Locked && !H.Attack.Running && !Drawing) H.TryCast();
+            HandleSight(now);
             HandleItems();
+            H.Stamina.Regen = H.Stats[Stat.StaminaRegen] * Resolve.RegenMultiplier(now);
 
             // Knocked down: lie there; a roll after half a second is a wake-up roll (invulnerable on the way up).
             if (Downed)
@@ -234,6 +259,7 @@ namespace FH.Game
                 if (InputRouter.Down(GameAction.Dodge) && now - downStart > .5f && H.Roll(dir, false)) { downUntil = 0; H.InvulnerableFor(.45f); LastEvent = "wake-up roll"; }
                 return;
             }
+            if (Clashing) { UpdateClash(now); return; }
             if (getUpUntil > 0 && now >= getUpUntil) getUpUntil = 0;
             if (sheatheDoneAt > 0 && now >= sheatheDoneAt) { sheatheDoneAt = -1; SetSheathed(true); }
             if (dodgeEndAt > 0 && !H.Dodging) { dodges.Ended(now); dodgeEndAt = -1; EvadeEnded(dir, now); }
@@ -252,9 +278,13 @@ namespace FH.Game
             // the move allows it.
             if (InputRouter.Down(GameAction.Dodge) && !skipDodge) TryDodge(dir, now);
 
-            // B then Y inside the window: the charge (or lance counter stance) that B just began becomes the Y+B special.
+            // Hunter's Sight: Y is the weapon's Rend strike (kept for a moment until the hunter can act).
             bool swapped = false;
-            if (Class != WeaponClass.Bow && instantAt > 0 && instantInput == HuntInput.Heavy && now - instantAt <= SimultaneousWindow
+            if (Sight && InputRouter.Down(GameAction.Attack) && Set.Move(Set.rend) != null) { rendQueuedAt = now; swapped = true; pendingLight = -1; }
+            if (rendQueuedAt >= 0 && (TryRend(dir, now) || now - rendQueuedAt > BufferLife)) rendQueuedAt = -1;
+
+            // B then Y inside the window: the charge (or lance counter stance) that B just began becomes the Y+B special.
+            if (!swapped && Class != WeaponClass.Bow && instantAt > 0 && instantInput == HuntInput.Heavy && now - instantAt <= SimultaneousWindow
                 && InputRouter.Down(GameAction.Attack) && ((Charging && chargeStart >= instantAt) || (CounterStance && counterStart >= instantAt)))
             {
                 Charging = false; CounterStance = false; Guarding = instantGuarding;
@@ -271,14 +301,19 @@ namespace FH.Game
             // still winding up, it becomes the special instead. The bow still waits the window: its tap or hold decides
             // a quick shot or a draw.
             bool instant = Class != WeaponClass.Bow;
-            if (instant && instantAt > 0 && now - instantAt <= SimultaneousWindow
+            if (instant && !swapped && instantAt > 0 && now - instantAt <= SimultaneousWindow
                 && (instantInput == HuntInput.Heavy ? InputRouter.Down(GameAction.Attack) : InputRouter.Down(GameAction.HeavyAttack) && !skipHeavy))
             {
                 instantAt = -1; pendingLight = pendingHeavy = -1;
                 if (buffered == instantInput || buffered == HuntInput.ForwardLight && instantInput == HuntInput.Light) Queue(HuntInput.LightHeavy);
                 else if (moveSerial == instantSerial + 1 && H.Attack.Running && H.Attack.Phase == AttackPhase.Windup) SwapToSpecial(dir);
             }
-            if (InputRouter.Down(GameAction.Attack) && pendingLight < 0 && !swapped) pendingLight = now;
+            if (InputRouter.Down(GameAction.Attack) && pendingLight < 0 && !swapped)
+            {
+                pendingLight = now;
+                // Thorn Rush: when the press came (the glint), judged as the next move starts.
+                if (Current != null && RushTiming.HasWindow(Current)) { rushPressSerial = moveSerial; rushPressNorm = H.Attack.Normalized; }
+            }
             if (InputRouter.Down(GameAction.HeavyAttack) && pendingHeavy < 0 && !skipHeavy) pendingHeavy = now;
             if (pendingLight >= 0 && pendingHeavy >= 0) { Queue(HuntInput.LightHeavy); pendingLight = pendingHeavy = -1; instantAt = -1; }
             else if (pendingLight >= 0 && (instant || now - pendingLight >= SimultaneousWindow))
@@ -426,8 +461,27 @@ namespace FH.Game
                 if (!HuntRoutes.CanChain(cur, H.Attack.Normalized)) return;     // keep it buffered until the chain window
                 next = HuntRoutes.Next(Set, cur, buffered);
                 if (next == null) { if (H.Attack.Running) return; next = HuntRoutes.Opener(Set, buffered, Sheathed, 99, 99); }
+                else if ((buffered == HuntInput.Light || buffered == HuntInput.ForwardLight) && next.id == cur.onLight && RushTiming.HasWindow(cur))
+                {
+                    LastLink = rushPressSerial == moveSerial ? RushTiming.Judge(cur, rushPressNorm) : RushTiming.Link.Plain;
+                    if (LastLink == RushTiming.Link.Perfect)
+                    {
+                        next = RushTiming.Perfect(next, cur.perfectBonus);
+                        PerfectLinks++;
+                        WorldKit.Burst(H.BladeTip, new Color(1f, .78f, .3f), 18);
+                        WorldKit.Sound(H.transform.position, "chime", .3f);
+                        GamePad.Rumble(.3f, .6f, .1f);
+                        S.Hud?.Flash("Perfect Rush!");
+                    }
+                }
+                rushPressSerial = -1;
             }
-            else next = HuntRoutes.Opener(Set, buffered, Sheathed, Time.time - lastRollEnd, Time.time - lastPerfectGuard);
+            else
+            {
+                // A back-step (sword and shield) opens the Leaping Slash, the start of the Thorn Rush.
+                float sinceBackstep = LastEvade == EvadeKind.Backstep && foresightAt < 0 ? Time.time - lastRollEnd : 99;
+                next = HuntRoutes.Opener(Set, buffered, Sheathed, Time.time - lastRollEnd, Time.time - lastPerfectGuard, sinceBackstep);
+            }
             var input = buffered;
             buffered = HuntInput.None;
             if (next == null) return;
@@ -486,6 +540,8 @@ namespace FH.Game
             if (Aiming) aim = Flat(S.CameraRig.Camera.transform.forward);
             if (aim.sqrMagnitude > .01f) H.transform.rotation = Quaternion.LookRotation(aim);
             if (Spirit != null) move = SpiritMove(move);
+            float resolve = Resolve.DamageMultiplier(Time.time);
+            if (move != null && resolve > 1) { move = move.Clone(); move.damageMultiplier *= resolve; }
             if (H.StartMove(move)) { moveSerial++; moveStartedAt = Time.time; LastMove = move.name ?? move.id; LastEvent = LastMove + (spiritShort ? " (gauge short)" : ""); }
         }
 
@@ -615,6 +671,15 @@ namespace FH.Game
         /// shows while the bow is out and drawn, and leaves the string for a moment after each shot.</summary>
         void UpdateWeaponVisuals(float now)
         {
+            // Thorn Rush: the blade glints as the perfect moment for the next press comes.
+            if (Glinting && glintSerial != moveSerial)
+            {
+                glintSerial = moveSerial; Glints++;
+                WorldKit.Burst(H.BladeTip, new Color(1f, .95f, .65f), 12);
+                WorldKit.Sound(H.transform.position, "chime", .12f);
+                GamePad.Rumble(.05f, .15f, .05f);
+            }
+            if (tracerOrb && !TracerPoint(out _)) Destroy(tracerOrb);
             if (glowRenderer)
             {
                 int want = Class != WeaponClass.Katana ? -2 : Sheathed ? -1 : Spirit.Level;
@@ -735,6 +800,7 @@ namespace FH.Game
         /// ahead's) aim point, else straight ahead.</summary>
         Vector3 ShotTarget(Vector3 origin, out MonsterActor target)
         {
+            if (Current != null && Current.rend && Time.time < rendAimUntil) { target = rendTarget; return rendAim; }
             if (Aiming) return AimPoint(out target);
             target = H.LockTarget && H.LockTarget.Alive ? H.LockTarget : S.NearestMonster(H.transform.position, 30, H.transform.forward, 40);
             if (target) return target.AimPoint ? target.AimPoint.position : target.transform.position + Vector3.up;
@@ -842,13 +908,20 @@ namespace FH.Game
             float since = guardPoint ? Time.time - moveStartedAt : Time.time - guardRaisedAt;
             var r = GuardMath.Resolve(Set, attack.damage, angle, since, H.Stamina.Current);
             if (!r.Blocked) return false;
+            // Power clash: with the meter full, the next blow the raised shield meets locks hunter and monster together.
+            if (Set.clash && ClashGauge.Ready && !guardPoint)
+            {
+                var foe = Attacker(attack);
+                if (foe) { BeginClash(foe); return true; }
+            }
             if (r.Perfect)
             {
                 lastPerfectGuard = Time.time;
+                if (Set.clash) ClashGauge.PerfectGuard();
                 WorldKit.Burst(spark, new Color(.6f, .9f, 1f), 18);
                 WorldKit.Sound(spark, "chime", .35f);
                 GamePad.Rumble(.3f, .7f, .1f);
-                S.Hud?.Flash("Perfect guard! Counter now");
+                S.Hud?.Flash(Set.clash ? (ClashGauge.Ready ? "Perfect guard! CLASH READY: guard the next blow" : "Perfect guard! Counter now  (clash " + ClashGauge.Perfects + "/" + ClashGauge.Need + ")") : "Perfect guard! Counter now");
                 H.HitstopUntil = Time.time + .06f;
                 LastEvent = "perfect guard";
                 return true;
@@ -872,6 +945,7 @@ namespace FH.Game
         public void React(HitReaction reaction, Vector3 away, float seconds = 0)
         {
             LastReaction = reaction;
+            EndClash();
             Charging = false; Guarding = false; CounterStance = false; IaiStance = false; foresightAt = -1; buffered = HuntInput.None;
             bow?.CancelDraw(); SetAim(false);
             H.CancelActions();
@@ -991,6 +1065,206 @@ namespace FH.Game
             S.CameraRig.Shake(move != null ? move.shake : .12f);
             float rumble = move != null ? move.rumble : .2f;
             GamePad.Rumble(rumble * .7f, rumble, stop + .08f);
+        }
+
+        // ---------------- Hunter's Sight and Rend (wounds) ----------------
+        /// <summary>LT / Q: sheathed it casts the spell at once; drawn, a tap casts it and holding it is Hunter's Sight.
+        /// Left Alt is Hunter's Sight alone.</summary>
+        void HandleSight(float now)
+        {
+            bool canCast = !Locked && !H.Attack.Running && !Drawing;
+            if (InputRouter.Down(GameAction.Spell))
+            {
+                if (Sheathed) { if (canCast) H.TryCast(); }
+                else spellHeldAt = now;
+            }
+            if (spellHeldAt >= 0 && !InputRouter.Held(GameAction.Spell))
+            {
+                if (now - spellHeldAt < SightHold && !Sight && canCast) H.TryCast();
+                spellHeldAt = -1;
+            }
+            bool want = !Sheathed && !H.Dead && (InputRouter.Held(GameAction.Sight) || spellHeldAt >= 0 && now - spellHeldAt >= SightHold);
+            SetSight(want);
+        }
+
+        void SetSight(bool on)
+        {
+            if (on == Sight) return;
+            Sight = on;
+            if (S && S.CameraRig) S.CameraRig.Sight = on;
+            if (on) LastEvent = "hunter's sight";
+        }
+
+        /// <summary>The Rend strike: aimed at the open wound nearest the centre of the view on the target (the locked
+        /// monster, else the nearest one ahead of the camera), closing up to the move's leap toward it. A Rend with no
+        /// wound to reach is a plain heavy blow.</summary>
+        bool TryRend(Vector3 dir, float now)
+        {
+            var move = Set.Move(Set.rend);
+            if (move == null) return true;
+            if (H.Dodging || H.Hurt || Downed || now < reactionUntil || now < getUpUntil || now < recoverUntil) return false;
+            var cur = Current;
+            if (cur != null && !HuntRoutes.CanRollCancel(cur, H.Attack.Normalized) && !HuntRoutes.CanChain(cur, H.Attack.Normalized)) return false;
+            Charging = CounterStance = IaiStance = Guarding = false;
+            if (Drawing) { bow.CancelDraw(); ChargeLevel = 0; }
+            if (Sheathed) Draw();
+            var cam = S.CameraRig.Camera.transform;
+            Vector3 camFwd = Flat(cam.forward).normalized;
+            float range = move.shot != null ? 30 : 10;
+            var target = H.LockTarget && H.LockTarget.Alive ? H.LockTarget : S.NearestMonster(H.transform.position, range, camFwd, 80) ?? S.NearestMonster(H.transform.position, range, H.transform.forward, 100);
+            bool onWound = false;
+            Vector3 aimAt = target ? target.AimPoint.position : H.transform.position + camFwd * 3 + Vector3.up;
+            if (target && target.Wounds)
+            {
+                float best = float.MaxValue;
+                foreach (var (box, at) in target.Wounds.OpenWounds())
+                {
+                    float score = Vector3.Angle(cam.forward, at - cam.position) + Vector3.Distance(H.transform.position, at) * 2;
+                    if (score < best) { best = score; aimAt = at; onWound = true; }
+                }
+            }
+            H.CancelActions();
+            var to = aimAt - H.transform.position; to.y = 0;
+            if (move.shot == null && move.rendLeap > 0 && to.sqrMagnitude > .01f)
+            {
+                // The swing reaches about 1.3 m: close the rest, up to the leap, during the windup.
+                float d = Mathf.Clamp(to.magnitude - 1.3f, 0, move.rendLeap);
+                if (d > .05f) H.Push(to.normalized * (2 * d / Mathf.Max(.1f, move.windup)), move.windup);
+            }
+            rendAim = aimAt; rendTarget = target; rendAimUntil = now + move.Total + .2f;
+            Execute(move, to.sqrMagnitude > .01f ? to.normalized : H.transform.forward);
+            Rends++;
+            WorldKit.Burst(H.transform.position + Vector3.up * 1.1f, new Color(1f, .3f, .12f), 10);
+            LastEvent = "rend" + (onWound ? " (at a wound)" : " (no wound)");
+            return true;
+        }
+
+        /// <summary>A Rend tore a wound on <paramref name="m"/>: Resolve rises, the katana's gauge fills by half.</summary>
+        public void WoundTorn(MonsterActor m, int tornInFight, bool unravelled)
+        {
+            float now = Time.time;
+            Resolve.Add(now); WoundsTorn++;
+            Spirit?.Hit(now, 50);
+            GamePad.Rumble(.7f, 1f, .2f);
+            H.HitstopUntil = Mathf.Max(H.HitstopUntil, now + .1f);
+            S.Hud?.Flash("Wound torn! Resolve " + Resolve.Stacks(now) + (unravelled ? "  UNRAVELLED" : ""));
+            LastEvent = "wound torn" + (unravelled ? " (unravelled)" : "");
+        }
+
+        // ---------------- power clash (sword and shield, lance) ----------------
+        /// <summary>The monster whose blow this is (the one swinging it, close by).</summary>
+        MonsterActor Attacker(MonsterAttackDef attack)
+        {
+            MonsterActor best = null; float bestD = 9;
+            foreach (var m in S.Monsters)
+            {
+                if (!m || !m.Alive || m.Brain.CurrentAttack != attack) continue;
+                float d = Vector3.Distance(m.transform.position, H.transform.position);
+                if (d < bestD) { bestD = d; best = m; }
+            }
+            return best;
+        }
+
+        void BeginClash(MonsterActor m)
+        {
+            float now = Time.time;
+            Clash = new ClashBout(ClashGauge.Begin()); clashMonster = m;
+            Guarding = false; buffered = HuntInput.None; pendingLight = pendingHeavy = -1;
+            H.CancelActions();
+            var to = m.transform.position - H.transform.position; to.y = 0;
+            if (to.sqrMagnitude > .01f) H.transform.rotation = Quaternion.LookRotation(to);
+            H.Anim.Play(H.Anim.Has("Hunt_Clash") ? "Hunt_Clash" : "Blocking", true, 1, true, .05f);
+            H.InvulnerableFor(ClashBout.Time + .3f);
+            m.HitstopUntil = now + ClashBout.Time + .2f;
+            Vector3 at = H.transform.position + Vector3.up * 1.1f + H.transform.forward * .7f;
+            WorldKit.Burst(at, new Color(1f, .85f, .4f), 30);
+            WorldKit.Sound(at, "hit", .6f);
+            S.CameraRig.Shake(.35f);
+            GamePad.Rumble(.8f, 1f, .25f);
+            S.Hud?.Flash("POWER CLASH! Mash Y  0/" + Clash.Target);
+            LastEvent = "power clash";
+        }
+
+        void UpdateClash(float now)
+        {
+            var m = clashMonster;
+            if (!m || !m.Alive) { EndClash(); return; }
+            m.HitstopUntil = Mathf.Max(m.HitstopUntil, now + .1f);
+            if (InputRouter.Down(GameAction.Attack) && Clash.Press() != ClashBout.State.Lost)
+            {
+                Vector3 at = H.transform.position + Vector3.up * 1.1f + H.transform.forward * .7f;
+                WorldKit.Burst(at, new Color(1f, .8f, .35f), 6 + Clash.Presses);
+                S.CameraRig.Shake(.08f);
+                GamePad.Rumble(.3f, .5f, .06f);
+                S.Hud?.Flash("POWER CLASH! Mash Y  " + Clash.Presses + "/" + Clash.Target);
+            }
+            var state = Clash.Result == ClashBout.State.Running ? Clash.Tick(Time.deltaTime) : Clash.Result;
+            if (state == ClashBout.State.Running) return;
+            var away = H.transform.position - m.transform.position; away.y = 0;
+            EndClash();
+            if (state == ClashBout.State.Won)
+            {
+                ClashesWon++;
+                m.Brain.Topple(3f);
+                S.Hud?.Notify("Clash won! " + m.DisplayName + " is thrown down!", NoticeKind.Reward);
+                Execute(Set.Move(Set.clashFinisher), -away.normalized);
+                LastEvent = "clash won";
+            }
+            else
+            {
+                ClashesLost++;
+                React(HitReaction.Knockback, away.normalized);
+                H.InvulnerableFor(.7f);
+                LastEvent = "clash lost";
+            }
+        }
+
+        void EndClash()
+        {
+            if (Clash == null) return;
+            Clash = null;
+            if (clashMonster) clashMonster.HitstopUntil = 0;
+            clashMonster = null;
+        }
+
+        // ---------------- bow: Thorn Tracer ----------------
+        public void PlantTracer(MonsterActor m, Hurtbox box, Vector3 at)
+        {
+            if (!m || !box) return;
+            Tracer.Plant(Time.time); TracersPlanted++;
+            tracerMonster = m; tracerBox = box; tracerLocal = box.transform.InverseTransformPoint(at);
+            if (tracerOrb) Destroy(tracerOrb);
+            tracerOrb = WorldKit.Orb("Thorn Tracer", at, .07f, WorldKit.Glow(new Color(.55f, 1f, .45f), 4), box.transform);
+            tracerOrb.layer = 2;
+            float k = Mathf.Max(1e-4f, box.transform.lossyScale.x);
+            tracerOrb.transform.localScale = Vector3.one * .16f / k;
+            S.Hud?.Flash("Thorn Tracer set: your arrows follow it (" + TracerMark.Needed + " to burst)");
+            LastEvent = "thorn tracer set";
+        }
+
+        public void TracerArrowLanded(MonsterActor m, Hurtbox box)
+        {
+            if (!m || m != tracerMonster || !Tracer.Active(Time.time)) return;
+            if (!Tracer.ArrowLanded(Time.time)) return;
+            Vector3 at = tracerBox ? tracerBox.transform.TransformPoint(tracerLocal) : m.AimPoint.position;
+            var burst = new AttackDef { id = "tracer_burst", damageMultiplier = TracerMark.BurstMotionValue, poiseMultiplier = 2 };
+            var w = H.CurrentWeapon;
+            if (m.Alive) m.ReceiveHit(tracerBox, at, (part, broken) => DamageMath.PlayerHit(w, burst, H.Stats, m.Def, part, broken, false));
+            WorldKit.Burst(at, new Color(.55f, 1f, .45f), 30);
+            WorldKit.Sound(at, "hit", .5f);
+            S.CameraRig.Shake(.25f);
+            if (tracerOrb) Destroy(tracerOrb);
+            S.Hud?.Flash("Thorn Tracer bursts!");
+            LastEvent = "tracer burst";
+        }
+
+        /// <summary>Where the planted tracer is, while it stands in a living monster.</summary>
+        public bool TracerPoint(out Vector3 at)
+        {
+            at = default;
+            if (!Tracer.Active(Time.time) || !tracerMonster || !tracerMonster.Alive || !tracerBox) return false;
+            at = tracerBox.transform.TransformPoint(tracerLocal);
+            return true;
         }
 
         // ---------------- items ----------------

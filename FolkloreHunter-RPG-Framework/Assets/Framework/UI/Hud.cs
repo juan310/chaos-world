@@ -14,7 +14,7 @@ namespace FH.UI
         readonly UiManager ui;
         readonly RectTransform root;
         Bar health, stamina, magic, target, spirit;
-        Text nameText, goldText, clockText, rankText, promptText, flashText, areaText, trackerText, targetName, targetParts, spellText;
+        Text nameText, goldText, clockText, rankText, promptText, flashText, areaText, trackerText, targetName, targetParts, spellText, huntText;
         Image staminaFill;
         RectTransform promptBox, targetBox, reticle, notices, areaBox;
         readonly List<(Text text, float until)> feed = new List<(Text, float)>();
@@ -52,6 +52,9 @@ namespace FH.UI
             // Katana spirit gauge (Proving Grounds): the fill takes the spirit level's colour.
             spirit = UiKit.Bar("Spirit gauge", vit.transform, new Color(.92f, .95f, 1f), new Vector2(300, 8)); spirit.Root.Box(new Vector2(0, 1), new Vector2(18, -118), new Vector2(300, 8));
             spirit.Root.gameObject.SetActive(false);
+            // Hunt combat: Hunter's Sight, Resolve stacks, the power clash meter and the Thorn Tracer, under the vitals.
+            huntText = UiKit.Label("Hunt state", root, "", 17, UiKit.Text, TextAnchor.UpperLeft);
+            huntText.rectTransform.Box(new Vector2(0, 1), new Vector2(30, -164), new Vector2(520, 26));
 
             // Status, top-right.
             var st = UiKit.Panel("Status", root);
@@ -168,6 +171,18 @@ namespace FH.UI
                        : "WASD move   Shift run   LMB attack   Space dodge   Q spell   Tab lock-on   E interact   1-4 items   I pack   J hunts   K hunter   M map   Esc menu";
         }
 
+        static string HuntLine(HuntFighter f)
+        {
+            float now = Time.time;
+            var sb = new System.Text.StringBuilder();
+            if (f.Sight) sb.Append("<color=#ff6a4a><b>SIGHT</b></color>  Y: Rend   ");
+            int r = f.Resolve.Stacks(now);
+            if (r > 0) sb.Append("<color=#f5d68c>Resolve ").Append(r).Append('/').Append(HunterResolve.Max).Append("  ").Append(f.Resolve.Remaining(now).ToString("0")).Append("s</color>   ");
+            if (f.Set != null && f.Set.clash) sb.Append(f.ClashGauge.Ready ? "<color=#ffd257><b>CLASH READY</b></color>   " : "Clash " + f.ClashGauge.Perfects + "/" + f.ClashGauge.Need + "   ");
+            if (f.Tracer.Active(now)) sb.Append("<color=#9cff8a>Tracer ").Append(f.Tracer.Hits).Append('/').Append(TracerMark.Needed).Append("</color>");
+            return sb.ToString();
+        }
+
         public void Tick(float dt)
         {
             if (!root.gameObject.activeSelf || S.Mode != SessionMode.Playing) return;
@@ -187,6 +202,7 @@ namespace FH.UI
                 spirit.Set(f.Spirit.Value / FH.Core.SpiritGauge.Max, dt);
                 spirit.FillImage.color = f.SpiritLevel >= 3 ? new Color(1f, .25f, .15f) : f.SpiritLevel == 2 ? new Color(1f, .82f, .25f) : f.SpiritLevel == 1 ? new Color(.95f, .97f, 1f) : new Color(.6f, .7f, .85f);
             }
+            huntText.text = f ? HuntLine(f) : "";
             goldText.text = c.State.gold + " gold";
             rankText.text = c.Progression.Rank.name + "  ·  " + (c.Db.Areas.TryGetValue(S.CurrentArea, out var a) ? a.name : "");
             clockText.text = c.Clock.Label + (c.Clock.IsNight ? "  ·  Night" : "");

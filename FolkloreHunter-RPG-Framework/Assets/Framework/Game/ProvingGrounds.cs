@@ -236,6 +236,18 @@ namespace FH.Game
                   .Append(r.Enraged ? "  <color=#f66>ENRAGED</color>" : "").Append(r.Topples > 0 ? "  toppled x" + r.Topples : "")
                   .Append(m.HuntRules ? "  phase " + m.Phase + (m.Phase == 3 ? " <color=#f66>DESPERATE</color>" : "") + "  last attack " + m.LastAttackId + "  areas live " + MonsterAoe.Active.Count : "").Append('\n');
             }
+            var hf = S.Hunter.Hunt;
+            if (hf && hf.enabled)
+            {
+                sb.Append("Wounds ");
+                if (m && m.Wounds) sb.Append("open ").Append(m.Wounds.Tracker.OpenCount(Time.time)).Append(" (opened ").Append(m.Wounds.Opened).Append(", torn ").Append(m.Wounds.Torn).Append(")  ");
+                sb.Append(hf.Sight ? "<color=#f66>SIGHT</color>  " : "").Append("rends ").Append(hf.Rends).Append("  torn by you ").Append(hf.WoundsTorn)
+                  .Append("  Resolve ").Append(hf.Resolve.Stacks(Time.time))
+                  .Append("  rush: glints ").Append(hf.Glints).Append(", perfect links ").Append(hf.PerfectLinks).Append(" (last ").Append(hf.LastLink).Append(')')
+                  .Append("  clash ").Append(hf.ClashGauge.Perfects).Append('/').Append(hf.ClashGauge.Need).Append(hf.Clashing ? " <color=#ffd257>CLASHING " + hf.Clash.Presses + "/" + hf.Clash.Target + "</color>" : "")
+                  .Append(" won ").Append(hf.ClashesWon).Append(" lost ").Append(hf.ClashesLost)
+                  .Append("  tracer ").Append(hf.Tracer.Active(Time.time) ? hf.Tracer.Hits + "/" + TracerMark.Needed : "-").Append(" bursts ").Append(hf.Tracer.Bursts).Append('\n');
+            }
             if (S.InRange)
             {
                 sb.Append("Targets ");

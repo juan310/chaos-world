@@ -12,7 +12,9 @@ namespace FH.Game
         public bool Manual;               // menus and reviews position the camera themselves
         /// <summary>Bow aim: close over the right shoulder, the centre of the screen is where arrows go.</summary>
         public bool Aiming;
-        float aimBlend;
+        /// <summary>Hunter's Sight: the camera closes in a little (wounds read better) and frames the target.</summary>
+        public bool Sight;
+        float aimBlend, sightBlend;
         Vector3 target;
         float shake;
 
@@ -35,6 +37,7 @@ namespace FH.Game
             var session = GameSession.I;
             var hunter = session ? session.Hunter : null;
             aimBlend = Mathf.MoveTowards(aimBlend, Aiming ? 1 : 0, Time.unscaledDeltaTime * 5);
+            sightBlend = Mathf.MoveTowards(sightBlend, Sight && !Aiming ? 1 : 0, Time.unscaledDeltaTime * 4);
             if (Aiming) Pitch = Mathf.Clamp(Pitch, -10, 45);
             Vector3 desired = Follow.position + Vector3.up * 1.2f;
             if (aimBlend > 0)
@@ -63,7 +66,7 @@ namespace FH.Game
         {
             float y = Yaw * Mathf.Deg2Rad, p = Pitch * Mathf.Deg2Rad;
             Vector3 dir = new Vector3(Mathf.Sin(y) * Mathf.Cos(p), Mathf.Sin(p), -Mathf.Cos(y) * Mathf.Cos(p));
-            float d = Mathf.Lerp(Distance, 2.6f, aimBlend);
+            float d = Mathf.Lerp(Mathf.Lerp(Distance, Distance * .7f, sightBlend), 2.6f, aimBlend);
             if (Physics.SphereCast(target, .3f, dir, out var hit, d, Layers.WorldMask, QueryTriggerInteraction.Ignore))
                 d = Mathf.Max(1.5f, hit.distance - .2f);
             Vector3 pos = target + dir * d;

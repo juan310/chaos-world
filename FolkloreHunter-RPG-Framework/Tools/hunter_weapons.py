@@ -457,3 +457,123 @@ def locomotion_clips(rig):
     return [stride_clip(rig, 'Hunt_Jog', 'Running_A', 1.8, 1.5, 10),
             stride_clip(rig, 'Hunt_Sprint', 'Running_A', 2.1, 1.8, 17)]
 
+
+
+# ---------------- 0.9 battle clips (after Monster Hunter Wilds' sword and shield, lance, bow and long sword) ----------------
+LEGS = ('upperleg.l', 'lowerleg.l', 'foot.l', 'upperleg.r', 'lowerleg.r', 'foot.r')
+ARM_L = ('upperarm.l', 'lowerarm.l', 'wrist.l', 'hand.l')
+
+
+def _rots(P, action, frac, bones):
+    """Rotations of `bones` in `action` at normalized time `frac` (read before a clip is keyed: snapshot switches action)."""
+    b = bpy.data.actions[action]; f0, f1 = b.frame_range
+    snap = P.snapshot(b, f0 + (f1 - f0) * frac)
+    return {n: snap[n][1].copy() for n in bones if n in snap}
+
+
+def _apply(P, rots, k=1.0):
+    """Sets the stored rotations (k < 1 blends from the current pose toward them)."""
+    for n, q in rots.items():
+        if n not in P.pb: continue
+        cur = P.pb[n].rotation_quaternion.copy()
+        if cur.dot(q) < 0: q = -q
+        P.pb[n].rotation_quaternion = cur.slerp(q, k) if k < 1 else q
+    P.update()
+
+
+def _lift(P, dz):
+    """The whole body up (or down) by dz in armature space: the hips carry everything."""
+    if not dz: return
+    hp = P.pb['hips']; hp.matrix = Matrix.Translation((0, 0, dz)) @ hp.matrix; P.update()
+
+
+def _shield_up(P, high=0.0, out=0.0):
+    """The shield arm raised in front of the chest (high 0..1 lifts it overhead, out pushes it forward)."""
+    S = P.head('upperarm.l'); reach = P.length('upperarm.l') + P.length('lowerarm.l')
+    T = S + Vector((-.15 * reach, -(.55 + .4 * out) * reach, (.1 + 1.0 * high) * reach))
+    P.arm('l', T, (1, .3, -1))
+
+
+def battle_clips(rig):
+    """SnS_Leap_Slash, SnS_Rush_1/2/3, SnS_Shield_Crash, SnS_Rend, Lance_Rend, Hunt_Clash, Katana_Rend, Bow_Tracer.
+    Built from the KayKit swings (their arm arcs) with jumps, crouches, leans, the shield arm and the legs posed on top.
+    The game times each strike from the hand's fastest moment (AnimationDriver.PlayStrike)."""
+    P = Poser(rig); made = []
+    idle = P.snapshot(bpy.data.actions['Idle'], bpy.data.actions['Idle'].frame_range[0])
+    tall = P.pb['head'].head.z - min(P.pb[f].head.z for f in ('foot.l', 'foot.r'))
+    air = _rots(P, 'Jump_Idle', .5, LEGS)
+    take = _rots(P, 'Jump_Start', .6, LEGS)
+    land = _rots(P, 'Jump_Land', .15, LEGS)
+    guard = _rots(P, 'Blocking', .5, ARM_L)
+
+    def pose(lift=0.0, legs=None, legk=1.0, lean=0.0, twist=0.0, shield=True, fn=None):
+        def f(P):
+            if legs: _apply(P, legs, legk)
+            if shield and guard: _apply(P, guard)
+            if lean: P.turn('spine', (1, 0, 0), lean)
+            if twist: P.turn('spine', (0, 0, 1), twist)
+            if fn: fn(P)
+            _lift(P, lift * tall)
+        return f
+
+    # Leaping Slash: crouch, spring forward with the sword raised, cut down as the hunter lands.
+    D = '1H_Melee_Attack_Chop'
+    made.append(P.clip('SnS_Leap_Slash', [
+        (0, D, 0, pose(-.05, take, lean=8)), (.12, D, .2, pose(.08, air, lean=-4)), (.24, D, .38, pose(.16, air, .9, lean=-8)),
+        (.32, D, .5, pose(.08, air, .6, lean=6)), (.4, D, .62, pose(0, land, lean=14)), (.58, D, .8, pose(-.04, land, .6, lean=10)),
+        (.8, D, 1, pose(0, None, lean=2))]))
+    # Thorn Rush I: a rising diagonal cut (the diagonal slice played upward) with a step and a turn of the hips.
+    R = '1H_Melee_Attack_Slice_Diagonal'
+    made.append(P.clip('SnS_Rush_1', [
+        (0, R, 1, pose(-.03, land, .5, lean=10, twist=-14)), (.14, R, .72, pose(-.03, land, .5, lean=8, twist=-8)),
+        (.24, R, .45, pose(0, None, lean=-4, twist=10)), (.36, R, .25, pose(.02, None, lean=-8, twist=18)), (.68, R, 0, pose(0, None, twist=4))]))
+    # Thorn Rush II: two spinning horizontal cuts with the shield held in (the two-handed spinning swing, shield arm guarding).
+    S2 = '2H_Melee_Attack_Spinning'
+    made.append(P.clip('SnS_Rush_2', [(t, S2, t / .76, pose(-.02 * math.sin(math.pi * t / .76), None, lean=6)) for t in (0, .1, .2, .3, .4, .5, .6, .76)]))
+    # Thorn Rush III: a leaping spin, sword out wide, landing low.
+    S3 = '2H_Melee_Attack_Spin'
+    made.append(P.clip('SnS_Rush_3', [
+        (0, S3, 0, pose(-.05, take, lean=6)), (.14, S3, .25, pose(.12, air, lean=-2)), (.26, S3, .5, pose(.2, air, lean=0)),
+        (.38, S3, .72, pose(.1, air, .6, lean=6)), (.5, S3, .86, pose(0, land, lean=12)), (.8, S3, 1, pose(0, None, lean=2))]))
+    # Shield Crash: jump high with the shield raised overhead in both... the shield arm, then slam it down on landing.
+    B = 'Block_Attack'
+    made.append(P.clip('SnS_Shield_Crash', [
+        (0, B, 0, pose(-.06, take, lean=6, shield=False, fn=lambda P: _shield_up(P, .2))),
+        (.16, B, .1, pose(.18, air, lean=-10, shield=False, fn=lambda P: _shield_up(P, .9))),
+        (.3, B, .2, pose(.26, air, lean=-12, shield=False, fn=lambda P: _shield_up(P, 1.0, .2))),
+        (.38, B, .4, pose(.1, air, .6, lean=12, shield=False, fn=lambda P: _shield_up(P, .1, .8))),
+        (.44, B, .5, pose(-.04, land, lean=26, shield=False, fn=lambda P: _shield_up(P, -.45, .9))),
+        (.68, B, .7, pose(-.06, land, lean=22, shield=False, fn=lambda P: _shield_up(P, -.4, .8))),
+        (1.0, B, 1, pose(0, None, lean=4))]))
+    # Rending Leap: a low lunge onto the wound, a diagonal cut, then a back-hand horizontal cut through it.
+    H2 = '1H_Melee_Attack_Slice_Horizontal'
+    made.append(P.clip('SnS_Rend', [
+        (0, R, 0, pose(-.08, take, lean=14)), (.1, R, .2, pose(.06, air, .7, lean=2)), (.2, R, .45, pose(0, land, lean=16)),
+        (.32, R, .7, pose(-.04, land, .7, lean=14)), (.42, H2, .25, pose(-.04, land, .7, lean=12, twist=-10)),
+        (.54, H2, .5, pose(-.03, land, .5, lean=10, twist=12)), (.7, H2, .75, pose(-.02, None, lean=6)), (1.0, H2, 1, pose(0, None))]))
+    # Piercing Rend: braced behind the tower shield, three driving thrusts into the wound.
+    T = '1H_Melee_Attack_Stab'
+    keys = [(0, T, 0, pose(-.05, land, .6, lean=12))]
+    for i, t0 in enumerate((.12, .34, .56)):
+        keys += [(t0, T, .3, pose(-.05, land, .6, lean=10 + 2 * i)), (t0 + .1, T, .52, pose(-.06, land, .6, lean=18 + 2 * i)), (t0 + .2, T, .75, pose(-.05, land, .6, lean=12))]
+    keys.append((1.1, T, 1, pose(0, None, lean=2)))
+    made.append(P.clip('Lance_Rend', keys))
+    # Power clash: braced hard behind the shield, leaning in, the legs wide (looped, trembling a little).
+    made.append(P.clip('Hunt_Clash', [(t, 'Blocking', .5, pose(-.06, land, .8, lean=18 + (3 if k % 2 else -1), twist=(2 if k % 2 else -2)))
+                                       for k, t in enumerate((0, .1, .2, .3, .4))], loop=True))
+    # Spirit Rend: a low dash with the katana drawn up across the body, then a cut down through the wound.
+    K1, K2 = '2H_Melee_Attack_Slice', '2H_Melee_Attack_Chop'
+    made.append(P.clip('Katana_Rend', [
+        (0, K1, 0, pose(-.07, take, lean=16, shield=False)), (.12, K1, .3, pose(-.02, land, .7, lean=10, shield=False)),
+        (.22, K1, .55, pose(0, None, lean=-2, twist=12, shield=False)), (.34, K2, .3, pose(.04, None, lean=-6, shield=False)),
+        (.46, K2, .55, pose(-.05, land, lean=20, shield=False)), (.62, K2, .75, pose(-.05, land, .6, lean=16, shield=False)),
+        (.9, K2, 1, pose(0, None, lean=4, shield=False))]))
+    # Thorn Tracer: a deep, braced draw with the bow canted a little, and a hard release.
+    made.append(P.clip('Bow_Tracer', [
+        (0, 'Idle', 0, pose(-.02, land, .4, shield=False, fn=bow_pose(.9, cant=25, lean=6))),
+        (.3, 'Idle', .3, pose(-.03, land, .5, shield=False, fn=bow_pose(1.3, cant=25, lean=10))),
+        (.36, 'Idle', .35, pose(-.03, land, .5, shield=False, fn=bow_pose(.15, cant=25, lean=6, release=1))),
+        (.55, 'Idle', .5, pose(-.02, land, .4, shield=False, fn=bow_pose(.3, cant=20, release=.5))),
+        (.8, 'Idle', .7, pose(0, None, shield=False, fn=bow_pose(.7)))]))
+    P.use(None)
+    return made

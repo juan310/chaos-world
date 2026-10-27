@@ -103,6 +103,8 @@ weapons.update(hunter_weapons.build_katana(rig, bpy.data.objects['1H_Sword'], at
 derived, arm_bones = hunter_weapons.derive_clips(rig)
 derived += hunter_weapons.bow_clips(rig)
 derived += hunter_weapons.locomotion_clips(rig)
+battle = hunter_weapons.battle_clips(rig)                 # 0.9: Thorn Rush, Shield Crash, Rends, clash, tracer
+derived += battle
 hunter_weapons.place_bow(rig, weapons['Hunt_Bow'], weapons['Hunt_NockedArrow'])
 
 for im in bpy.data.images:
@@ -132,7 +134,8 @@ views = (('front', (0, -6, 1.0), (math.radians(90), 0, 0)), ('side', (6, 0, 1.0)
 CLIP_LOADOUT = {'Lance_High_Thrust': 'lance', 'Lance_Charge': 'lance', 'Blocking': 'lance',
                 'Bow_Draw': 'bow', 'Bow_Shoot': 'bow', 'Bow_Power_Shoot': 'bow', 'Bow_Arc_Shoot': 'bow', 'Bow_Piercer': 'bow', 'Bow_Step_L': 'bow', 'Bow_Aim_Walk': 'bow',
                 '2H_Melee_Idle': 'katana', '2H_Melee_Attack_Chop': 'katana', '2H_Melee_Attack_Spin': 'katana', 'Katana_Iai': 'katana',
-                'Running_A': 'sns', 'Hunt_Jog': 'sns', 'Hunt_Sprint': 'sns'}
+                'Running_A': 'sns', 'Hunt_Jog': 'sns', 'Hunt_Sprint': 'sns',
+                'Lance_Rend': 'lance', 'Katana_Rend': 'katana', 'Bow_Tracer': 'bow'}
 for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spin', 'Lie_Down', 'Use_Item'] + list(CLIP_LOADOUT):
     act = bpy.data.actions.get(name)
     if not act:
@@ -160,6 +163,26 @@ for name in ['Ride_Idle', 'Sit_Chair_Idle', 'Block_Attack', '2H_Melee_Attack_Spi
         scene.render.filepath = str(out)
         bpy.ops.render.render(write_still=True)
         shots.append(str(out))
+# 0.9 battle clips: a strip of five moments of each (side and three-quarter views), for review by eye.
+for act in battle:
+    rig.animation_data.action = act
+    try:
+        if act.slots:
+            rig.animation_data.action_slot = act.slots[0]
+    except AttributeError:
+        pass
+    show = LOADOUT[CLIP_LOADOUT.get(act.name, 'sns')]
+    for o in props + hunt_props:
+        o.hide_render = o.name == 'Hunt_Arrow' or (o.name in ('1H_Sword', 'Round_Shield') + tuple(n for k in LOADOUT.values() for n in k) and o.name not in show)
+    f0, f1 = act.frame_range
+    for i, frac in enumerate((0, .25, .4, .6, .9)):
+        scene.frame_set(int(round(f0 + (f1 - f0) * frac)))
+        for view, loc, rot in (views[1], views[3]):
+            cam.location = loc; cam.rotation_euler = rot
+            out = preview / ('battle_%s_%d_%s.png' % (act.name, i, view))
+            scene.render.filepath = str(out)
+            bpy.ops.render.render(write_still=True)
+            shots.append(str(out))
 rig.animation_data.action = None
 for o in props + hunt_props:
     o.hide_render = False

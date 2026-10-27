@@ -64,6 +64,10 @@ namespace FH.Core
         public bool spiritLevelUp;          // katana: landing it raises the spirit level (Spirit Roundslash)
         public bool spiritCounter;          // katana: a blow caught in its windup is countered (Iai Spirit Slash)
         public float iaiBuff;               // katana: seconds the gauge refills on its own after this move lands (Iai Slash)
+        public float perfectFrom, perfectTo, perfectBonus;   // Thorn Rush: the glint window (normalized) and the bonus of a perfect link
+        public bool rend;                   // a Rend strike: tears the open wound it reaches
+        public float rendLeap;              // Rend: metres it may close toward the wound before striking
+        public bool tracer;                 // bow: the arrow stays in the monster as a Thorn Tracer
         public HuntMoveDef Clone() => (HuntMoveDef)MemberwiseClone();
     }
 
@@ -76,6 +80,11 @@ namespace FH.Core
         public string light, heavy, lightHeavy, forwardLight, spirit;   // openers from neutral (spirit: RB, katana)
         public string drawAttack, rollAttack, counter;          // special openers
         public float rollAttackWindow = .4f, counterWindow = .6f, perfectGuardWindow = .15f;
+        public string backstepAttack;                           // Y right after a back-step (sword and shield: Leaping Slash)
+        public float backstepAttackWindow = .45f;
+        public string rend;                                     // Hunter's Sight + Y: this weapon's Rend strike
+        public bool clash;                                      // perfect guards build a power clash (shield weapons)
+        public string clashFinisher;                            // the blow that ends a won clash
         public float guardAngle = 70, guardChip = .12f, guardStaminaPerDamage = 1.1f, guardPushback = .45f;
         public float drawnSpeed = .85f, sheatheTime = .45f, drawTime = .25f;
         public List<float> chargeMultipliers = new List<float> { 1f, 1.45f, 1.9f };
@@ -279,12 +288,14 @@ namespace FH.Core
     /// <summary>Which move an input starts, from neutral or from inside a move.</summary>
     public static class HuntRoutes
     {
-        /// <summary>From neutral. Sheathed: any attack is the draw attack. Right after a roll: roll slash. Right after a
-        /// perfect guard: counter. Otherwise the opener for the input.</summary>
-        public static HuntMoveDef Opener(HuntMovesetDef set, HuntInput input, bool sheathed, float sinceRoll, float sincePerfectGuard)
+        /// <summary>From neutral. Sheathed: any attack is the draw attack. Right after a back-step: the back-step attack
+        /// (sword and shield: Leaping Slash). Right after a perfect guard: counter. Right after a roll: roll slash.
+        /// Otherwise the opener for the input.</summary>
+        public static HuntMoveDef Opener(HuntMovesetDef set, HuntInput input, bool sheathed, float sinceRoll, float sincePerfectGuard, float sinceBackstep = 99)
         {
             if (input == HuntInput.None) return null;
             if (sheathed) return set.Move(set.drawAttack);
+            if ((input == HuntInput.Light || input == HuntInput.ForwardLight) && sinceBackstep <= set.backstepAttackWindow && set.Move(set.backstepAttack) != null) return set.Move(set.backstepAttack);
             if ((input == HuntInput.Light || input == HuntInput.ForwardLight) && sincePerfectGuard <= set.counterWindow && set.Move(set.counter) != null) return set.Move(set.counter);
             if ((input == HuntInput.Light || input == HuntInput.ForwardLight) && sinceRoll <= set.rollAttackWindow && set.Move(set.rollAttack) != null) return set.Move(set.rollAttack);
             switch (input)

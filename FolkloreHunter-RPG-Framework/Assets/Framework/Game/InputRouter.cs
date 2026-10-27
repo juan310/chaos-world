@@ -4,13 +4,14 @@ using UnityEngine;
 namespace FH.Game
 {
     public enum GameAction { Attack, Spell, Dodge, Interact, LockOn, Run, Hotbar1, Hotbar2, Hotbar3, Hotbar4, Pause, Inventory, Journal, Character, Map, CycleSpell, Inspect,
-        HeavyAttack, Guard, Sheathe, Whistle, UseItem, ItemPrev, ItemNext }
+        HeavyAttack, Guard, Sheathe, Whistle, UseItem, ItemPrev, ItemNext, Sight }
 
     /// <summary>One place that turns devices into game actions. Menus set GameplayBlocked so no key or click
     /// leaks into combat; automated verification injects actions through the same path the keyboard uses.
     /// The Xbox controller is read through XInput (<see cref="GamePad"/>) with a Monster Hunter-style layout:
     /// Y light, B heavy (hold to charge), A roll, RB guard, RT sprint, X interact / sheathe, R3 lock on,
-    /// LB use item, D-pad left/right choose item, D-pad up whistle, D-pad down change spell, LT spell,
+    /// LB use item, D-pad left/right choose item, D-pad up whistle, D-pad down change spell, LT spell (hunt combat,
+    /// weapon drawn: tap LT for the spell, hold it for Hunter's Sight; Left Alt is Sight on the keyboard),
     /// Start pause, View map.</summary>
     public static class InputRouter
     {
@@ -149,6 +150,8 @@ namespace FH.Game
                 case GameAction.Guard: return Input.GetKey(KeyCode.LeftControl);
                 case GameAction.Attack: return Input.GetMouseButton(0);
                 case GameAction.HeavyAttack: return MouseLook && Input.GetMouseButton(1);
+                case GameAction.Spell: return Input.GetKey(KeyCode.Q);
+                case GameAction.Sight: return Input.GetKey(KeyCode.LeftAlt);
                 default: return false;
             }
         }

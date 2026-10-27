@@ -509,7 +509,7 @@ namespace FH.Game
                 var atk = Attack.Def;
                 bool crit = Random.value * 100 < Stats[Stat.CritChance];
                 HitInfo dealt = default;
-                if (monster.HuntRules && atk is HuntMoveDef hm) monster.PendingStun = hm.koDamage;
+                if (monster.HuntRules && atk is HuntMoveDef hm) { monster.PendingStun = hm.koDamage; monster.PendingRend = hm.rend; }
                 var w = CurrentWeapon;
                 monster.ReceiveHit(box, point, (part, broken) => dealt = DamageMath.PlayerHit(w, atk, Stats, monster.Def, part, broken, crit));
                 BladeHit?.Invoke(monster, dealt);

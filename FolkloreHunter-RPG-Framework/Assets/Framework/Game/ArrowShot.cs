@@ -68,6 +68,13 @@ namespace FH.Game
             float dt = Time.deltaTime;
             Vector3 from = transform.position;
             velocity += Vector3.down * gravity * dt;
+            // Thorn Tracer: the hunter's straight arrows bend toward the tracer arrow standing in the monster.
+            if (!shot.arc && !shot.pierce && hit.damageMultiplier > 0 && H.HuntStyle && H.Hunt && H.Hunt.enabled && H.Hunt.TracerPoint(out var mark))
+            {
+                var want = mark - transform.position;
+                if (want.sqrMagnitude > .04f && Vector3.Angle(velocity, want) < 70)
+                    velocity = Vector3.RotateTowards(velocity, want.normalized * velocity.magnitude, TracerMark.HomingDegrees * Mathf.Deg2Rad * dt, 0);
+            }
             transform.position += velocity * dt;
             if (velocity.sqrMagnitude > .01f) transform.rotation = Quaternion.LookRotation(velocity);
             life += dt;
@@ -115,10 +122,16 @@ namespace FH.Game
             HitInfo dealt = default;
             var w = H.CurrentWeapon;
             bool crit = Random.value * 100 < H.Stats[Stat.CritChance];
-            if (m.HuntRules && hit is HuntMoveDef hm) m.PendingStun = hm.koDamage;
+            bool tracer = hit is HuntMoveDef th && th.tracer;
+            if (m.HuntRules && hit is HuntMoveDef hm) { m.PendingStun = hm.koDamage; m.PendingRend = hm.rend; }
             m.ReceiveHit(box, transform.position, (part, broken) => dealt = DamageMath.PlayerHit(w, hit, H.Stats, m.Def, part, broken, crit));
             H.ReportRangedHit(m, dealt);
             Landed++;
+            if (H.HuntStyle && H.Hunt && H.Hunt.enabled)
+            {
+                if (tracer) H.Hunt.PlantTracer(m, box, transform.position);
+                else H.Hunt.TracerArrowLanded(m, box);
+            }
             WorldKit.Burst(transform.position, shot.pierce ? new Color(1f, .7f, .3f) : new Color(1f, .9f, .6f), shot.pierce ? 8 : 5);
             WorldKit.Sound(transform.position, "hit", shot.pierce ? .22f : .14f);
         }
