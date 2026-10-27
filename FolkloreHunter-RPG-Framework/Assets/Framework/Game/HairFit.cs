@@ -20,7 +20,9 @@ namespace FH.Game
             // the anchor follows the head bone (HairFollow) instead of being its child: the exported bones may carry a
             // non-uniform scale, which squashed the hair into a narrow slab over the face
             var anchor = new GameObject("Hair anchor").transform;
-            anchor.SetParent(visual, false); anchor.position = center; anchor.rotation = root.rotation;
+            // turned half round: Codex's characters face the other way from their root, so its builder's front (+Z) is the
+            // back of our heads (the long hair hung over the face; the close views showed it)
+            anchor.SetParent(visual, false); anchor.position = center; anchor.rotation = root.rotation * Quaternion.Euler(0, 180, 0);
             anchor.localScale = Vector3.one / Mathf.Max(1e-4f, visual.lossyScale.x);
             anchor.gameObject.AddComponent<HairFollow>().Bind(head);
             Debug.Log("FH_HAIR head lossyScale " + head.lossyScale.ToString("F4") + ", head bounds " + hb + ", size " + size.ToString("F3") + ", scale " + scale.ToString("F3"));
