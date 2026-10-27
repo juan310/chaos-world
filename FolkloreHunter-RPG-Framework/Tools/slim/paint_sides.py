@@ -77,6 +77,15 @@ for side, png in ((1, left_png), (-1, right_png)):
     px = np.array(pim.pixels[:]).reshape(h, w, 4)[::-1]
     bg = np.median(np.concatenate([px[:4, :, :3].reshape(-1, 3), px[-4:, :, :3].reshape(-1, 3), px[:, :4, :3].reshape(-1, 3)]), axis=0)
     fg = np.abs(px[..., :3] - bg).sum(2) > .12
+    if px.shape[2] == 4 and (px[..., 3] < .5).any(): fg &= px[..., 3] > .5        # a cut-out picture: its own alpha too
+    # the profile's colour counts only inside the figure (eroded 3 px, so its edge never brings in the background):
+    # surface the profile does not cover keeps the original texture
+    inner = fg.copy()
+    for _ in range(3):
+        inner[1:, :] &= inner[:-1, :]; inner[:-1, :] &= inner[1:, :]; inner[:, 1:] &= inner[:, :-1]; inner[:, :-1] &= inner[:, 1:]
+    cut = px.copy(); cut[..., 3] = inner.astype(np.float32)
+    pim = bpy.data.images.new(Path(png).stem + '_cut', w, h, alpha=True)
+    pim.pixels.foreach_set(cut[::-1].astype(np.float32).ravel())
     rows, cols = np.where(fg)
     r0, r1, c0, c1 = rows.min(), rows.max(), cols.min(), cols.max()
     uvs, wts = [], []
@@ -107,8 +116,10 @@ sep = bt.nodes.new('ShaderNodeSeparateColor'); bt.links.new(an.outputs['Color'],
 for side, name, ch in ((1, 'side_left_uv', 0), (-1, 'side_right_uv', 1)):
     u = bt.nodes.new('ShaderNodeUVMap'); u.uv_map = name
     t = bt.nodes.new('ShaderNodeTexImage'); t.image = sides[side][0]; t.extension = 'CLIP'; bt.links.new(u.outputs[0], t.inputs[0])
+    fac = bt.nodes.new('ShaderNodeMath'); fac.operation = 'MULTIPLY'
+    bt.links.new(sep.outputs[ch], fac.inputs[0]); bt.links.new(t.outputs['Alpha'], fac.inputs[1])       # weight x inside the figure
     mix = bt.nodes.new('ShaderNodeMix'); mix.data_type = 'RGBA'
-    bt.links.new(sep.outputs[ch], mix.inputs['Factor']); bt.links.new(cur, mix.inputs[6]); bt.links.new(t.outputs['Color'], mix.inputs[7])
+    bt.links.new(fac.outputs[0], mix.inputs['Factor']); bt.links.new(cur, mix.inputs[6]); bt.links.new(t.outputs['Color'], mix.inputs[7])
     cur = mix.outputs[2]
 emn = bt.nodes.new('ShaderNodeEmission'); bt.links.new(cur, emn.inputs['Color'])
 on = bt.nodes.new('ShaderNodeOutputMaterial'); bt.links.new(emn.outputs[0], on.inputs['Surface'])
