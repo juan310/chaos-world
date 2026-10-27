@@ -245,7 +245,7 @@ namespace FH.UI
                 "    Y+B dash attack (Y during it: finishing thrust)\n" +
                 "<b>Bow</b>  Hold Y to draw (three charge levels), release to shoot; quick follow-up shots rise a level   A drawing step (+1 level)\n" +
                 "    B after a shot: fan volley   B: rain volley (arrows rain on the target)   Y+B Skewer Shot   RB aim over the shoulder\n" +
-                "    Its Rend is the Seeker Thorn: the arrow stays in; your arrows bend toward it and the eighth one bursts it\n" +
+                "    Its Rend is the Seeker Thorn: the arrow stays in; your arrows bend toward it and the sixth one bursts it\n" +
                 "<b>Katana</b> (two-handed)  Y overhead, B thrust, then rising slash   Y+B fade slash (back; stick to the side: lateral fade)\n" +
                 "    RB Ember Cut I, II, III, then the Ember Wheel: a landed Ember Wheel raises the ember level (white, yellow, red)\n" +
                 "    Hits fill the ember gauge; ember moves spend it. RB+B Shadowstep Slash: step back, a blow caught in it is countered\n" +

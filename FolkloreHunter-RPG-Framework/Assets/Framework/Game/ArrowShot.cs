@@ -123,7 +123,7 @@ namespace FH.Game
             var w = H.CurrentWeapon;
             bool crit = Random.value * 100 < H.Stats[Stat.CritChance];
             bool tracer = hit is HuntMoveDef th && th.tracer;
-            if (hit is HuntMoveDef rd && rd.rend && m.Wounds) { var w0 = m.Wounds.WoundNear(transform.position, transform.position, .9f); if (w0) box = w0; }
+            if (hit is HuntMoveDef rd && rd.rend && m.Wounds) { var w0 = m.Wounds.WoundNear(transform.position, transform.position, 1.4f); if (w0) box = w0; }
             if (m.HuntRules && hit is HuntMoveDef hm) { m.PendingStun = hm.koDamage; m.PendingRend = hm.rend; }
             m.ReceiveHit(box, transform.position, (part, broken) => dealt = DamageMath.PlayerHit(w, hit, H.Stats, m.Def, part, broken, crit));
             H.ReportRangedHit(m, dealt);

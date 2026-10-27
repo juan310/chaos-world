@@ -59,7 +59,9 @@ RESULTS_090
   slightly from one hairstyle to another.
 - Armour from the game's equipment (the Thornback set) is fitted to the classic knight only; on the new hunters it
   counts for its stats but is not shown.
-- The Warden's helm break still works (and drops its loot) but no longer hides a helmet mesh: the new Warden is one
-  piece.
+- The skeletons and the Warden in game come from the reconstructions made on this PC for the Codex combat test
+  (`FolkloreHunter-CombatTest-Codex/SourceArt`, read-only; `build_09_models.ps1 -Stage codexmonsters`), built onto the
+  game's monster skeleton with the weapons made for 0.9; the Warden's separate horned helm is fitted over its skull and
+  breaks off again in the fight.
 - The crypt is built from boxes, quads, particles and the art-made props; it follows the pictures' layout and
   materials, not their exact geometry and lighting.

@@ -150,8 +150,8 @@ namespace FH.Core
     /// seconds; the hunter's arrows bend toward it, and after <see cref="Needed"/> of them land it bursts.</summary>
     public class TracerMark
     {
-        public const float Duration = 20, BurstMotionValue = 2.4f, HomingDegrees = 540;
-        public const int Needed = 8;
+        public const float Duration = 25, BurstMotionValue = 2.4f, HomingDegrees = 540;
+        public const int Needed = 6;
         float until = -99;
         public int Hits { get; private set; }
         public int Bursts { get; private set; }
