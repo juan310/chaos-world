@@ -535,7 +535,11 @@ namespace FH.Game
             {
                 var st = anim.State(clip); if (st == null) continue;
                 foreach (AnimationState o in anim.Anim) { o.enabled = false; o.weight = 0; }
-                st.enabled = true; st.weight = 1; st.time = st.length * at; anim.Anim.Sample();
+                st.enabled = true; st.weight = 1; st.time = st.length * at; float speed = st.speed; st.speed = 0; anim.Anim.Sample();
+                // a frame passes before the shot: the skinned body is re-skinned once per frame, so a camera rendered at once
+                // shows the body in the last frame's pose while bone-held pieces (weapons, hair) already show the new one
+                yield return null; yield return null;
+                st.speed = speed;
                 foreach (var (view, dir) in new[] { ("front", root.forward), ("side", root.right) })
                 {
                     cam.transform.position = c + dir * 6; cam.transform.LookAt(c);
