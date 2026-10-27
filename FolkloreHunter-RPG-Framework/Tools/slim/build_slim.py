@@ -249,6 +249,17 @@ if '--fingers' in argv:
     if '--fingers-only' in argv: sys.exit(0)        # trials of the finger detection: no clips, no export
 
 made = [] if villager else [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+# the shield arm: motion capture and MotionBricks make the body and sword arm move naturally, but their left hand holds
+# nothing, so a shield on it lay flat or swung into the body (SightForge mesh3d: 7-11 cm inside in every sword-and-shield
+# clip). The keyposed clips place the shield on purpose: their left arm is kept aside here and put back into whatever
+# replaces them (below, after the captures, MotionBricks and kept clips).
+SHIELD_CLIPS = ['Idle_Combat', '1H_Melee_Attack_Chop', '1H_Melee_Attack_Slice_Diagonal', '1H_Melee_Attack_Slice_Horizontal', '1H_Melee_Attack_Stab',
+                'SnS_Rush_1', 'SnS_Rush_2', 'SnS_Rush_3', 'SnS_Leap_Slash', 'SnS_Rend', 'SnS_Shield_Crash', 'Block_Hit', 'Block_Attack', 'Blocking', 'Block']
+AUTH = {}
+if any(o.name in ('Round_Shield', 'Hunt_TowerShield') for o in bpy.data.objects if o.type == 'MESH'):
+    for _n in SHIELD_CLIPS:
+        _a = bpy.data.actions.get(_n)
+        if _a: _c = _a.copy(); _c.name = 'AUTH__' + _n; _c.use_fake_user = True; AUTH[_n] = _c
 mb = opt('--mb'); soma = opt('--soma')
 if mb and soma and not villager:
     # the game's own moves with MotionBricks' natural motion between their key poses (Tools/motionbricks)
@@ -263,7 +274,7 @@ if m2m:
     src = retarget.Source(m2m)
     retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP, retarget.VILLAGER if villager else None)
     src.remove()
-    made = [a for a in bpy.data.actions if not a.name.startswith('KEEP__')]     # the keyposed clips a capture replaced are gone already
+    made = [a for a in bpy.data.actions if not a.name.startswith(('KEEP__', 'AUTH__'))]     # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
 LOOPED = {'Idle', 'Idle_Combat', 'Idle_B', 'Walking_A', 'Gait_Walk', 'Gait_Jog', 'Gait_Sprint', 'Running_A', 'Hunt_Jog', 'Hunt_Sprint',
           'Walking_Backwards', 'Running_Strafe_Left', 'Running_Strafe_Right', 'Blocking', '2H_Melee_Idle', 'Run_Upstairs'}
@@ -348,6 +359,31 @@ if opt('--lib-clips'):
             print('SLIM_LIB %s:%s -> %s (%.1f s, %s)' % (pack, clip, tgt, info['seconds'], 'loop' if info['loops'] else 'once'), flush=True)
     for s_ in lib_src.values(): s_.remove()
     arm.animation_data.action = None
+    for pb in arm.pose.bones: pb.matrix_basis = Matrix()
+if AUTH:
+    # the keyposed clip's left arm (shoulder to hand slot, as turns from rest in their parents) put into the clip that
+    # replaced it, frame by frame at the same share of the clip: the shield sits on the forearm as the keyposes place it,
+    # carried by the captured or generated chest
+    LEFT = [b for b in ('shoulder.l', 'upperarm.l', 'lowerarm.l', 'hand.l', 'handslot.l') if b in arm.pose.bones]
+    ad = arm.animation_data or arm.animation_data_create(); sc = bpy.context.scene
+    for nm, A in AUTH.items():
+        B = bpy.data.actions.get(nm)
+        if not B: continue
+        fa0, fa1 = A.frame_range; fb0, fb1 = B.frame_range
+        n = int(round(fb1 - fb0)) + 1
+        ad.action = A
+        smp = []
+        for i in range(n):
+            f = fa0 + (fa1 - fa0) * (i / max(1, n - 1)); sc.frame_set(int(f), subframe=f - int(f))
+            smp.append({b: arm.pose.bones[b].matrix_basis.decompose()[:2] for b in LEFT})
+        ad.action = B
+        for i, d in enumerate(smp):
+            for b, (loc, q) in d.items():
+                pb = arm.pose.bones[b]; pb.rotation_mode = 'QUATERNION'; pb.location = loc; pb.rotation_quaternion = q
+                pb.keyframe_insert('location', frame=fb0 + i); pb.keyframe_insert('rotation_quaternion', frame=fb0 + i)
+        print('SLIM_SHIELD %s: left arm from the keyposes (%d frames)' % (nm, n), flush=True)
+    for A in AUTH.values(): bpy.data.actions.remove(A)
+    ad.action = None
     for pb in arm.pose.bones: pb.matrix_basis = Matrix()
 if '--footlock' in argv:
     # walks, jogs and runs with their planted feet held on the travelling ground (SightForge's foot-slide fixer)
