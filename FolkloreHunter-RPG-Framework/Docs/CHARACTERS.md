@@ -29,6 +29,12 @@ unchanged from that project) on their own slim, human-proportioned skeleton, wit
   contact frame) lands at its own time; `mb_bridge.load` brings the result back onto the slim skeleton through the same
   retargeter as the motion capture. 25 of the game's own moves are made this way (`mb_bridge.MB_CLIPS`); the poses
   and timing stay ours, MotionBricks only fills the in-between.
+- Smeared flanks: the Codex bodies were reconstructed from front and back pictures, so surfaces that face sideways (the
+  outsides of the legs and boots) came out smeared. `Tools/slim/paint_sides.py` repairs a body's texture: it renders the
+  body in the game's standing pose, the local Forge's edit tool turns that render into left and right profiles (so they
+  show the model's own armour and colours), and the profiles are projected onto only the side-facing surface each one
+  sees, inside the profile's figure, baked into a copy of the texture (`build_slim.py --texture`). Done for the Grave
+  Warden (`SourceArt/Repaired/GraveWarden_sides_texture.png`); the Codex originals are unchanged.
 - The hairstyles are the Codex prototype's strand builder (`HunterHair`), fitted to the slim head (`HairFit`).
 - Review renders: `Tools/slim/preview_slim.py` (clips before export), `Tools/slim/render_fbx.py` (the exported model).
 
