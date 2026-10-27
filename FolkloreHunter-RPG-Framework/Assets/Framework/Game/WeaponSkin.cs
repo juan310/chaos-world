@@ -94,6 +94,29 @@ namespace FH.Game
         static float WiderEnd(Vector3[] v, Bounds b, int axis, float from, float to)
             => Width(v, b, axis, 1 - to, 1 - from) >= Width(v, b, axis, from, to) ? 1 : -1;
 
+        /// <summary>+1 when the cross-guard (the widest of twenty bands along `axis`) lies in the max half, -1 in the min
+        /// half. (The two ends' widths are no guide: a long grip can be narrower than the blade.)</summary>
+        static float GuardEnd(Vector3[] v, Bounds b, int axis)
+        {
+            int best = 0; float widest = -1;
+            for (int k = 0; k < 20; k++) { float w = Width(v, b, axis, k / 20f, (k + 1) / 20f); if (w > widest) { widest = w; best = k; } }
+            return best >= 10 ? 1 : -1;
+        }
+
+        /// <summary>For checks: how far the blade's cross-guard sits from the hand, as a share of the blade's length (a
+        /// sword held the right way round has it at the hand: well under a half).</summary>
+        public static float GuardFromHand(Transform piece, Transform hand)
+        {
+            var mf = piece ? piece.GetComponent<MeshFilter>() : null;
+            if (!mf || !mf.sharedMesh || !hand) return -1;
+            var v = mf.sharedMesh.vertices; var b = mf.sharedMesh.bounds; int axis = AxesBySize(b.size)[0];
+            int best = 0; float widest = -1;
+            for (int k = 0; k < 20; k++) { float w = Width(v, b, axis, k / 20f, (k + 1) / 20f); if (w > widest) { widest = w; best = k; } }
+            var guard = b.center; guard[axis] = b.min[axis] + b.size[axis] * (best + .5f) / 20f;
+            float length = (piece.TransformVector(Unit(axis, b.size[axis]))).magnitude;
+            return Vector3.Distance(piece.TransformPoint(guard), hand.position) / Mathf.Max(1e-4f, length);
+        }
+
         static Mesh Fit(Mesh src, Mesh old, Transform piece, Transform grip, Kind kind)
         {
             var nv = src.vertices; var nb = src.bounds; var ob = old.bounds; var ov = old.vertices;
@@ -105,8 +128,8 @@ namespace FH.Game
             Vector3 oLong = Unit(oa[0], 1), oMid = Unit(oa[1], 1);
             switch (kind)
             {
-                case Kind.Blade:       // hilt (the cross-guard's band) toward the hand
-                    nLong *= WiderEnd(nv, nb, na[0], .08f, .32f);
+                case Kind.Blade:       // hilt toward the hand: the hilt is the end nearer the cross-guard (the widest band)
+                    nLong *= GuardEnd(nv, nb, na[0]);
                     oLong *= Mathf.Sign(hand[oa[0]] - ob.center[oa[0]] + 1e-6f);
                     break;
                 case Kind.Pole:        // the head (the wider end) away from the hand
@@ -152,6 +175,17 @@ namespace FH.Game
                 // keep the inner face where the old one was, so the forearm does not go through the new shield
                 int ot = oa[2]; float inner = -oMid[ot];
                 shift[ot] = (inner > 0 ? ob.max[ot] - fitted.max[ot] : ob.min[ot] - fitted.min[ot]);
+            }
+            if (kind == Kind.Blade && grip)
+            {
+                // along the blade, the hand closes on the grip just below the cross-guard (however long the new grip is)
+                int ax = na[0]; int best = 0; float widest = -1;
+                for (int kk = 0; kk < 20; kk++) { float w = Width(nv, nb, ax, kk / 20f, (kk + 1) / 20f); if (w > widest) { widest = w; best = kk; } }
+                var guardN = nb.center; guardN[ax] = nb.min[ax] + nb.size[ax] * (best + .5f) / 20f;
+                Vector3 guardO = rot * ((guardN - nb.center) * k);
+                int ol = oa[0]; float along = oLong[ol];                       // +1/-1: the hilt's direction on the old long axis
+                float lengthO = ob.size[ol];
+                shift[ol] = hand[ol] - along * .07f * lengthO - guardO[ol];     // the guard a hand's breadth from the hand, bladeward
             }
             for (int i = 0; i < outV.Length; i++) outV[i] += shift;
             var n = src.normals; var outN = new Vector3[n.Length];

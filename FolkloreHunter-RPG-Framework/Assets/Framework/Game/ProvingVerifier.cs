@@ -411,6 +411,12 @@ namespace FH.Game
                 var clips = new[] { "Hunt_Jog", "Hunt_Sprint", "Bow_Draw", "Katana_Iai", "Lance_Charge", "Dodge_Forward", "Dodge_Right", "Ride_Idle", "2H_Melee_Attack_Chop", "1H_Melee_Attack_Chop" };
                 Check(body + " hunter: every clip of the hunt moveset plays on the new body", clips.All(H.Anim.Has), string.Join(", ", clips.Where(c => !H.Anim.Has(c))));
                 Check(body + " hunter: sword, shield, lance, bow and katana sit in the new hands", new[] { "1H_Sword", "Round_Shield", "Hunt_Lance", "Hunt_Bow", "Hunt_Katana" }.All(n => WorldKit.Find(H.Visual, n)));
+                {
+                    float sg = WeaponSkin.GuardFromHand(WorldKit.Find(H.Visual, "1H_Sword"), WorldKit.Find(H.Visual, "handslot.r"));
+                    float kg = WeaponSkin.GuardFromHand(WorldKit.Find(H.Visual, "Hunt_Katana"), WorldKit.Find(H.Visual, "handslot.r"));
+                    Check(body + " hunter: sword and katana held the right way round (cross-guard at the hand, blade away from it)", sg >= 0 && sg < .3f && kg >= 0 && kg < .3f,
+                          "guard " + sg.ToString("0.00") + " / " + kg.ToString("0.00") + " of the length from the hand");
+                }
                 yield return Snap("n01-" + body + "-look");
                 // a real fight: the draw slash and the combo land on a monster
                 var m = Fresh(S.ProvingRig.Spawn("gravebound", true)); m.Passive = true;
@@ -456,6 +462,12 @@ namespace FH.Game
                     Check(m.Def.name + ": the slim " + m.Model.Substring(5) + " (Codex body, clips authored on its own skeleton) stands on the ground at its height",
                           Mathf.Abs(bb.min.y - ground) < .2f && Mathf.Abs(bb.size.y - m.Def.height) < .4f,
                           "height " + bb.size.y.ToString("0.00") + " m (def " + m.Def.height + "), lowest " + (bb.min.y - ground).ToString("0.00") + " m");
+                    var sword = WorldKit.Find(m.Visual, "1H_Sword");
+                    if (sword)
+                    {
+                        float g = WeaponSkin.GuardFromHand(sword, WorldKit.Find(m.Visual, "handslot.r"));
+                        Check(m.Def.name + ": its sword is held the right way round (cross-guard at the hand)", g >= 0 && g < .3f, "guard " + g.ToString("0.00") + " of the length from the hand");
+                    }
                     if (id == "grave_warden") Check("Grave Warden: the horned helmet sits on its head", m.PartRenderer("helmet") && m.PartRenderer("helmet").name.EndsWith("Helmet") && m.PartRenderer("helmet").enabled);
                 }
                 else if (fresh) Check(m.Def.name + ": the model from the skeleton sheet, holding its own weapons", props.Count > 0, m.Model + "; weapons " + string.Join("/", props));
