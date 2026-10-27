@@ -152,7 +152,12 @@ def detect(body, arm, side, log=print):
     # thumb: the tip whose piece parts lowest (the deepest web); the others ordered across the hand from the thumb
     thumb = min(tips, key=lambda t: web[t])
     rest = [t for t in tips if t != thumb]
-    rest.sort(key=lambda t: (P[t] - P[thumb]).length)
+    # the four fingers in their order across the knuckles (across = along the hand x toward the palm), the index next
+    # to the thumb
+    across = hd.cross(palm_normal(arm, side))
+    pos = {t: (P[t] - h0).dot(across) for t in rest}
+    rest.sort(key=lambda t: pos[t])
+    if abs(pos[rest[-1]] - (P[thumb] - h0).dot(across)) < abs(pos[rest[0]] - (P[thumb] - h0).dot(across)): rest.reverse()
     names = dict(zip([thumb] + rest, NAMES))
     fingers = {}
     for t in tips:
@@ -270,15 +275,21 @@ def _seg_dist_to_line(p, q, o, u):
     return best
 
 
-def handle(piece, slot_head, slot_y):
-    """the handle's radius: the piece's vertices within 3 cm of the grip along the slot's Y axis, their distance to it"""
-    M = piece.matrix_world; rs = []
-    for v in piece.data.vertices:
-        x = M @ v.co; s = (x - slot_head).dot(slot_y)
-        if abs(s) < .03: rs.append(((x - slot_head) - slot_y * s).length)
-    if len(rs) < 4: return None
+def handle(piece, slot_head, axis):
+    """the handle's radius where the hand holds it: the piece's mesh cut by the plane through the grip across the
+    handle (each edge crossing it), the median distance of the cut from the handle's line"""
+    M = piece.matrix_world; me = piece.data
+    W = [M @ v.co for v in me.vertices]; S = [(x - slot_head).dot(axis) for x in W]
+    rs = []
+    for e in me.edges:
+        a, b = e.vertices
+        if (S[a] < 0) != (S[b] < 0):
+            t = S[a] / (S[a] - S[b]); x = W[a] + (W[b] - W[a]) * t
+            rs.append(((x - slot_head) - axis * (x - slot_head).dot(axis)).length)
+    rs = [r for r in rs if r < .08]                # the handle, not a guard or a limb far off
+    if len(rs) < 3: return None
     rs.sort()
-    return rs[len(rs) // 4]
+    return rs[len(rs) // 2]
 
 
 def fk(f, nm, ang, n, tp):
@@ -294,7 +305,9 @@ def fk(f, nm, ang, n, tp):
 def solve(f, nm, n, tp, o, u, r):
     """curl each joint in turn until the finger meets the handle (radius r, line o + s u)"""
     lim = LIMITS[nm]; ang = [0.0, 0.0, 0.0]; fr = f['radius']
-    touch = lambda pts, k0: min(_seg_dist_to_line(pts[k], pts[k + 1], o, u) for k in range(k0, 3)) <= r + fr
+    def touch(pts, k0):
+        segs = [(pts[0] + (pts[1] - pts[0]) * .35, pts[1]) if k == 0 else (pts[k], pts[k + 1]) for k in range(k0, 3)]
+        return min(_seg_dist_to_line(a, b, o, u) for a, b in segs) <= r + fr
     if touch(fk(f, nm, ang, n, tp), 0): return ang, 'through'
     state = 'free'
     for k in range(3):
@@ -322,9 +335,14 @@ def grips(arm, found, pieces, log=print):
         side = p.parent_bone[-1]; h = found.get(side)
         if not h or not h.get('ok'): continue
         sl = arm.data.bones[p.parent_bone]
-        o = AM @ sl.head_local; u = (AM.to_3x3() @ (sl.tail_local - sl.head_local)).normalized()
+        o = AM @ sl.head_local
+        # the handle's line: the slot's Y (a blade, a shaft, a bow's limbs run along it); a shield's Y is its face, and
+        # its hand bar runs along the slot's Z (top to bottom)
+        R = AM.to_3x3() @ sl.matrix_local.to_3x3()
+        u = (R.col[2] if 'Shield' in p.name else R.col[1]).normalized()
         r = handle(p, o, u)
-        if r is None: log('FINGERS %s: no handle found near the grip' % p.name); continue
+        if r is None:
+            r = .014; log('FINGERS %s: no handle cut at the grip; a 14 mm bar assumed' % p.name)
         n = palm_normal(arm, side)
         F = h['fingers']; tp = (F['pinky']['base'] - F['index']['base']).normalized()
         pose = {}; con = {}
