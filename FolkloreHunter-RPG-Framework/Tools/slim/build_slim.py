@@ -17,7 +17,7 @@ def opt(flag, default=None):
 
 
 keep = opt('--pieces'); keep = set(keep.split(',')) if keep else None
-sizes = dict(x.split('=') for x in argv[i + 1].split(',') for i in [argv.index('--size')]) if '--size' in argv else {}
+sizes = dict(x.split('=') for x in opt('--size', '').split(',') if x)
 helmet = opt('--helmet')
 weapons = keep != set(['none'])
 root = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
@@ -62,7 +62,7 @@ def seat(src, bone, ya, za, length, scale=None, grip=None):
     s = scale if scale is not None else (length * k) / size
     M = axes_matrix(ya, za) @ Matrix.Scale(s, 4) @ Matrix.Translation(-g)
     me.transform(M)
-    o = bpy.data.objects.new(src.name, me)
+    o = bpy.data.objects.new(src.name.replace('__src', ''), me)
     bpy.context.scene.collection.objects.link(o)
     o.parent = arm; o.parent_type = 'BONE'; o.parent_bone = bone
     b = arm.data.bones[bone]
@@ -76,6 +76,7 @@ if weapons:
     with bpy.data.libraries.load(str(lib), link=False) as (src, dst):
         dst.objects = [n for n in src.objects if n in want]
     loaded = {o.name: o for o in dst.objects if o}
+    for o in loaded.values(): o.name = o.name + '__src'        # the seated copies take the plain names the game looks for
     # grips (the old hand slots' origins in each piece's coordinates, measured in Hunter.blend)
     GRIPS = {'1H_Sword': (0, 0, -.033), 'Round_Shield': (0, .156, -.017), 'Hunt_TowerShield': (0, .156, -.017), 'Hunt_Lance': (0, 0, -.033),
              'Hunt_Katana': (0, 0, -.033), 'Hunt_KatanaGlow': (0, 0, -.033), 'Hunt_Bow': (0, 0, 0), 'Hunt_NockedArrow': (0, 0, 0), 'Hunt_Arrow': (0, 0, -.033)}
@@ -87,7 +88,7 @@ if weapons:
         if not src: print('SLIM_MISSING', nm); continue
         o, s = seat(src, bone, ya, za, length, scales.get('Hunt_Katana') if nm == 'Hunt_KatanaGlow' else None, Vector(GRIPS[nm]))
         scales[nm] = s
-        print('SLIM_PIECE', nm, bone, 'scale %.3f' % s, flush=True)
+        print('SLIM_PIECE', o.name, bone, 'scale %.3f' % s, flush=True)
     q = loaded.get('Hunt_Quiver')
     if q and (not keep or 'Hunt_Quiver' in keep):
         # on the back, behind the right shoulder, fletchings up and tilted out
@@ -101,8 +102,10 @@ if weapons:
         c = rig.h0['chest'] + Vector((-.1, .17, .02)) * k
         o.matrix_world = arm.matrix_world @ (Matrix.Translation(c) @ R)
         print('SLIM_PIECE Hunt_Quiver chest scale %.3f' % s, flush=True)
-    for o in list(dst.objects):
-        if o and o.name in loaded and o.users == 0: bpy.data.objects.remove(o)
+    # only the meshes were wanted: the old file's rig and every clip that came with it go (no chibi motion here)
+    for o in list(bpy.data.objects):
+        if o.name.endswith('__src') or (o.type == 'ARMATURE' and o != arm): bpy.data.objects.remove(o)
+    for a in list(bpy.data.actions): bpy.data.actions.remove(a)
 
 if helmet:
     before = set(bpy.data.objects)
@@ -134,6 +137,7 @@ if helmet:
         print('SLIM_HELMET scale %.3f' % s, flush=True)
 
 made = [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+assert all('.' not in a.name for a in made) and len(bpy.data.actions) == len(made), 'stray clips: ' + ', '.join(a.name for a in bpy.data.actions)
 arm.animation_data.action = None
 print('SLIM_CLIPS', len(made), ' '.join(a.name for a in made), flush=True)
 
