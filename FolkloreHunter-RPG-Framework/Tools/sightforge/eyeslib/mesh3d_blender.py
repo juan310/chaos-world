@@ -67,6 +67,15 @@ groups = {g.index: g.name for g in body.vertex_groups}
 def main_bone(vi):
     gs = rest_me.vertices[vi].groups
     return groups.get(max(gs, key=lambda g: g.weight).group, '?') if len(gs) else '?'
+face_bone = [main_bone(f[0]) for f in faces]
+# a held piece meets the hand and forearm that hold it by design (a fist round a grip, inside a shield's boss): only the
+# rest of the body counts. The holding side is the side of the bone the piece rides on (handslot.l: the left hand).
+def holder(pn):
+    o = pieces[pn]
+    b = o.parent_bone if o.parent_type == 'BONE' else ''
+    side = b[-1] if b[-2:-1] == '.' else None
+    if not side: return set()
+    return {n for n in groups.values() if n.endswith('.' + side) and (n.split('.')[0] in ('hand', 'lowerarm', 'handslot') or n.split('_')[0] in ('thumb', 'index', 'middle', 'ring', 'pinky'))}
 
 def crossings(bvh, p, d):
     n, q = 0, p.copy()
@@ -98,20 +107,24 @@ for act in [a for a in bpy.data.actions if not only or clean(a.name) in only]:
         ratio = np.linalg.norm(cn[E[:, 0]] - cn[E[:, 1]], axis=1) / np.where(okE, rest_len, 1)
         bad = set(np.unique(E[okE & ((ratio > SMAX) | (ratio < SMIN))]).tolist())
         bvh = BVHTree.FromPolygons([Vector(p) for p in cn], faces)
-        intr = []
+        intr = []; meets = {}
         for pn in held(cname):
-            eo = pieces[pn].evaluated_get(dg)
+            eo = pieces[pn].evaluated_get(dg); own = holder(pn)
             for v in list(eo.data.vertices)[::3]:
                 p = eo.matrix_world @ v.co
                 hit = bvh.find_nearest(p)
                 if hit[0] is None or hit[3] < .012 or hit[3] > .3: continue
-                if inside(bvh, p): intr.append((p.copy(), hit[3]))
+                part = face_bone[hit[2]] if hit[2] is not None and hit[2] < len(face_bone) else '?'
+                if part in own: continue
+                if inside(bvh, p):
+                    intr.append((p.copy(), hit[3])); key = pn + ' into ' + part; meets[key] = max(meets.get(key, 0), hit[3])
         low = float(cn[:, 2].min() - sole)
         ground = -low if low < -.04 and not cname.startswith(UNGROUNDED) else 0.0
         share = len(bad) / max(1, len(cn)) * 100
         for vi in list(bad)[:4000]:
             bn = main_bone(vi); clip['where'][bn] = clip['where'].get(bn, 0) + 1
         clip['stretch'] = max(clip['stretch'], round(share, 2))
+        if len(intr) > clip['clipping']: clip['meets'] = {k: round(v * 100, 1) for k, v in sorted(meets.items(), key=lambda kv: -kv[1])[:4]}
         clip['clipping'] = max(clip['clipping'], len(intr))
         if intr: clip['clipDepthCm'] = max(clip['clipDepthCm'], round(max(d for _, d in intr) * 100, 1))
         clip['ground'] = max(clip['ground'], round(ground * 100, 1))

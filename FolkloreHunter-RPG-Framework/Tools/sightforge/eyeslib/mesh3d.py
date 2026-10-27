@@ -88,7 +88,7 @@ def findings(rep):
                                frames=frame, measured=c["stretch"], threshold=STRETCH_UNCERTAIN, evidence=ev))
         if c["clipping"] >= CLIP_POINTS and c.get("clipDepthCm", 0) >= CLIP_DEPTH_CM:
             out.append(finding("likely", "a held piece passes through the body", "%s %s" % (subject, clip),
-                               "%d points inside, up to %.0f cm deep" % (c["clipping"], c["clipDepthCm"]), frames=frame,
+                               "%d points inside, up to %.0f cm deep%s" % (c["clipping"], c["clipDepthCm"], (": " + ", ".join("%s %.0f cm" % kv for kv in c["meets"].items())) if c.get("meets") else ""), frames=frame,
                                measured=c["clipping"], threshold=CLIP_POINTS, evidence=ev,
                                fix="move the piece's grip or the arm in that pose"))
         elif c["clipping"] > 0:

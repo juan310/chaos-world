@@ -48,7 +48,7 @@ def gate(r, rep, base):
     out.append(("PASS" if 1.4 <= r["height"] <= 2.4 else "FAIL", "height", "%.2f m" % r["height"]))
     deep = {c: v for c, v in rep["clips"].items() if v.get("clipping", 0) > 0 and v.get("clipDepthCm", 0) > DEPTH_CM}
     out.append(("FAIL" if deep else "PASS", "held pieces in the body",
-                "; ".join("%s %.0f cm" % (c, v["clipDepthCm"]) for c, v in sorted(deep.items(), key=lambda kv: -kv[1]["clipDepthCm"])) or "none deeper than %.0f cm" % DEPTH_CM))
+                "; ".join("%s %.0f cm%s" % (c, v["clipDepthCm"], (" (" + ", ".join(v["meets"]) + ")") if v.get("meets") else "") for c, v in sorted(deep.items(), key=lambda kv: -kv[1]["clipDepthCm"])) or "none deeper than %.0f cm" % DEPTH_CM))
     tear = {c: v["stretch"] for c, v in rep["clips"].items() if v["stretch"] >= TEAR_FAIL}
     watch = {c: v["stretch"] for c, v in rep["clips"].items() if TEAR_WATCH <= v["stretch"] < TEAR_FAIL}
     out.append(("FAIL" if tear else "PASS", "skin", "; ".join("%s %.1f %%" % kv for kv in tear.items()) or "no clip over %.0f %%" % TEAR_FAIL))
