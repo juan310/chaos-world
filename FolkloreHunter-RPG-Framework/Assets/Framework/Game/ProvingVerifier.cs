@@ -149,7 +149,7 @@ namespace FH.Game
             {
                 ("bow", new[] { ("Bow_Draw", "bow_draw"), ("Bow_Shoot", "bow_shoot"), ("Bow_Power_Shoot", "bow_power"), ("Bow_Arc_Shoot", "bow_arc"), ("Bow_Piercer", "bow_piercer"), ("Bow_Step_R", "bow_step"), ("Bow_Aim_Walk", "walk") }),
                 ("katana", new[] { ("2H_Melee_Attack_Chop", "katana_overhead"), ("2H_Melee_Attack_Slice", "katana_slice"), ("2H_Melee_Attack_Stab", "katana_thrust"), ("2H_Melee_Attack_Spin", "katana_roundslash"), ("2H_Melee_Attack_Spinning", "katana_spirit3"), ("Katana_Iai", "katana_iai") }),
-                ("sword_shield", new[] { ("Hunt_Jog", "run"), ("Hunt_Sprint", "sprint"), ("Dodge_Right", "slide"), ("Dodge_Backward", "backstep"), ("Dodge_Forward", "roll"), ("Jump_Full_Short", "dive"), ("Lie_StandUp", "dive_landing") }),
+                ("sword_shield", new[] { ("Hunt_Jog", "run"), ("Hunt_Sprint", "sprint"), (anim.Has("Hunt_JumpDash_R") ? "Hunt_JumpDash_R" : "Dodge_Right", "slide"), ("Dodge_Backward", "backstep"), ("Dodge_Forward", "roll"), ("Jump_Full_Short", "dive"), ("Lie_StandUp", "dive_landing") }),
             };
             int written = 0;
             foreach (var (weapon, clips) in sets)
@@ -1235,14 +1235,14 @@ namespace FH.Game
                 Vector3 p0 = H.transform.position, f0 = H.transform.forward; int before = F.Evades;
                 bool sawClip = false, sawFrames = false;
                 Pad(PadButton.A, stick); yield return Frames(2);
-                sawClip = H.Anim.Current.Contains(want == EvadeKind.SideSlide ? (stick.x > 0 ? "Dodge_Right" : "Dodge_Left") : "Dodge_Backward");
+                sawClip = want == EvadeKind.SideSlide ? H.Anim.Current.Contains(stick.x > 0 ? "JumpDash_R" : "JumpDash_L") || H.Anim.Current.Contains(stick.x > 0 ? "Dodge_Right" : "Dodge_Left") : H.Anim.Current.Contains("Dodge_Backward");
                 Pad(PadButton.None); yield return Frames(1);
                 while (H.Dodging) { sawFrames |= H.Invulnerable; yield return null; }
                 Vector3 d = H.transform.position - p0; d.y = 0;
                 float along = want == EvadeKind.SideSlide ? Vector3.Dot(d, Vector3.right * Mathf.Sign(stick.x)) : Vector3.Dot(d, Vector3.back);
                 float turned = Vector3.Angle(f0, H.transform.forward);
                 evades.Add(label + " " + along.ToString("0.00") + " m");
-                Check("weapon out, stick " + label + " + A: " + (want == EvadeKind.SideSlide ? "side slide" : "back-step") + " that keeps facing forward",
+                Check("weapon out, stick " + label + " + A: " + (want == EvadeKind.SideSlide ? "jump dash" : "back-step") + " that keeps facing forward",
                       F.Evades == before + 1 && F.LastEvade == want && sawClip && turned < 8 && along > (want == EvadeKind.Backstep ? 1.2f : 1.7f) && along < 3f && sawFrames,
                       F.LastEvade + ", " + along.ToString("0.00") + " m, turned " + turned.ToString("0") + ", clip " + H.Anim.Current + ", i-frames " + sawFrames);
                 yield return Wait(.25f);

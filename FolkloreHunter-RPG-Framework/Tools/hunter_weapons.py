@@ -600,7 +600,8 @@ def _shield_up(P, high=0.0, out=0.0):
 
 
 def battle_clips(rig):
-    """SnS_Leap_Slash, SnS_Rush_1/2/3, SnS_Shield_Crash, SnS_Rend, Lance_Rend, Hunt_Clash, Katana_Rend, Bow_Tracer.
+    """SnS_Leap_Slash, SnS_Rush_1/2/3, SnS_Shield_Crash, SnS_Rend, Lance_Rend, Hunt_Clash, Katana_Rend, Bow_Tracer,
+    Hunt_JumpDash_L/R.
     Built from the KayKit swings (their arm arcs) with jumps, crouches, leans, the shield arm and the legs posed on top.
     The game times each strike from the hand's fastest moment (AnimationDriver.PlayStrike)."""
     P = Poser(rig); made = []
@@ -625,13 +626,14 @@ def battle_clips(rig):
         # the lowest ankle exactly `lift` over the ground: bent legs crouch the body instead of lifting the feet
         _lift(P, foot0 + lift - min(P.pb[f].head.z for f in ('foot.l', 'foot.r')))
 
-    def pose(lift=0.0, legs=None, legk=1.0, lean=0.0, twist=0.0, shield=True, fn=None, st=None):
+    def pose(lift=0.0, legs=None, legk=1.0, lean=0.0, twist=0.0, shield=True, fn=None, st=None, roll=0.0):
         def f(P):
             if legs: _apply(P, legs, legk)
             if st: stance(P, foot0, *st)
             if shield and guard: _apply(P, guard)
             if lean: P.turn('spine', (1, 0, 0), lean)
             if twist: P.turn('spine', (0, 0, 1), twist)
+            if roll: P.turn('spine', (0, 1, 0), roll)        # + leans the upper body to the hunter's left
             if fn: fn(P)
             plant(P, min(.9, max(0.0, lift)) * jump)
         return f
@@ -703,5 +705,16 @@ def battle_clips(rig):
         (.36, 'Idle', .35, pose(0, st=ARCHER, shield=False, fn=bow_pose(.15, cant=25, lean=6, release=1))),
         (.55, 'Idle', .5, pose(0, st=ARCHER, shield=False, fn=bow_pose(.3, cant=20, release=.5))),
         (.8, 'Idle', .7, pose(0, st=ARCHER, shield=False, fn=bow_pose(.7)))]))
+    # Jump dash (the drawn evade to the side, in place of the KayKit slide): a quick crouch, a spring sideways with the
+    # legs spread in the air and the body leaning into the dash, a low landing. Arms from the KayKit side dodges.
+    AIRWIDE = (.32, .05, .05, 0)
+    for side, base, s in (('L', 'Dodge_Left', 1), ('R', 'Dodge_Right', -1)):
+        made.append(P.clip('Hunt_JumpDash_' + side, [
+            (0, base, 0, pose(0, take, lean=6, roll=-5 * s, shield=False)),
+            (.07, base, .15, pose(.3, air, .8, lean=2, roll=8 * s, shield=False)),
+            (.16, base, .35, pose(.65, air, st=AIRWIDE, roll=14 * s, shield=False)),
+            (.26, base, .55, pose(.5, air, .8, st=AIRWIDE, roll=12 * s, shield=False)),
+            (.34, base, .75, pose(0, st=LAND, lean=8, roll=5 * s, shield=False)),
+            (.5, base, 1, pose(0, None, shield=False))]))
     P.use(None)
     return made

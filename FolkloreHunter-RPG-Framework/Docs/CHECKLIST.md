@@ -7,7 +7,7 @@ Details, moves and limits: `WEAPONS.md` (top sections).
 |---|---|---|
 | Training Range: archery targets 10–40 m, unkillable dummies, dodge hazards, dodge lane, travel from the ledger | Done | verifier range section; `Captures/Proving/r01-r10` |
 | Katana: spirit gauge and levels (glow), spirit combo to roundslash, foresight, iai stance and counters, lateral fade | Done | KatanaEvadeTests; verifier katana checks |
-| Evasions: roll, side slide, back-step, dive; perfect evade (stamina + slow motion) | Done | KatanaEvadeTests, perfect-evade tests; verifier dodge lane and hazards |
+| Evasions: roll, jump dash (to the side), back-step, dive; perfect evade (stamina + slow motion) | Done | KatanaEvadeTests, perfect-evade tests; verifier dodge lane and hazards |
 | Bow animated like MH (left hand, draw to the cheek, nocked arrow, canted power shot, arc, piercer, steps) | Done | `Tools/hunter_weapons.py`; verifier bow clip checks; Claude Eyes on the frames |
 | Briarhound like the Palamute: combo, pounce, flank, evade wind-ups; ridden lope/dash/drift, attacks, sidestep | Done | HoundTacticsTests; verifier hound section |
 | Smarter hound: target choice, punishing openings, soft parts, steering, out of the hunter's lane; ridden auto-run and auto-sidestep | Done | HoundTacticsTests; verifier hound section (decision trace in the details) |

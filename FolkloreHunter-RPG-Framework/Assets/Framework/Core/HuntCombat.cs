@@ -12,7 +12,7 @@ namespace FH.Core
 
     public enum HuntInput { None, Light, Heavy, LightHeavy, ForwardLight, Spirit }
     public enum WeaponClass { SwordShield, Lance, Bow, Katana }
-    /// <summary>Evasions: roll (any direction), side slide and back-step (drawn: the hunter keeps facing forward),
+    /// <summary>Evasions: roll (any direction), side slide (a jump dash) and back-step (drawn: the hunter keeps facing forward),
     /// dive (sprinting away from a monster: long, with a big invulnerable window), lance hop, bow charging sidestep.</summary>
     public enum EvadeKind { Roll, SideSlide, Backstep, Dive, Hop, Sidestep }
     public enum DodgeStyle { Roll, Hop, Sidestep }
@@ -213,7 +213,7 @@ namespace FH.Core
         {
             switch (kind)
             {
-                case EvadeKind.SideSlide: return new EvadeSpec { Kind = kind, Distance = 2.3f, Time = .3f, Invulnerable = .2f, Stamina = 18, ClipSpeed = 1.8f, KeepFacing = true };
+                case EvadeKind.SideSlide: return new EvadeSpec { Kind = kind, Distance = 2.7f, Time = .36f, Invulnerable = .24f, Stamina = 18, ClipSpeed = 1.4f, KeepFacing = true };   // a jump dash
                 case EvadeKind.Backstep: return new EvadeSpec { Kind = kind, Distance = 1.8f, Time = .28f, Invulnerable = .18f, Stamina = 15, ClipSpeed = 1.9f, KeepFacing = true };
                 case EvadeKind.Dive: return new EvadeSpec { Kind = kind, Distance = 4.6f, Time = .55f, Invulnerable = .6f, Stamina = 30, ClipSpeed = .95f, Recover = .45f };
                 case EvadeKind.Hop:

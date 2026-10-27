@@ -229,7 +229,7 @@ namespace FH.UI
                 "<b>Interact</b> E / X   <b>Items</b> 1-4, R / LB   <b>Camera</b> hold right mouse / right stick   <b>Zoom</b> wheel\n" +
                 "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n\n" +
                 "<color=#f5d68c>Proving Grounds and Training Range (hunt combat)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
-                "<b>All weapons</b>  Evade Space, A: roll; weapon out, stick to the side: side slide, stick back: back-step (both keep facing);\n" +
+                "<b>All weapons</b>  Evade Space, A: roll; weapon out, stick to the side: jump dash, stick back: back-step (both keep facing);\n" +
                 "    sprinting away from a monster: dive (long, very safe, then a moment to get up)   Sprint Shift, RT (sheathes)   Sheathe X\n" +
                 "    Evade at the last moment (the blow lands right as you press): perfect evade, time slows and stamina comes back\n" +
                 "    Items 1-4, LB (D-pad picks)   Whistle G, D-pad up\n" +

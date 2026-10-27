@@ -376,13 +376,17 @@ namespace FH.Game
             if (Charging) Charging = false;
             // A roll keeps facing only when locked on with the weapon out; side slides and back-steps always do.
             bool keep = spec.KeepFacing || (kind == EvadeKind.Roll && KeepFacing && !Sheathed);
-            string clip = kind == EvadeKind.SideSlide ? (side > 0 ? "Dodge_Right" : "Dodge_Left") : kind == EvadeKind.Backstep ? "Dodge_Backward" : kind == EvadeKind.Dive ? "Jump_Full_Short" : null;
-            float clipSpeed = kind == EvadeKind.Dive ? Mathf.Clamp(H.Anim.Length("Jump_Full_Short") / (spec.Time + .1f), .6f, 2.5f) : spec.ClipSpeed;
+            string dash = side > 0 ? "Hunt_JumpDash_R" : "Hunt_JumpDash_L";
+            if (!H.Anim.Has(dash)) dash = side > 0 ? "Dodge_Right" : "Dodge_Left";
+            string clip = kind == EvadeKind.SideSlide ? dash : kind == EvadeKind.Backstep ? "Dodge_Backward" : kind == EvadeKind.Dive ? "Jump_Full_Short" : null;
+            float clipSpeed = kind == EvadeKind.Dive ? Mathf.Clamp(H.Anim.Length("Jump_Full_Short") / (spec.Time + .1f), .6f, 2.5f)
+                : kind == EvadeKind.SideSlide && dash.StartsWith("Hunt_") ? Mathf.Clamp(H.Anim.Length(dash) / spec.Time, .8f, 2.5f)     // the whole hop in the dash's time
+                : spec.ClipSpeed;
             if (!H.Roll(dir, keep, spec.Distance, spec.Time, spec.Stamina, spec.Invulnerable, clipSpeed, clip)) return;
             if (kind != EvadeKind.Roll) dodgeEndAt = now + spec.Time;    // steps and the dive: the stick does not turn the hunter
             lastRollEnd = now + spec.Time; buffered = HuntInput.None; Guarding = false; CounterStance = false; IaiStance = false;
             LastEvade = kind; Evades++;
-            LastEvent = kind == EvadeKind.SideSlide ? "side slide " + (side > 0 ? "right" : "left") : kind == EvadeKind.Backstep ? "back-step" : kind == EvadeKind.Dive ? "dive" : "roll";
+            LastEvent = kind == EvadeKind.SideSlide ? "jump dash " + (side > 0 ? "right" : "left") : kind == EvadeKind.Backstep ? "back-step" : kind == EvadeKind.Dive ? "dive" : "roll";
         }
 
         /// <summary>Sprinting with the stick pointing away from a monster within 12 m: a dive instead of a roll.</summary>
