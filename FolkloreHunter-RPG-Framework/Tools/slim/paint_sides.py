@@ -22,7 +22,7 @@ mode, fbx, tex = argv[0], argv[1], argv[2]
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=fbx)
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
-choreo.rename_bones(arm)
+choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 body = max((o for o in bpy.data.objects if o.type == 'MESH'), key=lambda o: len(o.data.vertices))
 for o in [o for o in bpy.data.objects if o.type == 'MESH' and o is not body]: o.hide_render = True
 rig = choreo.Rig(arm)
