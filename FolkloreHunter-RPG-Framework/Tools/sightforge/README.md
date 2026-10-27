@@ -25,6 +25,8 @@ Findings come in the usual kinds: confirmed, likely, uncertain, not completed.
 | `terrain <surveys>` / `terrain --mesh <model>` | maps: ground the hunter can never reach, holes, open ledges, scenery you walk through, floating props, invisible walls, overlapping surfaces, on a top-down map of each area. Mesh mode: open edges, non-manifold edges, upside-down faces, stacked faces, slivers |
 | `footslide <model> [--fix out.fbx]` | in-place walks and runs: travel speed, how long each foot is down, slide. The fix holds the ball of each planted foot still on the moving ground (two-bone IK). Works on any humanoid rig |
 | `motionbricks setup\|inbetween\|transition` | NVIDIA MotionBricks run on this PC (RTX 5080) for any humanoid rig. `inbetween` makes the motion between a clip's key poses again; `transition` makes a new clip from a moment of one move into a moment of another. Reports show before/after stick-figure strips and smoothness, and `--check` runs mesh3d on the result |
+| `worldforge sandbox\|set\|build\|test\|report` | procedural environments from a recipe (the game's `WorldForge/` package), built and tested in the sandbox: walk, navigation, collision, mesh, camera, feet, lights, frame times, a survey map and a walk video. Also a page in Studio (Tools > WorldForge): edit, Build & test, Play, last test |
+| `hands <model> [--grips json]` | a model's finger grips (from `build_slim --fingers`) on each held piece: finger skin inside the piece, fingers clear of it, fingers stopped at their limits, with pictures of every grip |
 
 The game's side:
 
