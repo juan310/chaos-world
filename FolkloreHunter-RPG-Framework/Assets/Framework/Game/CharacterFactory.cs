@@ -32,8 +32,8 @@ namespace FH.Game
             o.transform.localRotation = Quaternion.identity;
             var renderers = o.GetComponentsInChildren<Renderer>();
             var body = renderers.Where(x => !IsWeapon(x.name)).ToArray();
-            Bounds b = body[0].bounds;
-            foreach (var rr in body.Skip(1)) b.Encapsulate(rr.bounds);
+            Bounds b = Slim(resource) ? StandingBounds(body) : body[0].bounds;
+            if (!Slim(resource)) foreach (var rr in body.Skip(1)) b.Encapsulate(rr.bounds);
             float k = targetHeight / Mathf.Max(.1f, b.size.y);
             float bottom = b.min.y - parent.position.y;
             o.transform.localScale = Vector3.one * k;
@@ -55,6 +55,26 @@ namespace FH.Game
             }
             foreach (var smr in o.GetComponentsInChildren<SkinnedMeshRenderer>()) smr.updateWhenOffscreen = true;
             return o.transform;
+        }
+
+        /// <summary>The slim characters (Tools/slim): their clips roll, dive and lie down, and Unity's import bounds cover every
+        /// clip, so their size is measured on the mesh as it stands (the bind pose they are made in).</summary>
+        static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_");
+
+        static Bounds StandingBounds(Renderer[] body)
+        {
+            bool any = false; var b = new Bounds();
+            var mesh = new Mesh();
+            foreach (var r in body)
+            {
+                Vector3[] v;
+                if (r is SkinnedMeshRenderer smr) { smr.BakeMesh(mesh, true); v = mesh.vertices; for (int i = 0; i < v.Length; i++) v[i] = smr.transform.position + smr.transform.rotation * v[i]; }
+                else if (r.GetComponent<MeshFilter>() && r.GetComponent<MeshFilter>().sharedMesh) { v = r.GetComponent<MeshFilter>().sharedMesh.vertices; for (int i = 0; i < v.Length; i++) v[i] = r.transform.TransformPoint(v[i]); }
+                else continue;
+                foreach (var p in v) { if (!any) { b = new Bounds(p, Vector3.zero); any = true; } else b.Encapsulate(p); }
+            }
+            UnityEngine.Object.Destroy(mesh);
+            return any ? b : body[0].bounds;
         }
 
         static bool IsWeapon(string n) => n.Contains("Sword") || n.Contains("Shield") || n.Contains("Staff") || n.Contains("Wand") || n.StartsWith("Hunt_");
