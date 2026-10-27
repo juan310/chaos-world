@@ -381,7 +381,7 @@ if AUTH:
             f = fa0 + (fa1 - fa0) * (i / max(1, n - 1)); sc.frame_set(int(f), subframe=f - int(f))
             H = world('hips'); Hi = H.inverted()
             smp.append({'wrist': Hi @ (AW @ PB['hand.l'].head), 'elbow': Hi @ (AW @ PB['lowerarm.l'].head),
-                        'hand': Hi @ world('hand.l'), 'local': {b: PB[b].matrix_basis.copy() for b in ('shoulder.l', 'upperarm.l', 'lowerarm.l', 'hand.l') if b in PB}})
+                        'hand': Hi @ world('hand.l'), 'fore': Hi @ world('lowerarm.l'), 'local': {b: PB[b].matrix_basis.copy() for b in ('shoulder.l', 'upperarm.l', 'lowerarm.l', 'hand.l') if b in PB}})
         ad.action = B
         keys = []
         if ik_ok:
@@ -402,9 +402,19 @@ if AUTH:
                 H = world('hips')
                 tgt.matrix_world = Matrix.Translation(H @ d['wrist']); pol.matrix_world = Matrix.Translation(H @ d['elbow'])
                 bpy.context.view_layer.update()
-                k = {b: arm.convert_space(pose_bone=PB[b], matrix=PB[b].matrix, from_space='POSE', to_space='LOCAL') for b in ('upperarm.l', 'lowerarm.l')}
+                # the forearm rolled about its own length as the keyposes roll it (the solver leaves the roll to chance),
+                # so the hand only bends at the wrist; a hand twisted against its forearm wrings the wrist's skin
+                F = PB['lowerarm.l'].matrix.copy(); y = F.col[1].to_3d().normalized(); x = F.col[0].to_3d()
+                xk = (AW.inverted() @ (H @ d['fore'])).col[0].to_3d(); xk = (xk - y * xk.dot(y)).normalized()
+                roll = math.atan2(x.cross(xk).dot(y), x.dot(xk))
+                head = F.translation.copy()
+                F = Matrix.Translation(head) @ Matrix.Rotation(roll, 4, y) @ Matrix.Translation(-head) @ F
+                k = {'upperarm.l': arm.convert_space(pose_bone=PB['upperarm.l'], matrix=PB['upperarm.l'].matrix, from_space='POSE', to_space='LOCAL'),
+                     'lowerarm.l': arm.convert_space(pose_bone=PB['lowerarm.l'], matrix=F, from_space='POSE', to_space='LOCAL')}
                 want = AW.inverted() @ (H @ d['hand'])
-                k['hand.l'] = arm.convert_space(pose_bone=PB['hand.l'], matrix=want, from_space='POSE', to_space='LOCAL')
+                bl, bh = arm.data.bones['lowerarm.l'].matrix_local, arm.data.bones['hand.l'].matrix_local
+                k['hand.l'] = ((F @ bl.inverted() @ bh).inverted() @ want if PB['hand.l'].parent == PB['lowerarm.l'] else
+                               arm.convert_space(pose_bone=PB['hand.l'], matrix=want, from_space='POSE', to_space='LOCAL'))
             else:
                 k = d['local']
             keys.append(k)
