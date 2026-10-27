@@ -228,7 +228,7 @@ namespace FH.UI
                 "<b>Dodge</b> Space / A   <b>Spell</b> Q / LT   <b>Change spell</b> F / D-pad down   <b>Lock-on</b> Tab, middle mouse / R3\n" +
                 "<b>Interact</b> E / X   <b>Items</b> 1-4, R / LB   <b>Camera</b> hold right mouse / right stick   <b>Zoom</b> wheel\n" +
                 "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n\n" +
-                "<color=#f5d68c>Proving Grounds and Training Range (Monster Hunter-style)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
+                "<color=#f5d68c>Proving Grounds and Training Range (hunt combat)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
                 "<b>All weapons</b>  Evade Space, A: roll; weapon out, stick to the side: side slide, stick back: back-step (both keep facing);\n" +
                 "    sprinting away from a monster: dive (long, very safe, then a moment to get up)   Sprint Shift, RT (sheathes)   Sheathe X\n" +
                 "    Evade at the last moment (the blow lands right as you press): perfect evade, time slows and stamina comes back\n" +
@@ -239,17 +239,17 @@ namespace FH.UI
                 "<b>Sword and shield</b>  Light LMB, Y (slash, slash, overhead; forward: lunge)   Heavy RMB, B (hold: charge, level 2 spins)\n" +
                 "    Y+B shield bash (stun)   Guard Ctrl, RB (perfect guard, then light: counter)   light right after a roll: roll slash\n" +
                 "    Back-step then Y: Leaping Slash, then Y Thorn Rush I, II, III and the Shield Crash; press as the blade glints: perfect\n" +
-                "    Perfect guards fill the clash meter (sword and shield, lance): the next guarded blow is a POWER CLASH, mash Y to win\n" +
+                "    Perfect guards fill the standoff meter (sword and shield, lance): the next guarded blow is a STANDOFF, mash Y to win\n" +
                 "<b>Lance</b>  Y mid thrust, B high thrust (mix up to three)   Y+B wide sweep   A hop (three in a row, the last is long)\n" +
                 "    Guard RB (wide, little chip)  then Y guard thrust (stick: guard dash), B counter stance (a blocked blow: Retribution Thrust),\n" +
                 "    Y+B dash attack (Y during it: finishing thrust)\n" +
-                "<b>Bow</b>  Hold Y to draw (three charge levels), release to shoot; quick follow-up shots rise a level   A charging sidestep (+1 level)\n" +
-                "    B after a shot: power shot   B: arc shot (arrows rain on the target)   Y+B Dragon Piercer   RB aim over the shoulder\n" +
-                "    Its Rend is the Thorn Tracer: the arrow stays in; your arrows bend toward it and the eighth one bursts it\n" +
+                "<b>Bow</b>  Hold Y to draw (three charge levels), release to shoot; quick follow-up shots rise a level   A drawing step (+1 level)\n" +
+                "    B after a shot: fan volley   B: rain volley (arrows rain on the target)   Y+B Skewer Shot   RB aim over the shoulder\n" +
+                "    Its Rend is the Seeker Thorn: the arrow stays in; your arrows bend toward it and the eighth one bursts it\n" +
                 "<b>Katana</b> (two-handed)  Y overhead, B thrust, then rising slash   Y+B fade slash (back; stick to the side: lateral fade)\n" +
-                "    RB Spirit Blade I, II, III, then Spirit Roundslash: a landed roundslash raises the spirit level (white, yellow, red)\n" +
-                "    Hits fill the spirit gauge; spirit moves spend it. RB+B Foresight Slash: step back, a blow caught in it is countered\n" +
-                "    RB+A iai stance: Y Iai Slash (the gauge refills itself), RB Iai Spirit Slash (a blow in its windup is countered: level up)\n\n" +
+                "    RB Ember Cut I, II, III, then the Ember Wheel: a landed Ember Wheel raises the ember level (white, yellow, red)\n" +
+                "    Hits fill the ember gauge; ember moves spend it. RB+B Shadowstep Slash: step back, a blow caught in it is countered\n" +
+                "    RB+A sheath stance: Y Sheath Draw (the gauge refills itself), RB Ember Draw (a blow in its windup is countered: level up)\n\n" +
                 "<color=#f5d68c>Hunting tips</color>  Watch the raised weapon, red eyes and warning ring; roll through the blow, then punish.\n" +
                 "Orange numbers mean a soft hitzone. Shield bashes and overheads build stun: a toppled monster is wide open.", 17);
             UiKit.Button(col, "Back", () => Ui.Close(this));

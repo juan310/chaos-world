@@ -1,5 +1,9 @@
 # Build 0.8.0 — Katana, evasions, Monster Hunter bow animations, Training Range
 
+> **0.9 naming:** the in-game names below that echoed Monster Hunter's were replaced with this game's own (Spirit Blade →
+> Ember Cut, Foresight → Shadowstep, Iai → Sheath, Dragon Piercer → Skewer Shot, Power/Arc Shot → Fan/Rain Volley,
+> Guard Dash → Shield Rush, Counter Thrust → Riposte Thrust, Dash Attack → Thundering Charge...). Full table: `BATTLE.md`.
+
 ## Training Range (new test area)
 Title menu → **Training Range (weapons and evasions)**, or from either ledger → *Go to the Training Range*. Like
 the Proving Grounds it is never saved and gives no rewards. A walled yard 56 × 80 m:

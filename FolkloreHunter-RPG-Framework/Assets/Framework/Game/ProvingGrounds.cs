@@ -36,8 +36,8 @@ namespace FH.Game
             S.Hunter.Hunt.Equip(set);
             S.Hud?.Flash(set.name + " in hand");
             S.Hud?.Notify(set.name + ": " + (set.Class == WeaponClass.Lance ? "thrust, guard, counter and charge; hop instead of rolling." :
-                set.Class == WeaponClass.Bow ? "draw and charge shots, sidestep to charge, power shot, arc shot, Dragon Piercer; RB aims." :
-                set.Class == WeaponClass.Katana ? "Y/B slashes fill the spirit gauge; RB spirit combo ending in the Roundslash (levels up); RB+B Foresight; RB+A iai stance." :
+                set.Class == WeaponClass.Bow ? "draw and charge shots, step to charge, fan volley, rain volley, Skewer Shot; RB aims." :
+                set.Class == WeaponClass.Katana ? "Y/B slashes fill the ember gauge; RB Ember Cuts ending in the Ember Wheel (levels up); RB+B Shadowstep; RB+A sheath stance." :
                 "fast slashes, charged heavy, shield bash, guard."), NoticeKind.Story);
         }
 
@@ -214,7 +214,7 @@ namespace FH.Game
                   .Append(f.CounterStance ? "  <color=#9cf>COUNTER STANCE</color>" : "")
                   .Append(f.Class == WeaponClass.Bow ? "  charge level " + f.BowLevel + (f.Drawing ? " (drawing)" : "") + (f.Aiming ? "  AIMING" : "") + "   last shot L" + f.LastShotLevel + " x" + f.LastShotArrows + "   arrows fired " + ArrowShot.Fired + ", hits " + ArrowShot.Landed : "")
                   .Append(f.Class == WeaponClass.Lance ? "  retributions " + f.Retributions + (f.ChainedDodges > 0 ? "  hops " + f.ChainedDodges : "") : "")
-                  .Append(f.Class == WeaponClass.Katana ? "  spirit " + f.Spirit.Value.ToString("0") + "/100  level " + f.SpiritLevel + (f.Spirit.IaiActive(Time.time) ? " (iai refill)" : "") + (f.IaiStance ? "  <color=#9cf>IAI STANCE</color>" : "") + (f.Foresight ? "  <color=#9cf>FORESIGHT</color>" : "") + "   foresight counters " + f.ForesightCounters + ", iai counters " + f.SpiritCounters : "").Append('\n');
+                  .Append(f.Class == WeaponClass.Katana ? "  ember " + f.Spirit.Value.ToString("0") + "/100  level " + f.SpiritLevel + (f.Spirit.IaiActive(Time.time) ? " (sheath refill)" : "") + (f.IaiStance ? "  <color=#9cf>SHEATH STANCE</color>" : "") + (f.Foresight ? "  <color=#9cf>SHADOWSTEP</color>" : "") + "   shadowstep counters " + f.ForesightCounters + ", ember draw counters " + f.SpiritCounters : "").Append('\n');
                 sb.Append("Evade ").Append(f.Evades > 0 ? f.LastEvade.ToString() : "-").Append(" (").Append(f.Evades).Append(" so far, perfect ").Append(h.PerfectEvades).Append(")")
                   .Append(TimeWarp.Active ? "  <color=#9cf>SLOW MOTION</color>" : "").Append(f.Sprinting ? "   sprinting: evade away from a monster to dive" : "").Append('\n');
                 var cur = f.Current;
@@ -244,9 +244,9 @@ namespace FH.Game
                 sb.Append(hf.Sight ? "<color=#f66>SIGHT</color>  " : "").Append("rends ").Append(hf.Rends).Append("  torn by you ").Append(hf.WoundsTorn)
                   .Append("  Resolve ").Append(hf.Resolve.Stacks(Time.time))
                   .Append("  rush: glints ").Append(hf.Glints).Append(", perfect links ").Append(hf.PerfectLinks).Append(" (last ").Append(hf.LastLink).Append(')')
-                  .Append("  clash ").Append(hf.ClashGauge.Perfects).Append('/').Append(hf.ClashGauge.Need).Append(hf.Clashing ? " <color=#ffd257>CLASHING " + hf.Clash.Presses + "/" + hf.Clash.Target + "</color>" : "")
+                  .Append("  standoff ").Append(hf.ClashGauge.Perfects).Append('/').Append(hf.ClashGauge.Need).Append(hf.Clashing ? " <color=#ffd257>STANDOFF " + hf.Clash.Presses + "/" + hf.Clash.Target + "</color>" : "")
                   .Append(" won ").Append(hf.ClashesWon).Append(" lost ").Append(hf.ClashesLost)
-                  .Append("  tracer ").Append(hf.Tracer.Active(Time.time) ? hf.Tracer.Hits + "/" + TracerMark.Needed : "-").Append(" bursts ").Append(hf.Tracer.Bursts).Append('\n');
+                  .Append("  seeker ").Append(hf.Tracer.Active(Time.time) ? hf.Tracer.Hits + "/" + TracerMark.Needed : "-").Append(" bursts ").Append(hf.Tracer.Bursts).Append('\n');
             }
             if (S.InRange)
             {

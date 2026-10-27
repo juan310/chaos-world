@@ -50,7 +50,7 @@ namespace FH.UI
             staminaFill = stamina.FillImage;
             magic = UiKit.Bar("Magic", vit.transform, UiKit.Magic, new Vector2(300, 10)); magic.Root.Box(new Vector2(0, 1), new Vector2(18, -102), new Vector2(300, 10));
             // Katana spirit gauge (Proving Grounds): the fill takes the spirit level's colour.
-            spirit = UiKit.Bar("Spirit gauge", vit.transform, new Color(.92f, .95f, 1f), new Vector2(300, 8)); spirit.Root.Box(new Vector2(0, 1), new Vector2(18, -118), new Vector2(300, 8));
+            spirit = UiKit.Bar("Ember gauge", vit.transform, new Color(.92f, .95f, 1f), new Vector2(300, 8)); spirit.Root.Box(new Vector2(0, 1), new Vector2(18, -118), new Vector2(300, 8));
             spirit.Root.gameObject.SetActive(false);
             // Hunt combat: Hunter's Sight, Resolve stacks, the power clash meter and the Thorn Tracer, under the vitals.
             huntText = UiKit.Label("Hunt state", root, "", 17, UiKit.Text, TextAnchor.UpperLeft);
@@ -159,11 +159,11 @@ namespace FH.UI
                     return pad ? "Y mid thrust   B high thrust   Y+B wide sweep   A hop   RB guard: +Y guard thrust/dash, +B counter, +Y+B dash attack   R3 lock-on   LB item   Menu ledger"
                                : "LMB mid thrust   RMB high thrust   both: wide sweep   Space hop   Ctrl guard: +LMB guard thrust, +RMB counter, +both dash attack   Tab lock-on   1-4 items";
                 if (cls == FH.Core.WeaponClass.Katana)
-                    return pad ? "Y overhead   B thrust   Y+B fade slash (stick side: lateral)   RB spirit blade   RB+B foresight   RB+A iai stance (then Y / RB)   A roll/slide   Menu ledger"
-                               : "LMB overhead   RMB thrust   both: fade slash   Ctrl spirit blade   Ctrl+RMB foresight   Ctrl+Space iai stance (then LMB / Ctrl)   Space roll/slide   1-4 items";
+                    return pad ? "Y overhead   B thrust   Y+B retreating cut (stick side: sidelong)   RB ember cut   RB+B shadowstep   RB+A sheath stance (then Y / RB)   A roll/slide   Menu ledger"
+                               : "LMB overhead   RMB thrust   both: retreating cut   Ctrl ember cut   Ctrl+RMB shadowstep   Ctrl+Space sheath stance (then LMB / Ctrl)   Space roll/slide   1-4 items";
                 if (cls == FH.Core.WeaponClass.Bow)
-                    return pad ? "Y hold: draw, release: shoot   B power shot / arc shot   Y+B Dragon Piercer   A charging sidestep   RB aim   R3 lock-on   LB item   Menu ledger"
-                               : "LMB hold: draw, release: shoot   RMB power shot / arc shot   both: Dragon Piercer   Space sidestep   Ctrl aim   Tab lock-on   1-4 items";
+                    return pad ? "Y hold: draw, release: shoot   B fan volley / rain volley   Y+B Skewer Shot   A drawing step   RB aim   R3 lock-on   LB item   Menu ledger"
+                               : "LMB hold: draw, release: shoot   RMB fan volley / rain volley   both: Skewer Shot   Space drawing step   Ctrl aim   Tab lock-on   1-4 items";
                 return pad ? "Y light   B heavy (hold: charge)   Y+B shield bash   A roll   RB guard   RT sprint   X sheathe   R3 lock-on   LB item   D-pad item   Menu ledger"
                            : "LMB light   RMB heavy (hold: charge)   both: shield bash   Space roll   Ctrl guard   Shift sprint   X sheathe   Tab lock-on   1-4 items   E ledger   Esc menu";
             }
@@ -178,8 +178,8 @@ namespace FH.UI
             if (f.Sight) sb.Append("<color=#ff6a4a><b>SIGHT</b></color>  Y: Rend   ");
             int r = f.Resolve.Stacks(now);
             if (r > 0) sb.Append("<color=#f5d68c>Resolve ").Append(r).Append('/').Append(HunterResolve.Max).Append("  ").Append(f.Resolve.Remaining(now).ToString("0")).Append("s</color>   ");
-            if (f.Set != null && f.Set.clash) sb.Append(f.ClashGauge.Ready ? "<color=#ffd257><b>CLASH READY</b></color>   " : "Clash " + f.ClashGauge.Perfects + "/" + f.ClashGauge.Need + "   ");
-            if (f.Tracer.Active(now)) sb.Append("<color=#9cff8a>Tracer ").Append(f.Tracer.Hits).Append('/').Append(TracerMark.Needed).Append("</color>");
+            if (f.Set != null && f.Set.clash) sb.Append(f.ClashGauge.Ready ? "<color=#ffd257><b>STANDOFF READY</b></color>   " : "Standoff " + f.ClashGauge.Perfects + "/" + f.ClashGauge.Need + "   ");
+            if (f.Tracer.Active(now)) sb.Append("<color=#9cff8a>Seeker ").Append(f.Tracer.Hits).Append('/').Append(TracerMark.Needed).Append("</color>");
             return sb.ToString();
         }
 

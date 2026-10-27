@@ -1,4 +1,4 @@
-# Build 0.9.0 — Hunter's Sight: wounds, Rend strikes, the Thorn Rush, the power clash, the Thorn Tracer
+# Build 0.9.0 — Hunter's Sight: wounds, Rend strikes, the Thorn Rush, the Standoff, the Seeker Thorn
 
 Asked for: "look at Monster Hunter videos — combat with bows, shield and sword, lance etc. — and implement battle
 animations in ours, but our own unique way". The research was done from guides to Monster Hunter Wilds, which describe
@@ -16,18 +16,34 @@ Training Range), like the rest of the Monster Hunter-style combat; the valley's 
 | — | **Resolve: each torn wound gives a stack (up to 3, 40 s): +6 % damage and +15 % stamina recovery per stack** |
 | — | **Unravel: every third wound torn in a fight topples the monster (4 s)** |
 | Sword and shield: Perfect Rush, timed presses when the hunter glows, from a back-step into a leaping slash; shield finishers stun | **Thorn Rush**: back-step, Y = **Leaping Slash**, then Y: **Thorn Rush I** (rising cut), **II** (two spinning cuts), **III** (leaping spin), **Shield Crash** (jump and slam the shield down: the hardest stun of the weapon). The blade **glints** late in each move; Y in the glint is a **perfect link** (+40-45 % damage and stun, quicker windup); earlier is a plain link |
-| Power Clash: perfect guards build it; certain blows clash; mash to overpower; each clash needs more guards | **Power clash** (sword and shield, lance): three perfect guards fill the meter; the next blow the raised shield meets locks hunter and monster; **mash Y** (7 presses in 1.6 s, one more each clash) to throw the monster down (3 s topple) and land the **Clash Bash / Clash Thrust**; fail and the hunter is pushed back unhurt; each clash asks one more perfect guard (up to 6); the meter empties when you change weapons |
-| Bow: Tracer Arrow — later shots home on it and it detonates after enough hits | **Thorn Tracer** (the bow's Rend): a heavy shot that tears a wound and **stays in the monster**; for 20 s your straight arrows bend toward it (up to 540°/s, within 70° of their flight); the eighth arrow to land **bursts** it (motion value 2.4) |
-| Long sword focus strike | **Spirit Rend** (katana): a low dash and two cuts; tearing a wound **fills the spirit gauge by half** |
+| Power Clash: perfect guards build it; certain blows clash; mash to overpower; each clash needs more guards | **Standoff** (sword and shield, lance): three perfect guards fill the meter; the next blow the raised shield meets locks hunter and monster; **mash Y** (7 presses in 1.6 s, one more each clash) to throw the monster down (3 s topple) and land the **Standoff Bash / Standoff Thrust**; fail and the hunter is pushed back unhurt; each clash asks one more perfect guard (up to 6); the meter empties when you change weapons |
+| Bow: Tracer Arrow — later shots home on it and it detonates after enough hits | **Seeker Thorn** (the bow's Rend): a heavy shot that tears a wound and **stays in the monster**; for 20 s your straight arrows bend toward it (up to 540°/s, within 70° of their flight); the eighth arrow to land **bursts** it (motion value 2.4) |
+| Long sword focus strike | **Ember Rend** (katana): a low dash and two cuts; tearing a wound **fills the ember gauge by half** |
 | Lance focus strike | **Piercing Rend**: braced behind the tower shield, three driving thrusts |
 | Sword and shield focus strike | **Rending Leap**: a low lunge, a diagonal cut then a back-hand cut |
+
+## Our own names (no Monster Hunter terms in the game)
+Mechanics can follow the genre; names, text and art must be ours (the owner's rule, also in the repo's `CLAUDE.md`).
+Every player-facing name that echoed Monster Hunter was replaced in 0.9 (internal code ids are unchanged):
+
+| Was (Monster Hunter's term) | Now |
+|---|---|
+| Spirit gauge / spirit level | Ember gauge / ember level |
+| Spirit Blade I, II, III / Spirit Roundslash | Ember Cut I, II, III / Ember Wheel |
+| Foresight Slash / Foresight Counter | Shadowstep Slash / Shadowstep Counter |
+| Iai stance / Iai Slash / Iai Spirit Slash | Sheath stance / Sheath Draw / Ember Draw |
+| Fade Slash / Lateral Fade Slash | Retreating Cut / Sidelong Cut |
+| Power Shot / Arc Shot / Dragon Piercer / charging sidestep | Fan Volley / Rain Volley / Skewer Shot / drawing step |
+| Guard Dash / Counter Thrust / Dash Attack | Shield Rush / Riposte Thrust / Thundering Charge |
+| Power Clash, Perfect Rush, Tracer Arrow, Focus Mode, Focus Strike | Standoff, Thorn Rush, Seeker Thorn, Hunter's Sight, Rend |
+| "Monster Hunter-style" in the controls help | "hunt combat" |
 
 ## Controls (also in the pause menu's Controls)
 - **Hunter's Sight**: hold LT (weapon out) or Left Alt. **Rend**: Y while in Sight. Tap LT: the spell.
 - **Thorn Rush**: stick back + A (back-step), then Y; keep pressing Y when the blade glints.
-- **Power clash**: perfect-guard three blows (RB just before they land), then guard the next one; mash Y.
-- The HUD line under the vitals shows SIGHT, Resolve (stacks and seconds), the clash meter (or CLASH READY) and the
-  tracer's count; a wound opening says so on screen.
+- **Standoff**: perfect-guard three blows (RB just before they land), then guard the next one; mash Y.
+- The HUD line under the vitals shows SIGHT, Resolve (stacks and seconds), the standoff meter (or STANDOFF READY) and the
+  Seeker Thorn's count; a wound opening says so on screen.
 
 ## New animations (hunter, KayKit rig, `Tools/hunter_weapons.py` → `battle_clips`)
 Built from the KayKit swings (their arm arcs) with jumps, crouches, leans, the shield arm and the legs posed on top;
@@ -35,7 +51,7 @@ the lowest foot is kept on the ground (or exactly at the jump's height). Preview
 `Captures/HunterExport/battle_*.png`.
 `SnS_Leap_Slash`, `SnS_Rush_1` (rising cut), `SnS_Rush_2` (two spinning cuts, shield held in), `SnS_Rush_3` (leaping
 spin), `SnS_Shield_Crash` (jump, shield overhead, slam), `SnS_Rend`, `Lance_Rend` (three thrusts behind the shield),
-`Hunt_Clash` (braced, leaning in, trembling: looped), `Katana_Rend`, `Bow_Tracer` (deep canted draw, hard release).
+`Hunt_Clash` (braced, leaning in, trembling: looped), `Katana_Rend`, `Bow_Tracer` (the Seeker Thorn: deep canted draw, hard release).
 The new male and female hunters get them through `Tools/build_hunter_variant.py` like every other clip.
 
 ## Where it lives
@@ -58,7 +74,7 @@ RESULTS_BATTLE
   retargeting as every other clip, so arm arcs were not authored for those bodies.
 - Wounds sit on the hurtbox bones the monsters already have (head, chest, limbs...), so a monster with few hurtboxes
   has few wound spots.
-- The clash is triggered by any blow the raised shield meets once the meter is full (Wilds picks certain attacks).
+- The Standoff is triggered by any blow the raised shield meets once the meter is full (Wilds picks certain attacks).
 
 ## Sources
 - Wounds, Focus Mode and Focus Strikes: [Mobalytics: wounds explained](https://mobalytics.gg/mhw/guides/wounds-explained),

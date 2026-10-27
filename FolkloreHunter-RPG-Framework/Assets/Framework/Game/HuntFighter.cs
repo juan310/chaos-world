@@ -441,7 +441,7 @@ namespace FH.Game
                     WorldKit.Burst(H.transform.position + Vector3.up * 1.2f, new Color(.75f, .9f, 1f), 20);
                     WorldKit.Sound(H.transform.position, "chime", .4f);
                     GamePad.Rumble(.4f, .8f, .12f);
-                    S.Hud?.Flash("Foresight! Spirit gauge full");
+                    S.Hud?.Flash("Shadowstep! Ember gauge full");
                     Execute(Set.Move(Set.foresightCounter), Vector3.zero);
                     LastEvent = "foresight counter";
                 }
@@ -473,7 +473,7 @@ namespace FH.Game
                         WorldKit.Burst(H.BladeTip, new Color(1f, .78f, .3f), 18);
                         WorldKit.Sound(H.transform.position, "chime", .3f);
                         GamePad.Rumble(.3f, .6f, .1f);
-                        S.Hud?.Flash("Perfect Rush!");
+                        S.Hud?.Flash("Thorn Rush: perfect link!");
                     }
                 }
                 rushPressSerial = -1;
@@ -883,7 +883,7 @@ namespace FH.Game
                 WorldKit.Burst(at, new Color(.75f, .9f, 1f), 24);
                 WorldKit.Sound(at, "chime", .45f);
                 GamePad.Rumble(.5f, .9f, .15f);
-                S.Hud?.Flash("Iai Spirit counter! Spirit level " + SpiritLevel);
+                S.Hud?.Flash("Ember Draw counter! Ember level " + SpiritLevel);
                 H.HitstopUntil = Time.time + .08f;
                 LastEvent = "iai spirit counter";
                 return true;
@@ -923,7 +923,7 @@ namespace FH.Game
                 WorldKit.Burst(spark, new Color(.6f, .9f, 1f), 18);
                 WorldKit.Sound(spark, "chime", .35f);
                 GamePad.Rumble(.3f, .7f, .1f);
-                S.Hud?.Flash(Set.clash ? (ClashGauge.Ready ? "Perfect guard! CLASH READY: guard the next blow" : "Perfect guard! Counter now  (clash " + ClashGauge.Perfects + "/" + ClashGauge.Need + ")") : "Perfect guard! Counter now");
+                S.Hud?.Flash(Set.clash ? (ClashGauge.Ready ? "Perfect guard! STANDOFF READY: guard the next blow" : "Perfect guard! Counter now  (standoff " + ClashGauge.Perfects + "/" + ClashGauge.Need + ")") : "Perfect guard! Counter now");
                 H.HitstopUntil = Time.time + .06f;
                 LastEvent = "perfect guard";
                 return true;
@@ -1054,10 +1054,10 @@ namespace FH.Game
                 if (move.spiritLevelUp && levelledSwing != moveSerial)
                 {
                     levelledSwing = moveSerial; Spirit.LevelUp(now);
-                    S.Hud?.Flash("Spirit level " + Spirit.Level);
+                    S.Hud?.Flash("Ember level " + Spirit.Level);
                     WorldKit.Burst(H.BladeTip, SpiritColor(Spirit.Level), 24);
                 }
-                if (move.iaiBuff > 0 && buffedSwing != moveSerial) { buffedSwing = moveSerial; Spirit.Iai(now, move.iaiBuff); S.Hud?.Flash("Iai: the spirit gauge fills"); }
+                if (move.iaiBuff > 0 && buffedSwing != moveSerial) { buffedSwing = moveSerial; Spirit.Iai(now, move.iaiBuff); S.Hud?.Flash("Sheath Draw: the ember gauge fills"); }
             }
             float stop = move != null ? move.hitstop : .04f;
             if (monster.LastHitZone >= 1.3f || hit.WeakPoint) stop *= 1.25f;
@@ -1183,7 +1183,7 @@ namespace FH.Game
             WorldKit.Sound(at, "hit", .6f);
             S.CameraRig.Shake(.35f);
             GamePad.Rumble(.8f, 1f, .25f);
-            S.Hud?.Flash("POWER CLASH! Mash Y  0/" + Clash.Target);
+            S.Hud?.Flash("STANDOFF! Mash Y  0/" + Clash.Target);
             LastEvent = "power clash";
         }
 
@@ -1198,7 +1198,7 @@ namespace FH.Game
                 WorldKit.Burst(at, new Color(1f, .8f, .35f), 6 + Clash.Presses);
                 S.CameraRig.Shake(.08f);
                 GamePad.Rumble(.3f, .5f, .06f);
-                S.Hud?.Flash("POWER CLASH! Mash Y  " + Clash.Presses + "/" + Clash.Target);
+                S.Hud?.Flash("STANDOFF! Mash Y  " + Clash.Presses + "/" + Clash.Target);
             }
             var state = Clash.Result == ClashBout.State.Running ? Clash.Tick(Time.deltaTime) : Clash.Result;
             if (state == ClashBout.State.Running) return;
@@ -1208,7 +1208,7 @@ namespace FH.Game
             {
                 ClashesWon++;
                 m.Brain.Topple(3f);
-                S.Hud?.Notify("Clash won! " + m.DisplayName + " is thrown down!", NoticeKind.Reward);
+                S.Hud?.Notify("Standoff won! " + m.DisplayName + " is thrown down!", NoticeKind.Reward);
                 Execute(Set.Move(Set.clashFinisher), -away.normalized);
                 LastEvent = "clash won";
             }
@@ -1236,11 +1236,11 @@ namespace FH.Game
             Tracer.Plant(Time.time); TracersPlanted++;
             tracerMonster = m; tracerBox = box; tracerLocal = box.transform.InverseTransformPoint(at);
             if (tracerOrb) Destroy(tracerOrb);
-            tracerOrb = WorldKit.Orb("Thorn Tracer", at, .07f, WorldKit.Glow(new Color(.55f, 1f, .45f), 4), box.transform);
+            tracerOrb = WorldKit.Orb("Seeker Thorn", at, .07f, WorldKit.Glow(new Color(.55f, 1f, .45f), 4), box.transform);
             tracerOrb.layer = 2;
             float k = Mathf.Max(1e-4f, box.transform.lossyScale.x);
             tracerOrb.transform.localScale = Vector3.one * .16f / k;
-            S.Hud?.Flash("Thorn Tracer set: your arrows follow it (" + TracerMark.Needed + " to burst)");
+            S.Hud?.Flash("Seeker Thorn set: your arrows follow it (" + TracerMark.Needed + " to burst)");
             LastEvent = "thorn tracer set";
         }
 
@@ -1256,7 +1256,7 @@ namespace FH.Game
             WorldKit.Sound(at, "hit", .5f);
             S.CameraRig.Shake(.25f);
             if (tracerOrb) Destroy(tracerOrb);
-            S.Hud?.Flash("Thorn Tracer bursts!");
+            S.Hud?.Flash("Seeker Thorn bursts!");
             LastEvent = "tracer burst";
         }
 

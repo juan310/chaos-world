@@ -26,7 +26,7 @@ namespace FH.Game
         /// <summary>Looses one arrow. <paramref name="hitDef"/> carries this arrow's motion value, poise and stun.</summary>
         public static ArrowShot Fire(GameSession s, HunterController h, Transform template, ShotDef shot, AttackDef hitDef, Vector3 from, Vector3 dir, float delay = 0)
         {
-            var go = new GameObject(shot.pierce ? "Dragon Piercer bolt" : shot.arc ? "Arc arrow" : "Arrow");
+            var go = new GameObject(shot.pierce ? "Skewer bolt" : shot.arc ? "Arc arrow" : "Arrow");
             go.transform.position = from;
             if (template)
             {

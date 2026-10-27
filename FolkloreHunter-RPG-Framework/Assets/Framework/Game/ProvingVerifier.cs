@@ -326,7 +326,7 @@ namespace FH.Game
                 if (win)
                 {
                     Check("with the clash meter full the guarded blow is a power clash", clashed, F.LastEvent);
-                    Check("mashing Y wins the clash: the Warden is thrown down and the Clash Bash lands", F.ClashesWon > won0 && warden.Brain.Mode == MonsterMode.Downed && F.LastMove == "Clash Bash",
+                    Check("mashing Y wins the clash: the Warden is thrown down and the Standoff Bash lands", F.ClashesWon > won0 && warden.Brain.Mode == MonsterMode.Downed && F.LastMove == "Standoff Bash",
                           "won " + F.ClashesWon + ", " + warden.Brain.Mode + ", " + F.LastMove);
                     yield return Wait(.3f);
                     yield return Snap("w06-clash-won");
@@ -340,7 +340,7 @@ namespace FH.Game
             yield return Frames(2);
 
             // Lance and katana Rends (wound by fixture), the bow's Thorn Tracer.
-            foreach (var (weapon, rend) in new[] { ("lance", "Piercing Rend"), ("katana", "Spirit Rend") })
+            foreach (var (weapon, rend) in new[] { ("lance", "Piercing Rend"), ("katana", "Ember Rend") })
             {
                 S.ProvingRig.SetWeapon(weapon); yield return Frames(3);
                 m = Fresh(Target()); Face(m, 2.2f); yield return Frames(2);
@@ -364,7 +364,7 @@ namespace FH.Game
             OpenWoundFixture(m);
             int bt0 = m.Wounds.Torn, planted0 = F.TracersPlanted, bursts0 = F.Tracer.Bursts;
             yield return SightRend();
-            Check("bow: Y in Sight looses the Thorn Tracer", F.LastMove == "Thorn Tracer", F.LastMove);
+            Check("bow: Y in Sight looses the Seeker Thorn", F.LastMove == "Seeker Thorn", F.LastMove);
             yield return Until(() => F.TracersPlanted > planted0, 2f);
             Release(); yield return UntilNeutral();
             Check("the tracer arrow tears the wound and stays in the monster", F.TracersPlanted > planted0 && m.Wounds.Torn > bt0 && F.Tracer.Active(Time.time), "planted " + F.TracersPlanted + ", torn " + m.Wounds.Torn);
@@ -1102,7 +1102,7 @@ namespace FH.Game
             int f3 = ArrowShot.Fired; int lv = F.BowLevel;
             yield return Tap(PadButton.B, 2);
             yield return Until(() => ArrowShot.Fired > f3, 1f);
-            Check("B right after a shot: power shot (two extra arrows in a wider fan)", F.LastMove == "Power Shot" && F.LastShotArrows == Set().Level(lv).arrows + 2, F.LastMove + " x" + F.LastShotArrows + " at level " + lv);
+            Check("B right after a shot: power shot (two extra arrows in a wider fan)", F.LastMove == "Fan Volley" && F.LastShotArrows == Set().Level(lv).arrows + 2, F.LastMove + " x" + F.LastShotArrows + " at level " + lv);
             yield return Wait(1.4f);
             // Arc shot: B on its own: arrows rain on the locked target after a moment and build stun.
             m = Fresh(m);
@@ -1436,7 +1436,7 @@ namespace FH.Game
             Vector3 l0 = H.transform.position;
             Pad(PadButton.Y | PadButton.B, new Vector2(1, 0)); yield return Frames(2); Pad(PadButton.None); yield return Wait(.5f);
             float lat = Vector3.Dot(Flat(H.transform.position - l0), Vector3.right);
-            Check("Y+B with the stick to the side: Lateral Fade Slash slides about 2.5 m sideways", F.LastMove == "Lateral Fade Slash" && lat > 1.6f, F.LastEvent + ", " + lat.ToString("0.00") + " m");
+            Check("Y+B with the stick to the side: Lateral Fade Slash slides about 2.5 m sideways", F.LastMove == "Sidelong Cut" && lat > 1.6f, F.LastEvent + ", " + lat.ToString("0.00") + " m");
             yield return UntilNeutral();
 
             // Dummies never fall.
