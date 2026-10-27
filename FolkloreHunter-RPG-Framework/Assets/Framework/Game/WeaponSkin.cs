@@ -5,7 +5,8 @@ using UnityEngine;
 namespace FH.Game
 {
     /// <summary>The hunter's starting weapon set (Docs/Concepts/Weapons-0.9/starting-weapon-set.png), made into models
-    /// on this PC (Models/Weapons/Weapon_*, Forge static jobs), worn in place of the KayKit pieces: each new mesh is
+    /// on this PC (Models/Weapons/Weapon_*: Forge static jobs; the bow and the katana modelled in code by
+    /// Tools/slim/craft_weapons.py), worn in place of the KayKit pieces: each new mesh is
     /// fitted onto the old one's box (same length, so grips, sheathing and the blade sweep keep working) and turned by
     /// its shape: the sword's hilt to the hand, the spear's head away from it, the bow's grip to the hand with the string
     /// toward the archer, the shields' bosses outward (the kite's point down), the quiver's fletchings up.
@@ -18,6 +19,7 @@ namespace FH.Game
             ("1H_Sword", "Weapon_Sword", Kind.Blade), ("Round_Shield", "Weapon_RoundShield", Kind.Shield),
             ("Hunt_Bow", "Weapon_Bow", Kind.Bow), ("Hunt_Quiver", "Weapon_Quiver", Kind.Quiver),
             ("Hunt_Lance", "Weapon_Spear", Kind.Pole), ("Hunt_TowerShield", "Weapon_KiteShield", Kind.Shield),
+            ("Hunt_Katana", "Weapon_Katana", Kind.Blade),
         };
         static readonly Dictionary<string, Mesh> combined = new Dictionary<string, Mesh>();
         public static readonly List<string> Applied = new List<string>();
