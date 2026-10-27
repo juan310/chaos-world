@@ -54,6 +54,17 @@ spin), `SnS_Shield_Crash` (jump, shield overhead, slam), `SnS_Rend`, `Lance_Rend
 `Hunt_Clash` (braced, leaning in, trembling: looped), `Katana_Rend`, `Bow_Tracer` (the Seeker Thorn: deep canted draw, hard release).
 The new male and female hunters get them through `Tools/build_hunter_variant.py` like every other clip.
 
+**Posed after the original pose study** (`Docs/Concepts/Poses-0.9/original-pose-study.png`, supplied by the owner):
+the Blender poser now has leg IK (`Poser.leg`: the ankle on a ground target, the knee bent forward and out, the foot kept
+flat) and a `stance` helper (hip drop, front foot, back foot, width as shares of the leg). The sheet's poses map to:
+| Pose study | Used for |
+|---|---|
+| 6 shield block, loaded rear leg | Thorn Rush I wind-up, Ember Rend wind-up (`LOADED`); the Standoff and Piercing Rend brace (`BRACE`, the rear leg pushing) |
+| 7 diagonal cut, hip rotation | the weight moving onto the front foot through Thorn Rush I, the Rending Leap's cuts, the Leaping Slash follow-through (`THROUGH`) |
+| 8 recovery, feet under body | the landings of the Leaping Slash, Thorn Rush III and Shield Crash (`LAND`: low, both feet planted) |
+| 9-10 bow draw and release | a wide, low archer's base under every bow shot clip (Bow_Draw, Bow_Shoot, Fan/Rain Volley, Skewer Shot, Seeker Thorn) |
+| 11-12 lance guard and committed thrust | the Piercing Rend's thrusts (`LUNGE`: front knee bent, rear leg long) |
+
 ## Where it lives
 - Rules (engine-free, tested in `HuntWoundTests`): `Assets/Framework/Core/HuntWounds.cs` — `WoundTracker`,
   `HunterResolve`, `RushTiming`, `ClashMeter`, `ClashBout`, `TracerMark`. Routes: `HuntRoutes.Opener` (back-step
