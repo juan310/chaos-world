@@ -130,15 +130,15 @@ for act in acts:
             cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam); sc.camera = cam
             cam.data.type = 'ORTHO'
             engines = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
-            sc.render.resolution_x = 900; sc.render.resolution_y = 600
+            sc.render.resolution_x = 640; sc.render.resolution_y = 900
             sc.render.engine = 'BLENDER_EEVEE_NEXT' if 'BLENDER_EEVEE_NEXT' in engines else 'BLENDER_EEVEE' 
             w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True; w.node_tree.nodes['Background'].inputs[0].default_value = (.1, .1, .11, 1)
         ev = body.evaluated_get(dg); pts = world_co(ev.to_mesh()); ev.to_mesh_clear()
         lo = Vector(pts.min(0)); hi = Vector(pts.max(0))
-        c = (lo + hi) / 2; size = max(hi - lo) * 1.15
+        c = (lo + hi) / 2; size = max(hi - lo) * 1.25
         cam.data.ortho_scale = size
         # two views side by side would need two renders: front three-quarter (the body faces -Y)
-        cam.location = c + Vector((4, -5, 1.5)); cam.rotation_euler = (c - cam.location).to_track_quat('-Z', 'Y').to_euler()
+        cam.location = c + Vector((4, -5, 1.0)) * 2; cam.rotation_euler = (c - cam.location).to_track_quat('-Z', 'Y').to_euler()
         sc.render.filepath = str(out / ('%s_%s.png' % (name, cname)))
         bpy.ops.render.render(write_still=True)
         for s in marks: bpy.data.objects.remove(s)
