@@ -551,8 +551,13 @@ namespace FH.Game
                         foreach (var (o, layer) in keep) if (o) o.layer = 0;
                         foreach (var r in held) r.gameObject.layer = Layers.Review;
                         yield return Render(cam, rt, shot + "_weapon.png");
+                        var ci = System.Globalization.CultureInfo.InvariantCulture;
+                        string Px(Vector3 w) { var sp = cam.WorldToScreenPoint(w); return "[" + sp.x.ToString("0.0", ci) + ", " + (rt.height - sp.y).ToString("0.0", ci) + "]"; }
+                        string pts = "";
+                        if (WeaponSkin.WeaponPoints(held[0].transform, held[0].transform.parent, out var gw, out var tw, out var bw))
+                            pts = ", \"guard\": " + Px(gw) + ", \"tip\": " + Px(tw) + ", \"butt\": " + Px(bw);
                         File.WriteAllText(shot + "_weapon.json", "{\"weapon\": \"" + string.Join(",", held.Select(r => r.name)) + "\", \"pixelsPerMetre\": "
-                                          + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + "}");
+                                          + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", ci) + pts + "}");
                         foreach (var (o, _) in keep) if (o) o.layer = Layers.Review;
                     }
                 }

@@ -170,6 +170,25 @@ namespace FH.Game
             return Vector3.Distance(piece.TransformPoint(guard), hand.position) / Mathf.Max(1e-4f, length);
         }
 
+        /// <summary>For review pictures: a held weapon's cross-guard (the widest band along its length; for a pole, where it
+        /// is held), tip and butt end, in world space.</summary>
+        public static bool WeaponPoints(Transform piece, Transform hand, out Vector3 guard, out Vector3 tip, out Vector3 butt)
+        {
+            guard = tip = butt = Vector3.zero;
+            var mf = piece ? piece.GetComponent<MeshFilter>() : null;
+            if (!mf || !mf.sharedMesh) return false;
+            var v = mf.sharedMesh.vertices; var b = mf.sharedMesh.bounds; int axis = AxesBySize(b.size)[0];
+            Vector3 lo = b.center, hi = b.center; lo[axis] = b.min[axis]; hi[axis] = b.max[axis];
+            bool pole = piece.name.Contains("Lance");
+            int best = 0; float widest = -1;
+            for (int k = 0; k < 20; k++) { float w = Width(v, b, axis, k / 20f, (k + 1) / 20f); if (w > widest) { widest = w; best = k; } }
+            bool hiltAtMin = pole ? (hand && Vector3.Distance(piece.TransformPoint(lo), hand.position) < Vector3.Distance(piece.TransformPoint(hi), hand.position)) : best < 10;
+            var g = b.center; g[axis] = b.min[axis] + b.size[axis] * (best + .5f) / 20f;
+            butt = piece.TransformPoint(hiltAtMin ? lo : hi); tip = piece.TransformPoint(hiltAtMin ? hi : lo);
+            guard = pole ? (hand ? hand.position : butt) : piece.TransformPoint(g);
+            return true;
+        }
+
         static Mesh Fit(Mesh src, Mesh old, Transform piece, Transform grip, Kind kind)
         {
             var nv = src.vertices; var nb = src.bounds; var ob = old.bounds; var ov = old.vertices;

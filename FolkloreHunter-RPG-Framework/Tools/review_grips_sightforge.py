@@ -71,17 +71,27 @@ def review(shot, info):
     if dist_to_weapon(lw) + 4 < dist_to_weapon((wx, wy)) and lw[2] >= ws - .1:
         wx, wy, ws = lw; ex, ey, es = k['left_elbow']
     wrist = np.array([wx, wy])
+    # the palm closes on the grip a little past the wrist, along the forearm
+    fore = wrist - np.array([ex, ey]); fl = np.hypot(*fore)
+    if fl > 1e-3 and es >= .2: wrist = wrist + fore * .3
     c, ax, lo, hi, widths = weapon_axis(wmask)
     endA, endB = c + ax * lo, c + ax * hi
     length = hi - lo
-    if weapon.startswith('Hunt_Lance'):
+    if 'guard' in info:
+        # the weapon's own guard, tip and butt from the player (exact, also foreshortened or edge-on); the hand is still
+        # found in the picture by the joint finder
+        guard, tip, hilt_end = np.array(info['guard']), np.array(info['tip']), np.array(info['butt'])
+        length = max(1.0, np.hypot(*(tip - hilt_end)))
+        if np.hypot(*(tip - hilt_end)) < .35 * float(info.get('pixelsPerMetre', 100)) * .3:
+            return {'verdict': 'uncertain', 'weapon': weapon, 'why': ['the weapon points at the camera in this view']}
+    elif weapon.startswith('Hunt_Lance'):
         hilt_end = endA if np.hypot(*(endA - wrist)) < np.hypot(*(endB - wrist)) else endB
         guard = hilt_end + (c - hilt_end) / max(1e-6, np.hypot(*(c - hilt_end))) * .35 * length     # where a lance is held
     else:
         g = int(np.argmax(widths)); gt = lo + (hi - lo) * (g + .5) / len(widths)
         guard = c + ax * gt
         hilt_end = endA if g < len(widths) / 2 else endB
-    tip = endB if hilt_end is endA else endA
+    if 'guard' not in info: tip = endB if hilt_end is endA else endA
     # the wrist against the grip stretch (guard -> hilt end), and which side of the guard it is on
     seg = hilt_end - guard; sl = max(1e-6, np.hypot(*seg)); sdir = seg / sl
     along = float((wrist - guard) @ sdir)                 # > 0: toward the hilt end (where the hand belongs)
@@ -102,7 +112,7 @@ def review(shot, info):
     d.line([tuple(guard), tuple(hilt_end)], fill=(60, 230, 90, 255), width=4)
     d.ellipse([guard[0] - 6, guard[1] - 6, guard[0] + 6, guard[1] + 6], outline=(255, 220, 40, 255), width=3)
     d.ellipse([tip[0] - 6, tip[1] - 6, tip[0] + 6, tip[1] + 6], outline=(60, 120, 255, 255), width=3)
-    d.ellipse([wx - 7, wy - 7, wx + 7, wy + 7], outline=(255, 50, 50, 255), width=3)
+    d.ellipse([wrist[0] - 7, wrist[1] - 7, wrist[0] + 7, wrist[1] + 7], outline=(255, 50, 50, 255), width=3)     # the palm
     d.text((8, 8), '%s  %s  %s' % (Path(shot).stem, weapon, verdict.upper()), fill=(255, 255, 255, 255))
     for i, line in enumerate(why): d.text((8, 24 + 14 * i), line, fill=(255, 200, 200, 255))
     im.convert('RGB').save(OUT / (Path(shot).stem + '_grip.png'))
