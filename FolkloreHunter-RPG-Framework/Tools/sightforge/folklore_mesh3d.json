@@ -1,0 +1,11 @@
+{
+  "held": {
+    "Bow_": ["Hunt_Bow", "Hunt_NockedArrow"],
+    "2H_": ["Hunt_Katana"], "Katana_": ["Hunt_Katana"],
+    "Lance_": ["Hunt_Lance", "Hunt_TowerShield"],
+    "1H_": ["1H_Sword", "Round_Shield"], "SnS_": ["1H_Sword", "Round_Shield"], "Block": ["1H_Sword", "Round_Shield"],
+    "Idle_Combat": ["1H_Sword", "Round_Shield"], "Idle_B": ["1H_Sword", "Round_Shield"], "Hunt_Clash": ["1H_Sword", "Round_Shield"]
+  },
+  "ungrounded": ["Lie_", "Death", "Sit_", "Ride_", "Dodge_Forward"],
+  "skip": ["Helmet", "Quiver"]
+}
