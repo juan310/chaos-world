@@ -31,3 +31,8 @@ The hunt combat is inspired by Monster Hunter's style of play, but everything a 
 - Keep `FBX_SCALE_ALL` in Blender FBX exports. MonoBehaviours live in files with matching names.
 - Exercise the actual player controls when verifying; don't claim a 2D inspector certified 3D combat, foot planting
   or collision.
+- Check constantly with SightForge (the owner's rule: "constantly check this to avoid fixes later"): every built body
+  passes the `bodycheck` gate before it goes into the game (`C:\AW\briarhound_work\slimall.ps1` builds into a staging
+  folder and installs only what passes), every game build runs the Proving Grounds, and Claude looks at the pictures
+  (close-ups, worst frames) itself before calling anything done. A failure is reported to the owner when it is found,
+  not after moving on to the next task.
