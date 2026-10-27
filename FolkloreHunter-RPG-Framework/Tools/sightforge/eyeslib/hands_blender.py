@@ -99,6 +99,9 @@ def shoot(side, tag):
     tip = bone('middle_3.' + side)
     c = (h0 + (AM @ arm.pose.bones[tip.name].tail)) / 2 if tip else h0 + (h1 - h0) * .45
     pics = []
+    print('HANDS_FRAME %s %s centre %s hand %.3f m, body %s..%s' % (tag, side, tuple(round(x, 3) for x in c), L,
+          tuple(round(min((body.matrix_world @ Vector(b))[i] for b in body.bound_box), 2) for i in range(3)),
+          tuple(round(max((body.matrix_world @ Vector(b))[i] for b in body.bound_box), 2) for i in range(3))), flush=True)
     for nm, d in (('back', Vector((0, 0, -1))), ('palm', Vector((0, 0, 1))), ('thumb side', Vector((1 if side == 'l' else -1, 0, 0)))):
         dw = (M.to_3x3() @ d).normalized()
         cam.location = c + dw * (L * 2.2 + .15)
