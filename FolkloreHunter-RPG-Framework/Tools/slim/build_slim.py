@@ -3,8 +3,10 @@
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
+#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>]
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
-# mesh (named "Helmet", so the helm part breaks it off) on the head.
+# mesh (named "Helmet", so the helm part breaks it off) on the head. --villager makes a townsperson: no weapons, only the
+# everyday captured moves, and --cloth recolours the outfit's red cloth (its sash, cape and trim) to its own colour.
 import bpy, sys, shutil, math
 from pathlib import Path
 from mathutils import Vector, Matrix
@@ -20,7 +22,8 @@ def opt(flag, default=None):
 keep = opt('--pieces'); keep = set(keep.split(',')) if keep else None
 sizes = dict(x.split('=') for x in opt('--size', '').split(',') if x)
 helmet = opt('--helmet')
-weapons = keep != set(['none'])
+villager = '--villager' in argv
+weapons = keep != set(['none']) and not villager
 root = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
 dest = root / 'Assets/Resources/Models'
 
@@ -147,9 +150,9 @@ if helmet:
         h.parent = arm; h.parent_type = 'BONE'; h.parent_bone = 'head'; h.matrix_world = mw
         print('SLIM_HELMET scale %.3f' % s, flush=True)
 
-made = [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+made = [] if villager else [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
 mb = opt('--mb'); soma = opt('--soma')
-if mb and soma:
+if mb and soma and not villager:
     # the game's own moves with MotionBricks' natural motion between their key poses (Tools/motionbricks)
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'motionbricks'))
     import mb_bridge
@@ -160,7 +163,7 @@ if m2m:
     # the everyday moves from CC0 motion capture (Mesh2Motion), replacing the keyposed versions of the same name
     import retarget
     src = retarget.Source(m2m)
-    retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP)
+    retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP, retarget.VILLAGER if villager else None)
     src.remove()
     made = list(bpy.data.actions)                 # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
@@ -179,5 +182,24 @@ bpy.ops.export_scene.fbx(filepath=str(out), use_selection=False, object_types={'
                          bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward='-Z', axis_up='Y',
                          path_mode='COPY', embed_textures=False)
 tex = fbx.with_name(fbx.stem + '_texture.png')
-if tex.exists(): shutil.copyfile(tex, dest / (name + '_texture.png'))
+cloth = opt('--cloth')
+if tex.exists() and cloth:
+    # the outfit's red cloth (strongly red, saturated texels) turned to the villager's colour; leather, steel and skin stay
+    import numpy as np
+    hue, sat, val = (float(x) for x in cloth.split(','))
+    img = bpy.data.images.load(str(tex))
+    px = np.empty(len(img.pixels), dtype=np.float32); img.pixels.foreach_get(px); px = px.reshape(-1, 4)
+    r, g, b = px[:, 0], px[:, 1], px[:, 2]
+    mx = px[:, :3].max(1); mn = px[:, :3].min(1); d = mx - mn
+    s_ = np.where(mx > 0, d / np.maximum(mx, 1e-6), 0)
+    red = (r == mx) & (s_ > .38) & (g - b < .25 * d) & (np.abs(g - b) < .5 * d + 1e-6)
+    v2 = np.clip(mx * val, 0, 1); s2 = np.clip(s_ * sat, 0, 1)
+    h6 = hue * 6; i = np.floor(h6) % 6; f = h6 - np.floor(h6)
+    p_, q_, t_ = v2 * (1 - s2), v2 * (1 - s2 * f), v2 * (1 - s2 * (1 - f))
+    rgb = {0: (v2, t_, p_), 1: (q_, v2, p_), 2: (p_, v2, t_), 3: (p_, q_, v2), 4: (t_, p_, v2), 5: (v2, p_, q_)}[int(i)]
+    for c in range(3): px[red, c] = rgb[c][red]
+    img.pixels.foreach_set(px.ravel())
+    img.filepath_raw = str(dest / (name + '_texture.png')); img.file_format = 'PNG'; img.save()
+    print('SLIM_CLOTH %d of %d texels recoloured' % (int(red.sum()), len(px)), flush=True)
+elif tex.exists(): shutil.copyfile(tex, dest / (name + '_texture.png'))
 print('SLIM_EXPORTED', out, out.stat().st_size, flush=True)

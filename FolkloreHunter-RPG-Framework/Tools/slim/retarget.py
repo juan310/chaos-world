@@ -139,6 +139,9 @@ MOCAP = [
     ('Bow_Draw', 'Bow Pull Hold', True, {}), ('Bow_Shoot', 'Bow Release', False, {}),
 ]
 
+# townspeople: the everyday moves only
+VILLAGER = ['Idle', 'Walking_A', 'Interact', 'Use_Item', 'Sit_Chair_Idle']
+
 # the skeletons: the same, but an undead shamble for their walk
 MONSTER_MOCAP = [t for t in MOCAP if t[0] not in ('Walking_A',)] + [('Walking_A', 'Zombie_Walk', True, {})]
 

@@ -33,7 +33,7 @@ namespace FH.Game
             o.transform.localRotation = Quaternion.identity;
             var renderers = o.GetComponentsInChildren<Renderer>();
             var body = renderers.Where(x => !IsWeapon(x.name)).ToArray();
-            Bounds b = Slim(resource) ? StandingBounds(body) : body[0].bounds;
+            Bounds b = Slim(resource) ? RestBounds(body) : body[0].bounds;
             if (!Slim(resource)) foreach (var rr in body.Skip(1)) b.Encapsulate(rr.bounds);
             float k = targetHeight / Mathf.Max(.1f, b.size.y);
             float bottom = b.min.y - parent.position.y;
@@ -60,9 +60,10 @@ namespace FH.Game
 
         /// <summary>The slim characters (Tools/slim): their clips roll, dive and lie down, and Unity's import bounds cover every
         /// clip, so their size is measured on the mesh in its bind pose (the rest pose they are made in).</summary>
-        static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_");
+        static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_") || resource.StartsWith("Villager_");
 
-        static Bounds StandingBounds(Renderer[] body)
+        /// <summary>The meshes' bounds in their bind pose, in world space (independent of the clip playing).</summary>
+        public static Bounds RestBounds(Renderer[] body)
         {
             bool any = false; var b = new Bounds();
             foreach (var r in body)

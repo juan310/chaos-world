@@ -319,10 +319,12 @@ namespace FH.Game
 
         static void Npc(string id, string model, float height, Color? tint, Vector3 spot, float yaw, Vector3 home, float homeYaw, Transform parent)
         {
-            // 0.9: realistic villagers on the hunter's body scale (Hunter_NpcMira...) when they have been made; the KayKit
-            // figures only as a fallback for a build without them.
-            string realistic = "Hunter_Npc" + (id == "lady_elowen" ? "Elowen" : char.ToUpper(id[0]) + id.Substring(1));
-            string use = CharacterFactory.Exists(realistic) ? realistic : CharacterFactory.Exists(model) ? model : (id == "bram" ? "Hunter" : "Herbalist");
+            // The villagers are slim bodies like the hunter's (Villager_Mira..., Tools/slim/build_slim.py --villager, in their
+            // own colours and hair); the earlier realistic ones (Hunter_NpcMira...) and the KayKit figures only as fallbacks
+            // for a build without them.
+            string who = id == "lady_elowen" ? "Elowen" : char.ToUpper(id[0]) + id.Substring(1);
+            string slim = "Villager_" + who, realistic = "Hunter_Npc" + who;
+            string use = CharacterFactory.Exists(slim) ? slim : CharacterFactory.Exists(realistic) ? realistic : CharacterFactory.Exists(model) ? model : (id == "bram" ? "Hunter" : "Herbalist");
             var go = new GameObject("NPC - " + id);
             go.layer = Layers.Actor;
             go.transform.SetParent(parent);
@@ -330,7 +332,9 @@ namespace FH.Game
             var col = go.AddComponent<CapsuleCollider>(); col.center = Vector3.up * .85f; col.height = 1.7f; col.radius = .3f;
             var npc = go.AddComponent<NpcActor>();
             npc.NpcId = id; npc.Id = "npc_" + id; npc.Range = 2.4f;
-            npc.Visual = CharacterFactory.Create(use, go.transform, height, use == model ? (Color?)null : tint);
+            npc.Visual = CharacterFactory.Create(use, go.transform, use == slim ? (id == "bram" ? 1.8f : 1.68f) : height, use == model || use == slim ? (Color?)null : tint);
+            if (use == slim) HairFit.Wear(npc.Visual, go.transform, id != "bram", id == "mira" ? 3 : id == "bram" ? 1 : 6);
+            npc.Begin(use);                              // its own clips: idle, now and then a gesture
             if (use == realistic)                        // a villager made on the hunter's skeleton carries no weapons
                 foreach (var r in npc.Visual.GetComponentsInChildren<Renderer>(true))
                     if (r.name.Contains("Sword") || r.name.Contains("Shield") || r.name.StartsWith("Hunt_")) r.enabled = false;

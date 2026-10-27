@@ -13,7 +13,7 @@ namespace FH.Game
             var head = WorldKit.Find(visual, "head");
             var skin = visual.GetComponentsInChildren<SkinnedMeshRenderer>().FirstOrDefault(s => s.bones.Contains(head));
             if (!head || !skin) return null;
-            float scale = Mathf.Max(.5f, skin.bounds.size.y / 1.8f);       // Codex sized hair for 1.8 m hunters
+            float scale = Mathf.Max(.5f, CharacterFactory.RestBounds(new Renderer[] { skin }).size.y / 1.8f);       // Codex sized hair for 1.8 m hunters
             var hb = HeadBounds(skin, head, scale);
             var center = hb.center; center.y = hb.max.y - .112f * scale;
             var size = new Vector3(Mathf.Clamp(hb.extents.x, .07f * scale, .13f * scale) + .004f, .125f * scale, Mathf.Clamp(hb.extents.z, .07f * scale, .12f * scale) + .005f);
@@ -29,7 +29,7 @@ namespace FH.Game
             var vertices = mesh.vertices; var weights = mesh.boneWeights;
             var matrices = skin.bones.Select((bone, i) => bone.localToWorldMatrix * mesh.bindposes[i]).ToArray();
             int head = System.Array.IndexOf(skin.bones, headBone);
-            float top = skin.bounds.max.y;
+            float top = CharacterFactory.RestBounds(new Renderer[] { skin }).max.y;     // (Unity's skinned bounds cover every clip)
             bool any = false; var result = new Bounds();
             for (int i = 0; i < vertices.Length && weights.Length == vertices.Length; i++)
             {
