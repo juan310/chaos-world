@@ -469,12 +469,78 @@ def stride_clip(rig, name, base, k_leg, k_arm, lean):
     return P.clip(name, keys, loop=True)
 
 
-def locomotion_clips(rig):
-    """Hunt_Jog (full stick) and Hunt_Sprint (RT) from KayKit's Running_A, with the stride a hunter needs to cover
-    ground at Monster Hunter pace without the feet sliding (the chibi stock run moves each foot only about 0.2 m)."""
-    return [stride_clip(rig, 'Hunt_Jog', 'Running_A', 1.8, 1.5, 10),
-            stride_clip(rig, 'Hunt_Sprint', 'Running_A', 2.1, 1.8, 17)]
+def gait_clip(rig, name, period, duty, sweep, lift, kick, drop, bob, lean, twist, swing, elbow, pitch, arm_high=0.0):
+    """A walk or run cycle after the 0.9 walk/run reference (Docs/Concepts/Poses-0.9/walk-run-reference.png), posed
+    with leg and arm IK instead of stretching the chibi's stock run.
+    Feet (armature space, the hunter faces -Y): a planted foot slides straight back `sweep` (share of the leg length)
+    at a constant speed for `duty` of the cycle, exactly on the ground (so the game's planted-foot speed reads it and
+    nothing slides); the swing foot rises `lift`, kicks back and up `kick` (the heel toward the seat) and reaches
+    forward for the next contact. The ankle rolls onto the toes `pitch` degrees at push-off and lands heel first.
+    The hips drop `drop` and bob `bob` twice a cycle (low at mid-stance, high in the run's flight) and turn with the
+    swinging leg while the chest turns back `twist` degrees; the spine leans `lean`. Arms swing opposite the legs:
+    hands `swing` (share of arm length) forward and back, elbows bent `elbow` (0 straight .. 1 a right angle),
+    `arm_high` lifts the pumping hands (the sprint)."""
+    P = Poser(rig)
+    foot0 = _foot0(P)
+    legl = P.length('upperleg.l') + P.length('lowerleg.l')
+    arml = P.length('upperarm.l') + P.length('lowerarm.l')
+    flen = P.length('foot.l') if 'foot.l' in P.pb else .1 * legl
+    n = 24
 
+    def ease(x): return x * x * (3 - 2 * x)
+
+    def foot(phase):
+        """(forward offset in leg lengths: + is behind the hip, height over the ground, ankle pitch degrees) at a phase."""
+        if phase < duty:
+            q = phase / duty
+            y = sweep * (q - .5)
+            roll = pitch * max(0.0, (q - .7) / .3)            # heel comes up onto the toes over the last 30 %
+            return y, flen / legl * math.sin(math.radians(roll)), roll
+        q = (phase - duty) / (1 - duty)
+        y = sweep * (.5 - ease(q)) + kick * math.sin(math.pi * q) * (1 - q) ** 1.5
+        z = lift * math.sin(math.pi * q ** .8) + kick * .6 * math.sin(math.pi * min(1.0, q * 1.6)) * (1 - q)
+        roll = pitch * (1 - q) - 12 * max(0.0, (q - .8) / .2)    # toes down after push-off, toes up for the heel strike
+        return y, max(0.0, z), roll
+
+    keys = []
+    for i in range(n + 1):
+        ph = i / n
+        def fn(P, ph=ph):
+            P.update()
+            # hips: drop and bob (two per cycle: low at mid-stance), turning with the leg that swings forward
+            dz = -drop * legl + bob * legl * math.cos(4 * math.pi * (ph - duty / 2))
+            _lift(P, dz)
+            yaw = twist * .5 * math.sin(2 * math.pi * ph)
+            P.turn('hips', (0, 0, 1), yaw)
+            if lean: P.turn('spine', (1, 0, 0), lean)
+            P.turn('chest', (0, 0, 1), -yaw * 2.2)
+            if 'head' in P.pb:
+                P.turn('head', (1, 0, 0), -lean * .6); P.turn('head', (0, 0, 1), yaw * 1.2)
+            P.update()
+            for side, off, sx in (('l', 0.0, 1), ('r', .5, -1)):
+                y, z, roll = foot((ph + off) % 1.0)
+                hip = P.head('upperleg.' + side)
+                P.leg(side, Vector((hip.x, hip.y + y * legl, foot0 + z * legl)), (.15 * sx, -1, 0))
+                if roll and 'foot.' + side in P.pb: P.turn('foot.' + side, (1, 0, 0), roll)
+                # the arm on this side swings with the other leg
+                a = max(-1.0, min(1.0, y / (sweep / 2)))      # +1 (hand forward) when this side's foot is back
+                sh = P.head('upperarm.' + side)
+                fwd = swing * a * arml
+                down = (.92 - .55 * elbow) * arml - arm_high * max(0.0, a) * arml
+                target = sh + Vector((.12 * sx * arml, -fwd, -down))
+                P.arm(side, target, (.25 * sx, 1, -.2))
+        keys.append((ph * period, 'Idle', 0, fn))
+    return P.clip(name, keys, loop=True)
+
+
+def locomotion_clips(rig):
+    """Hunt_Walk (light stick), Hunt_Jog (full stick) and Hunt_Sprint (RT) as real gait cycles after the 0.9 walk/run
+    reference: upright walk with a heel strike and relaxed arm swing; a leaning jog and sprint with a flight phase, knee
+    drive, heel kick and pumping arms at right angles. (0.8's Hunt_Jog / Hunt_Sprint stretched KayKit's chibi run:
+    stride_clip above, kept for reference.)"""
+    return [gait_clip(rig, 'Hunt_Walk', 1.05, .62, .8, .16, .05, .06, .025, 3, 8, .32, .25, 18),
+            gait_clip(rig, 'Hunt_Jog', .72, .4, .95, .28, .3, .12, .045, 9, 12, .38, .85, 28, .15),
+            gait_clip(rig, 'Hunt_Sprint', .6, .33, 1.05, .36, .45, .14, .055, 15, 16, .5, 1.0, 34, .3)]
 
 
 # ---------------- 0.9 battle clips (after Monster Hunter Wilds' sword and shield, lance, bow and long sword) ----------------
