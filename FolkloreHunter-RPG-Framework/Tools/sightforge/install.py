@@ -23,7 +23,7 @@ APP = os.path.join(HOME, "app")
 NEW = "0.19"
 
 # the development tools, each an eyeslib module with register(sp, ctx) and cmd(a, ctx)
-DEVTOOLS = ("originality", "weaponfit", "smear", "hits", "problem", "perf", "springs", "terrain", "footslide", "motionbricks", "worldforge")
+DEVTOOLS = ("originality", "weaponfit", "smear", "hits", "problem", "perf", "springs", "terrain", "footslide", "motionbricks", "worldforge", "hands")
 
 HOOK = '''
 

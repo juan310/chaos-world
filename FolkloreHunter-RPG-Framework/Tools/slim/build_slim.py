@@ -4,6 +4,10 @@
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
 #       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock]
+#       [--fingers] [--out <folder>]
+# --fingers finds the fingers in the mesh, gives each three bones, and solves how they close round each held piece
+# (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
+# --out writes the model somewhere else than the game's Models folder (trials).
 # --footlock holds the planted feet of walks, jogs and runs still on the ground (Tools/sightforge/eyeslib/footslide_blender.py).
 # --texture uses another picture as the body's texture (the flank-repaired copy from paint_sides.py).
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
@@ -27,7 +31,8 @@ helmet = opt('--helmet')
 villager = '--villager' in argv
 weapons = keep != set(['none']) and not villager
 root = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
-dest = root / 'Assets/Resources/Models'
+dest = Path(opt('--out')) if opt('--out') else root / 'Assets/Resources/Models'
+dest.mkdir(parents=True, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=str(fbx))
@@ -180,6 +185,17 @@ if helmet:
         mw = h.matrix_world.copy()
         h.parent = arm; h.parent_type = 'BONE'; h.parent_bone = 'head'; h.matrix_world = mw
         print('SLIM_HELMET scale %.3f' % s, flush=True)
+
+if '--fingers' in argv:
+    # fingers found in the mesh, rigged and skinned, and closed round each held piece (fingers.py)
+    import fingers, json
+    held = [o for o in bpy.data.objects if o.type == 'MESH' and o.parent == arm and o.parent_type == 'BONE' and o.parent_bone.startswith('handslot.')]
+    fd = fingers.run(body, arm, held, log=lambda m: print('SLIM_' + m, flush=True))
+    if fd:
+        fd['model'] = name
+        (dest / (name + '_grips.json')).write_text(json.dumps(fd, indent=1))
+        print('SLIM_GRIPS', dest / (name + '_grips.json'), flush=True)
+    rig = choreo.Rig(arm)             # the bone lists again, fingers included
 
 made = [] if villager else [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
 mb = opt('--mb'); soma = opt('--soma')
