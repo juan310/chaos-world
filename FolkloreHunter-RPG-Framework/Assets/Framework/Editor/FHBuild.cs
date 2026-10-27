@@ -93,5 +93,5 @@ public static class FHBuild
         if (report.summary.result != BuildResult.Succeeded) throw new System.Exception("Player build failed");
     }
 
-    public static string Version => "0.8.0-katana-range";
+    public static string Version => "0.9.0-hunters-sight";
 }
