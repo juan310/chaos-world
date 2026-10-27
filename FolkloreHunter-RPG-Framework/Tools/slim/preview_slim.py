@@ -8,7 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import choreo, moves
 argv = sys.argv[sys.argv.index('--') + 1:]
 fbx, out = argv[0], Path(argv[1]); out.mkdir(parents=True, exist_ok=True)
-names = argv[2:]
+m2m = argv[argv.index('--m2m') + 1] if '--m2m' in argv else None
+names = [a for i, a in enumerate(argv[2:], 2) if a != '--m2m' and (i < 1 or argv[i - 1] != '--m2m')]
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=fbx)
@@ -43,10 +44,15 @@ sh = bar('Shield', 'handslot.l', .05, .6, (.5, .25, .1, 1))
 
 rig = choreo.Rig(arm)
 clips = []
-for fn in moves.TEST:
-    nm = getattr(fn, '__name__', '')
-    if names and nm not in names and not any(nm.startswith(x) for x in names): continue
-    clips.append(fn(rig))
+if m2m:
+    import retarget
+    src = retarget.Source(m2m)
+    clips = retarget.apply(rig, src, only=names or None)
+else:
+    for fn in moves.TEST:
+        nm = getattr(fn, '__name__', '')
+        if names and nm not in names and not any(nm.startswith(x) for x in names): continue
+        clips.append(fn(rig))
 
 scene = bpy.context.scene
 scene.render.engine = 'BLENDER_WORKBENCH'

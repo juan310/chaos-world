@@ -53,8 +53,9 @@ def rename_bones(arm):
 
 def add_hand_slots(arm):
     """handslot.l / handslot.r: the grip points, children of the hands, in the palm. Their Y axis is the weapon's
-    direction from the grip (the blade), their Z axis its edge (the side that leads a cut). At rest the blade points
-    forward (-Y) and the edge up (+Z)."""
+    direction from the grip (the blade), their Z axis its edge (the side that leads a cut). A fist holds a grip across
+    the palm: the blade leaves on the thumb side and the edge lines up with the knuckles. At rest (palms down, thumbs
+    forward) the blade points forward (-Y) and the edge out along the hand."""
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode='EDIT')
     eb = arm.data.edit_bones
@@ -64,7 +65,8 @@ def add_hand_slots(arm):
         grip = hand.head + d * .38 + Vector((0, -.012, -.02))      # in the palm, a little below the bone line
         if 'handslot.' + s in eb: eb.remove(eb['handslot.' + s])
         sl = eb.new('handslot.' + s)
-        sl.head = grip; sl.tail = grip + Vector((0, -.1, 0)); sl.align_roll(Vector((0, 0, 1)))
+        knuckles = Vector((d.x, 0, d.z)).normalized()
+        sl.head = grip; sl.tail = grip + Vector((0, -.1, 0)); sl.align_roll(knuckles)
         sl.parent = hand; sl.use_connect = False; sl.use_deform = False
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -110,19 +112,20 @@ class Rig:
     def solve(self, P):
         k = self.k
         W = {}
-        Hq = rot(*P.get('hipsR', (0, 0, 0)))
-        hips = self.h0['hips'] + Vector(P.get('hips', (0, 0, 0))) * k
+        # q* entries (world turns from rest, e.g. taken from motion capture) replace the angle parameters
+        Hq = P.get('qhips') or rot(*P.get('hipsR', (0, 0, 0)))
+        hips = Vector(P['hipsAt']) if 'hipsAt' in P else self.h0['hips'] + Vector(P.get('hips', (0, 0, 0))) * k
         self.put(W, 'hips', Hq @ self.R0['hips'], hips)
-        Sq = Hq @ rot(*P.get('spine', (0, 0, 0)))
+        Sq = P.get('qspine') or Hq @ rot(*P.get('spine', (0, 0, 0)))
         self.put(W, 'spine', Sq @ self.R0['spine'])
-        Cq = Sq @ rot(*P.get('chest', (0, 0, 0)))
+        Cq = P.get('qchest') or Sq @ rot(*P.get('chest', (0, 0, 0)))
         self.put(W, 'chest', Cq @ self.R0['chest'])
-        Nq = Cq @ rot(*P.get('neck', (0, 0, 0)))
+        Nq = P.get('qneck') or Cq @ rot(*P.get('neck', (0, 0, 0)))
         self.put(W, 'neck', Nq @ self.R0['neck'])
-        self.put(W, 'head', Nq @ rot(*P.get('head', (0, 0, 0))) @ self.R0['head'])
+        self.put(W, 'head', (P.get('qhead') or Nq @ rot(*P.get('head', (0, 0, 0)))) @ self.R0['head'])
         to_body, Bq = self.chest_frame(W)
         for s in ('r', 'l'):
-            self.put(W, 'shoulder.' + s, Cq @ rot(*P.get('sh' + s.upper(), (0, 0, 0))) @ self.R0['shoulder.' + s])
+            self.put(W, 'shoulder.' + s, (P.get('qsh' + s.upper()) or Cq @ rot(*P.get('sh' + s.upper(), (0, 0, 0)))) @ self.R0['shoulder.' + s])
             self.arm_ik(W, s, P, to_body, Bq)
         for s in ('l', 'r'):
             self.leg_ik(W, s, P, Hq, W['hips'].translation)
@@ -143,6 +146,8 @@ class Rig:
             tgt = R.translation + ry * P.get('gripL', -.12) * k
             blade, edge, cq = tuple(ry), tuple(rz), Quaternion()
             P = dict(P); P['edgeL'] = edge
+        elif P.get('rel' + S_):
+            tgt = S + Vector(P['hand' + S_])           # a reach from the shoulder joint (motion capture)
         else:
             tgt = conv(self.scale_pt(P['hand' + S_], 'chest' if not world else None))
         if blade is not None:
@@ -150,7 +155,7 @@ class Rig:
             Rslot = cq @ frame(blade, edge)
             Rhand = Rslot @ self.R0[sl].inverted()       # the hand's turn from rest (the slot rides on the hand)
             off = self.h0[sl] - self.h0[hd]
-            wrist = tgt - (Rhand @ off)
+            wrist = tgt if P.get('atWrist' + S_) else tgt - (Rhand @ off)
             Rh = Rhand @ self.R0[hd]
         else:
             wrist = tgt; Rh = None
@@ -188,6 +193,16 @@ class Rig:
         S = W[up].translation
         x, y, lift, pitch, yaw = (list(P.get('foot' + S_, ())) + [0, 0, 0, 0, 0])[:5]
         ball0 = self.h0[to]
+        if 'ankle' + S_ in P:
+            # placed directly (motion capture): the ankle where given, the foot and toes turned as given
+            ankle = Vector(P['ankle' + S_]); Fq = P['qfoot' + S_]
+            pole = Vector(P.get('knee' + S_, (0, -1, 0)))
+            E, Wp = self.two_bone(S, ankle, self.len[up], self.len[lo], pole)
+            self.put(W, up, swing(self.dir0[up], E - S) @ self.R0[up], S)
+            self.put(W, lo, swing(self.dir0[lo], Wp - E) @ self.R0[lo], E)
+            self.put(W, ft, Fq @ self.R0[ft], Wp)
+            self.put(W, to, P.get('qtoes' + S_, Fq) @ self.R0[to])
+            return
         if P.get('feetHips'):
             # tucked or lying: the ankle given relative to the hips' rest place, turning with the hips
             Rf = Hq @ Quaternion((0, 0, 1), math.radians(yaw)) @ Quaternion((1, 0, 0), math.radians(pitch))
