@@ -26,6 +26,7 @@ namespace FH.WorldForge
             int nx = Mathf.CeilToInt(rect.width / Step), nz = Mathf.CeilToInt(rect.height / Step);
             float top = R.max.y + 5;
             var cells = new List<Surface>[nx, nz];
+            var blockTop = new float[nx, nz]; for (int i = 0; i < nx; i++) for (int k = 0; k < nz; k++) blockTop[i, k] = float.NegativeInfinity;
             var ids = new Dictionary<Collider, int>(); var names = new List<string>();
             int Id(Collider c) { if (!ids.TryGetValue(c, out int i)) { i = names.Count; ids[c] = i; names.Add(c.transform.parent ? c.transform.parent.name + "/" + c.name : c.name); } return i; }
             int overlaps = 0; var overlapAt = new List<string>();
@@ -47,7 +48,7 @@ namespace FH.WorldForge
                         list.Add(new Surface { y = h.point.y, slope = Mathf.Acos(Mathf.Clamp01(h.normal.y)) * Mathf.Rad2Deg, col = Id(h.collider) });
                         if (list.Count >= 3) break;
                     }
-                    cells[i, k] = list;
+                    cells[i, k] = list; if (list.Count == 0 && hits.Count > 0) blockTop[i, k] = hits[0].point.y;   // rock or scenery fills it: no footing, but no hole either
                 }
             var reach = new HashSet<(int, int, int)>(); var q = new Queue<(int, int, int)>(); var ledges = new List<string>();
             int si = Mathf.Clamp(Mathf.FloorToInt((spawn.x - rect.xMin) / Step), 0, nx - 1), sk = Mathf.Clamp(Mathf.FloorToInt((spawn.z - rect.yMin) / Step), 0, nz - 1);
@@ -73,7 +74,7 @@ namespace FH.WorldForge
                         any = true;
                         if (reach.Add((a, b, m))) q.Enqueue((a, b, m));
                     }
-                    if (!any && !walled && (there.Count == 0 || there.All(s => s.y - here.y < -SafeDrop)) && ledges.Count < 2000)
+                    if (!any && !walled && (there.Count == 0 ? blockTop[a, b] - here.y < -SafeDrop : there.All(s => s.y - here.y < -SafeDrop)) && ledges.Count < 2000)
                         ledges.Add("[" + F(p0.x) + "," + F(p0.z) + "," + F(p1.x) + "," + F(p1.z) + "," + F(there.Count == 0 ? -99 : there.Max(s => s.y) - here.y) + "]");
                 }
             }
@@ -111,11 +112,17 @@ namespace FH.WorldForge
                 }
                 sb.Append(']');
             }
-            sb.Append("],\n\"ledges\":[").Append(string.Join(",", ledges)).Append("],\"overlaps\":").Append(overlaps).Append(",\"overlapAt\":[").Append(string.Join(",", overlapAt))
+            sb.Append("],\n\"ledges\":[").Append(string.Join(",", ledges)).Append("],\"blocked\":[").Append(string.Join(",", Blocked(blockTop, nx, nz))).Append("],\"overlaps\":").Append(overlaps).Append(",\"overlapAt\":[").Append(string.Join(",", overlapAt))
               .Append("],\"props\":[").Append(string.Join(",\n", props)).Append("],\"invisible\":[]}");
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
             return path;
+        }
+
+        /// <summary>Columns with something in them but no footing (rock, scenery): told apart from holes.</summary>
+        static IEnumerable<string> Blocked(float[,] top, int nx, int nz)
+        {
+            for (int k = 0; k < nz; k++) for (int i = 0; i < nx; i++) if (!float.IsNegativeInfinity(top[i, k])) yield return "[" + i + "," + k + "]";
         }
 
         static string F(float v) => v.ToString("0.###", Inv);

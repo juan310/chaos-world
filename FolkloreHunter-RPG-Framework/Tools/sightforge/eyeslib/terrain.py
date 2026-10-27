@@ -3,7 +3,8 @@
 Survey mode (the Folklore Hunter game's TerrainSurvey: terrain_<area>.json, written with --survey-terrain or F10):
   ground the hunter can never reach   standable ground (slope and head room fine) cut off from the spawn by the
                                       hunter's own limits (a step of .4 m, slope 48 degrees, a jump down of 2.5 m)
-  holes                               spots inside the area with nothing to stand on, beside reachable ground
+  holes                               spots inside the area with nothing at all under them, beside reachable ground
+                                      (a column filled by rock or scenery with no footing is not a hole)
   open ledges                         reachable ground ending in a fall of over 2.5 m (or into nothing) with no wall
   walk-through scenery                a drawn piece with no collider in it (the hunter passes through it)
   floating props                      scenery hanging above the ground under it
@@ -72,10 +73,10 @@ def analyse(sv):
                 islands.append({"cells": comp, "area": len(comp) * step * step, "at": (ox + (cx + .5) * step, oz + (cz + .5) * step),
                                 "height": (min(ys), max(ys)), "what": max(names, key=names.get) if names else "?"})
     # holes beside reached ground
-    holes = set()
+    holes = set(); blocked = set(tuple(b) for b in sv.get("blocked", []))     # rock or scenery in the column: no footing, not a hole
     for k in range(nz):
         for i in range(nx):
-            if cells[k][i] or not inside(i, k): continue
+            if cells[k][i] or (i, k) in blocked or not inside(i, k): continue
             if any(0 <= i + a < nx and 0 <= k + b < nz and reached[k + b][i + a] for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 holes.add((i, k))
     hole_groups = _groups(holes)
@@ -158,10 +159,12 @@ def picture(sv, r, path, scale=None):
     lo, hi = (min(ys), max(ys)) if ys else (0, 1)
     island = set((a, b) for isl in r["islands"] for a, b in isl["cells"])
     holes = set(c for g in r["holes"] for c in g)
+    blocked = set(tuple(b) for b in sv.get("blocked", []))
     for k in range(nz):
         for i in range(nx):
             c = cells[k][i]
             if (i, k) in holes: col = (230, 50, 50)
+            elif (i, k) in blocked: col = (95, 80, 70)
             elif not c: col = (16, 16, 18)
             else:
                 t = (c[0][0] - lo) / max(1e-6, hi - lo); g = int(60 + 150 * t)
@@ -187,9 +190,9 @@ def picture(sv, r, path, scale=None):
     d.ellipse([sx - 6, sz - 6, sx + 6, sz + 6], outline=(255, 255, 255), width=3)
     f = D.font(13)
     legend = [("reached ground (green tint)", (120, 170, 110)), ("never reachable", (170, 90, 200)), ("hole", (230, 50, 50)), ("open ledge", (255, 230, 60)),
-              ("too steep", (200, 130, 80)), ("walk-through", (255, 120, 255)), ("floating", (80, 220, 255)), ("invisible wall", (255, 255, 255))]
+              ("too steep", (200, 130, 80)), ("rock, no footing", (95, 80, 70)), ("walk-through", (255, 120, 255)), ("floating", (80, 220, 255)), ("invisible wall", (255, 255, 255))]
     y = 6
-    d.rectangle([4, 2, 196, 8 + 16 * len(legend) + 18], fill=(0, 0, 0))
+    d.rectangle([4, 2, 210, 8 + 16 * len(legend) + 18], fill=(0, 0, 0))
     d.text((10, y), "%s (spawn: white ring)" % sv["area"], fill=(255, 255, 255), font=f); y += 18
     for t, c in legend:
         d.rectangle([10, y + 3, 20, y + 13], fill=c); d.text((26, y), t, fill=(230, 230, 230), font=f); y += 16

@@ -250,6 +250,9 @@ namespace FH.WorldForge
             Walker.Auto = true; Cam.Auto = true;
             var d0 = route[1] - route[0]; d0.y = 0; Walker.transform.rotation = Quaternion.LookRotation(d0); Cam.Yaw = Walker.transform.eulerAngles.y;
             yield return new WaitForSeconds(.5f);
+            // standing still: how high the balls of the feet sit above flat ground in the idle pose (bone inside the foot, skin width)
+            float rest = Mathf.Min(Gap(Walker.BallL), Gap(Walker.BallR));
+            var lowerByFrame = new List<float>();
             Time.captureFramerate = 30;
             var rows = new StringBuilder(); var stuck = new List<string>();
             float last = 0, lastMoveT = 0, t = 0; int frame = 0, nudges = 0, pulled = 0, blocked = 0, inside = 0;
@@ -275,7 +278,7 @@ namespace FH.WorldForge
                 Destroy(tex);
                 // the feet against the ground under them
                 float gl = Gap(Walker.BallL), gr = Gap(Walker.BallR), lower = Mathf.Min(gl, gr);
-                if (lower < 9) { feetGap.Add(lower); sink = Mathf.Min(sink, lower); floatMax = Mathf.Max(floatMax, lower); }
+                if (lower < 9) { feetGap.Add(lower); lowerByFrame.Add(lower); sink = Mathf.Min(sink, lower); floatMax = Mathf.Max(floatMax, lower); }
                 if (Cam.PulledIn > .3f) pulled++; if (Cam.LineBlocked) blocked++; if (Cam.InsideRock) inside++;
                 rows.Append(F(t)).Append(',').Append(F(s)).Append(',').Append(V(Walker.transform.position)).Append(',').Append(Walker.Grounded ? 1 : 0).Append(',')
                     .Append(F(Cam.PulledIn)).Append(',').Append(Cam.LineBlocked ? 1 : 0).Append(',').Append(Cam.InsideRock ? 1 : 0).Append(',').Append(F(gl)).Append(',').Append(F(gr)).Append('\n');
@@ -285,11 +288,16 @@ namespace FH.WorldForge
             Walker.AutoDir = Vector3.zero;
             float reached = Progress(Walker.transform.position, out _);
             feetGap.Sort();
+            // the planted foot: the lowest the lower foot gets in each .4 s (a step at a jog), so a run's flight phase does not count as floating
+            var contacts = new List<float>();
+            for (int i = 0; i + 12 <= lowerByFrame.Count; i += 12) contacts.Add(lowerByFrame.GetRange(i, 12).Min());
+            contacts.Sort();
+            float planted = contacts.Count > 0 ? contacts[contacts.Count / 2] : 99;
             string Pct(float q) => feetGap.Count > 0 ? F(feetGap[Mathf.Clamp((int)(q * feetGap.Count), 0, feetGap.Count - 1)]) : "null";
             File.WriteAllText(Path.Combine(Out, "walk.csv"), "t,s,x,y,z,grounded,camPulledIn,lineBlocked,camInside,ballL,ballR\n" + rows);
             File.WriteAllText(Path.Combine(Out, "walk.json"), "{\"routeLength\":" + F(total) + ",\"reached\":" + F(Mathf.Max(reached, maxS)) + ",\"seconds\":" + F(t) + ",\"frames\":" + frame + ",\"nudges\":" + nudges
                 + ",\"stuck\":[" + string.Join(",", stuck) + "],\"camera\":{\"pulledIn\":" + F(frame > 0 ? pulled / (float)frame : 0) + ",\"lineBlocked\":" + F(frame > 0 ? blocked / (float)frame : 0) + ",\"inside\":" + F(frame > 0 ? inside / (float)frame : 0) + "}"
-                + ",\"feet\":{\"lowerBallP05\":" + Pct(.05f) + ",\"median\":" + Pct(.5f) + ",\"p95\":" + Pct(.95f) + ",\"deepest\":" + F(sink) + ",\"highest\":" + F(floatMax) + "}}");
+                + ",\"feet\":{\"lowerBallP05\":" + Pct(.05f) + ",\"median\":" + Pct(.5f) + ",\"p95\":" + Pct(.95f) + ",\"deepest\":" + F(sink) + ",\"highest\":" + F(floatMax) + ",\"rest\":" + F(rest < 9 ? rest : 0) + ",\"planted\":" + F(planted) + "}}");
             Log($"walk: {Mathf.Max(reached, maxS):0.0} of {total:0.0} m in {t:0.0} s, {nudges} nudges, camera blocked {blocked} of {frame} frames");
         }
 

@@ -19,7 +19,8 @@ What each check measures (from the test run inside the real player, not from pic
              wall torches' gap to the wall
   mesh       open edges of the whole surface inside the generation box (holes, seams between chunks)
   camera     the share of walk frames the camera was pulled in by walls, had its view of the hunter blocked, sat inside rock
-  feet       the lower ball of the foot against the ground under it (sinking, floating) along the walk
+  feet       the lower ball of the foot against the ground under it along the walk, against where it sits standing
+             still: sinking (deepest), floating (the planted foot of each step; a run's flight phase is not floating)
   lights     lights reaching each chunk against the per-pixel light limit of each quality preset (more pop on and off)
   lighting   brightness of the viewpoint shots and of the walk frames (too dark to read, blown out)
   perf       frame times per viewpoint at Low, Medium and High
@@ -188,11 +189,13 @@ def findings(d):
         if cam["pulledIn"] > .3:
             out.append(finding("uncertain", "camera: pulled in by walls", "walk", "%.0f %% of frames walls pushed the camera more than 30 cm closer (expected in tunnels)" % (cam["pulledIn"] * 100), measured=cam["pulledIn"]))
         f = w["feet"]
-        if f.get("deepest") is not None and f["deepest"] < -.06:
-            out.append(finding("likely", "feet: sinking into the ground", "walk", "the lower ball of the foot went %.0f cm under the ground (5th percentile %.0f cm)" % (-f["deepest"] * 100, -(f["lowerBallP05"] or 0) * 100),
-                               measured=f["deepest"], threshold=-.06, fix="foot placement (IK) on slopes and bumps; or a smoother floor"))
-        if f.get("median") is not None and f["median"] > .08:
-            out.append(finding("uncertain", "feet: floating", "walk", "the lower foot is %.0f cm above the ground half the time" % (f["median"] * 100), measured=f["median"], threshold=.08))
+        rest = f.get("rest") or 0          # the ball of the foot standing still on flat ground (bone inside the foot, skin width)
+        if f.get("deepest") is not None and f["deepest"] - rest < -.06:
+            out.append(finding("likely", "feet: sinking into the ground", "walk", "the lower ball of the foot went %.0f cm deeper than it sits standing still (it rests %.0f cm up)" % (-(f["deepest"] - rest) * 100, rest * 100),
+                               measured=f["deepest"] - rest, threshold=-.06, fix="foot placement (IK) on slopes and bumps; or a smoother floor"))
+        if f.get("planted") is not None and f["planted"] < 9 and f["planted"] - rest > .06:
+            out.append(finding("uncertain", "feet: floating", "walk", "at each step the planted foot stays %.0f cm higher than it sits standing still" % ((f["planted"] - rest) * 100),
+                               measured=f["planted"] - rest, threshold=.06, fix="foot placement (IK), or the clip's contact height"))
     n = d.get("nav")
     if n:
         for a in n["agents"]:
@@ -239,8 +242,8 @@ def summary(d):
     i = d.get("info") or {}; w = d.get("walk") or {}; c = d.get("collision") or {}; m = d.get("mesh") or {}; L = d.get("lights") or {}
     lines = ["%s: %s triangles in %s chunks (voxel %s m), built in %.1f s; %s fire lights, %s puddles; GPU %s, %s" % (i.get("recipe"), format(i.get("triangles", 0), ","), i.get("chunks"), i.get("voxel"),
              i.get("buildSeconds", 0), i.get("fireLights"), i.get("puddles"), i.get("gpu"), i.get("screen"))]
-    if w: lines.append("walk: %.1f of %.1f m in %.1f s, %d stuck; camera pulled in %.0f %%, view blocked %.0f %%, inside rock %.1f %% of frames; lower foot median %s m, deepest %s m" %
-                       (w["reached"], w["routeLength"], w["seconds"], w["nudges"], w["camera"]["pulledIn"] * 100, w["camera"]["lineBlocked"] * 100, w["camera"]["inside"] * 100, w["feet"].get("median"), w["feet"].get("deepest")))
+    if w: lines.append("walk: %.1f of %.1f m in %.1f s, %d stuck; camera pulled in %.0f %%, view blocked %.0f %%, inside rock %.1f %% of frames; planted foot %s m (rests %s m), deepest %s m" %
+                       (w["reached"], w["routeLength"], w["seconds"], w["nudges"], w["camera"]["pulledIn"] * 100, w["camera"]["lineBlocked"] * 100, w["camera"]["inside"] * 100, w["feet"].get("planted"), w["feet"].get("rest"), w["feet"].get("deepest")))
     for a in (d.get("nav") or {}).get("agents", []):
         lines.append("navigation %-8s r %.2f: to the arena %s (%.1f m), back %s, arena floor %s" % (a["agent"], a["radius"], a["toArena"].get("status"), a["toArena"].get("length") or 0, a["back"].get("status"),
                                                                                             "-" if a.get("arenaFloor") is None else "%.0f %%" % (a["arenaFloor"] * 100)))
@@ -273,7 +276,9 @@ def report(ctx, prj, folder, run=None):
     res = findings(d)
     sections = [("Summary", [], summary(d))]
     vid = os.path.join(folder, "walkthrough.mp4")
-    if os.path.isfile(vid): sections.append(("Video of the walk", [], vid))
+    if os.path.isfile(vid):
+        shutil.copyfile(vid, os.path.join(ev, "walkthrough.mp4"))
+        sections.append(("Video of the walk", [], "evidence/walkthrough.mp4 (%d frames at 30 per second, as the player saw them)" % len(d["framePaths"])))
     shots = sorted(glob.glob(os.path.join(folder, "shots", "*_Medium.jpg"))) + sorted(glob.glob(os.path.join(folder, "shots", "*_High.jpg")))
     sections.append(("Viewpoints (Medium, then High)", shots, None))
     sheet = contact_sheet(d["framePaths"], os.path.join(ev, "walk_sheet.jpg"))

@@ -66,6 +66,7 @@ namespace FH.Game
             int nx = Mathf.CeilToInt(area.Rect.width / Step), nz = Mathf.CeilToInt(area.Rect.height / Step);
             float top = area.Spawn.y + 60;
             var cells = new List<Surface>[nx, nz];
+            var blockTop = new float[nx, nz]; for (int i = 0; i < nx; i++) for (int k = 0; k < nz; k++) blockTop[i, k] = float.NegativeInfinity;
             var colliderIds = new Dictionary<Collider, int>(); var colliderNames = new List<string>();
             int Id(Collider c) { if (!colliderIds.TryGetValue(c, out int i)) { i = colliderNames.Count; colliderIds[c] = i; colliderNames.Add(Name(c.transform)); } return i; }
             int overlaps = 0; var overlapAt = new List<string>();
@@ -91,7 +92,7 @@ namespace FH.Game
                         list.Add(new Surface { y = h.point.y, slope = Mathf.Acos(Mathf.Clamp01(h.normal.y)) * Mathf.Rad2Deg, what = null, col = Id(h.collider) });
                         if (list.Count >= 3) break;
                     }
-                    cells[i, k] = list;
+                    cells[i, k] = list; if (list.Count == 0 && hits.Count > 0) blockTop[i, k] = hits[0].point.y;   // rock or scenery fills it: no footing, but no hole either
                 }
             // walking from the spawn: (cell, surface) nodes; a step up to StepUp, any slope under the limit, a drop to SafeDrop
             var reach = new HashSet<(int, int, int)>();
@@ -120,7 +121,7 @@ namespace FH.Game
                         any = true;
                         if (reach.Add((a, b, m))) q.Enqueue((a, b, m));
                     }
-                    if (!any && !walled && InArea(area, p1) && (there.Count == 0 || there.All(s => s.y - here.y < -SafeDrop)) && ledges.Count < 2000)
+                    if (!any && !walled && InArea(area, p1) && (there.Count == 0 ? blockTop[a, b] - here.y < -SafeDrop : there.All(s => s.y - here.y < -SafeDrop)) && ledges.Count < 2000)
                         ledges.Add("[" + F(p0.x) + "," + F(p0.z) + "," + F(p1.x) + "," + F(p1.z) + "," + F(there.Count == 0 ? -99 : there.Max(s => s.y) - here.y) + "]");
                 }
             }
@@ -181,7 +182,7 @@ namespace FH.Game
                 }
                 sb.Append(']');
             }
-            sb.Append("],\n\"ledges\":[").Append(string.Join(",", ledges)).Append("],\n\"overlaps\":").Append(overlaps).Append(",\"overlapAt\":[").Append(string.Join(",", overlapAt))
+            sb.Append("],\n\"ledges\":[").Append(string.Join(",", ledges)).Append("],\"blocked\":[").Append(string.Join(",", Blocked(blockTop, nx, nz))).Append("],\n\"overlaps\":").Append(overlaps).Append(",\"overlapAt\":[").Append(string.Join(",", overlapAt))
               .Append("],\n\"props\":[").Append(string.Join(",\n", props)).Append("],\n\"invisible\":[").Append(string.Join(",\n", invisible))
               .Append("],\"seconds\":").Append(F(Time.realtimeSinceStartup - t0)).Append('}');
             Directory.CreateDirectory(Path.GetDirectoryName(path));
@@ -200,6 +201,12 @@ namespace FH.Game
         }
 
         static string Name(Transform t) => t.parent ? t.parent.name + "/" + t.name : t.name;
+        /// <summary>Columns with something in them but no footing (rock, scenery): told apart from holes.</summary>
+        static IEnumerable<string> Blocked(float[,] top, int nx, int nz)
+        {
+            for (int k = 0; k < nz; k++) for (int i = 0; i < nx; i++) if (!float.IsNegativeInfinity(top[i, k])) yield return "[" + i + "," + k + "]";
+        }
+
         static string F(float v) => v.ToString("0.###", Inv);
         static string Q(string s) => "\"" + (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
     }
