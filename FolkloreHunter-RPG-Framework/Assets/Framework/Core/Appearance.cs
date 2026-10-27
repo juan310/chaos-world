@@ -20,13 +20,14 @@ namespace FH.Core
 
         public static int ClampHair(int hair) => Math.Max(1, Math.Min(10, hair));
 
-        /// <summary>Model resources to try in order: the chosen hairstyle, then the body's base model. Anything but the
+        /// <summary>Model resources to try in order: the slim hunter (the hairstyle is then built on its head from the next
+        /// name), the chosen hairstyle's model, then the body's base model. Anything but the
         /// female hunter (the male hunter, an old "classic" choice, a save from before 0.9) is the male hunter. The
         /// KayKit "Hunter" is last only so a build without the new models still runs.</summary>
         public static string[] Models(string body, int hair)
         {
             string b = body == Female ? "Female" : "Male";
-            return new[] { "Hunter_" + b + "_" + ClampHair(hair).ToString("00"), "Hunter_" + b, "Hunter" };
+            return new[] { "Hunter_" + b + "_Slim", "Hunter_" + b + "_" + ClampHair(hair).ToString("00"), "Hunter_" + b, "Hunter" };
         }
 
         public static string Describe(string body, int hair)

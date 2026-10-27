@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace FH.Game
 {
 // The ten hairstyles per body, as 3D strand clumps built in code (Codex combat prototype's HunterHair, carried over
-// unchanged but for the material helper). Worn by BodyDouble on the Codex hunters' heads; names as Appearance.MaleHair /
+// unchanged but for the material helper). Worn by the slim hunters (HairFit); names as Appearance.MaleHair /
 // FemaleHair, same order.
 public static class HunterHair {
  public static readonly string[] Male={"Tousled Crop","Side-Swept","Short Curls","Undercut","Shoulder-Length","Low Ponytail","Topknot","Warrior Braid","Slicked Back","Buzz Cut"};

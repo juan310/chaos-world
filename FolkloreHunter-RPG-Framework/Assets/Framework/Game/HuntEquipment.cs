@@ -8,7 +8,7 @@ namespace FH.Game {
   void OnDestroy(){if(root)Destroy(root);}
   public void Refresh(GameSession session,HunterController hero) {
    // The Thornback set and the cleaver are fitted to the classic knight's body: other looks keep their own (stats still apply).
-   if(hero.Look!="Hunter"||hero.Double){if(root)root.SetActive(false);return;}
+   if(hero.Look!="Hunter"){if(root)root.SetActive(false);return;}
    if(!root)Build(hero);
    if(!root)return;
    var state=session.Core.State;

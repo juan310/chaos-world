@@ -18,10 +18,10 @@ namespace FH.Tests
         [Test]
         public void EveryLookIsARealisticHunter()
         {
-            Assert.That(Appearance.Models(Appearance.Female, 5), Is.EqualTo(new[] { "Hunter_Female_05", "Hunter_Female", "Hunter" }));
-            Assert.That(Appearance.Models(Appearance.Male, 99)[0], Is.EqualTo("Hunter_Male_10"));
-            Assert.That(Appearance.Models("", 1)[0], Is.EqualTo("Hunter_Male_01"), "a save from before 0.9 wears the male hunter");
-            Assert.That(Appearance.Models(Appearance.Classic, 3)[0], Is.EqualTo("Hunter_Male_03"), "the chibi knight is no longer worn");
+            Assert.That(Appearance.Models(Appearance.Female, 5), Is.EqualTo(new[] { "Hunter_Female_Slim", "Hunter_Female_05", "Hunter_Female", "Hunter" }));
+            Assert.That(Appearance.Models(Appearance.Male, 99)[1], Is.EqualTo("Hunter_Male_10"));
+            Assert.That(Appearance.Models("", 1)[0], Is.EqualTo("Hunter_Male_Slim"), "a save from before 0.9 wears the male hunter");
+            Assert.That(Appearance.Models(Appearance.Classic, 3)[1], Is.EqualTo("Hunter_Male_03"), "the chibi knight is no longer worn");
             Assert.That(Appearance.Describe("", 2), Does.StartWith("Male hunter"));
         }
 

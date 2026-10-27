@@ -142,9 +142,6 @@ namespace FH.Core
         public string fallbackModel;
         /// <summary>The model holds its own weapons (made with it from the concept art): no KayKit sword is added.</summary>
         public bool ownWeapons;
-        /// <summary>A body made in the Codex combat prototype (path under Models/Codex/, e.g. "Skeletons/Boneguard"): when it
-        /// is in the build, the <see cref="fallbackModel"/> skeleton animates hidden under it (BodyDouble).</summary>
-        public string body;
         public int xp, gold;
         public bool boss;
         public string assetStatus = "ready";           // "ready" or a description of the missing dependency

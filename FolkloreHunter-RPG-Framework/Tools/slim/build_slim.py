@@ -1,0 +1,149 @@
+# Builds a game model on the slim skeleton: the Codex body (Models/Codex/<body>.fbx, unchanged there), its bones given
+# the game's names, hand slots, the hunter's weapons gripped in them (the hunt pieces from SourceArt/Hunter.blend,
+# re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
+#   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
+# --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
+# mesh (named "Helmet", so the helm part breaks it off) on the head.
+import bpy, sys, shutil, math
+from pathlib import Path
+from mathutils import Vector, Matrix
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import choreo, moves
+
+argv = sys.argv[sys.argv.index('--') + 1:]
+fbx, name = Path(argv[0]), argv[1]
+def opt(flag, default=None):
+    return argv[argv.index(flag) + 1] if flag in argv else default
+
+
+keep = opt('--pieces'); keep = set(keep.split(',')) if keep else None
+sizes = dict(x.split('=') for x in argv[i + 1].split(',') for i in [argv.index('--size')]) if '--size' in argv else {}
+helmet = opt('--helmet')
+weapons = keep != set(['none'])
+root = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
+dest = root / 'Assets/Resources/Models'
+
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.import_scene.fbx(filepath=str(fbx))
+arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
+choreo.rename_bones(arm); choreo.add_hand_slots(arm)
+body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name + '_Body'
+rig = choreo.Rig(arm)
+k = rig.k
+
+# Each piece: (name, parent bone, piece axis along the slot's Y (blade / outward face / upper limb), piece axis along
+# the slot's Z (edge / top / toward the target), real length of the piece's longest side in metres, grip point mode)
+PIECES = [
+    ('1H_Sword', 'handslot.r', (0, 0, 1), (1, 0, 0), .95),
+    ('Round_Shield', 'handslot.l', (0, -1, 0), (0, 0, 1), .62),
+    ('Hunt_TowerShield', 'handslot.l', (0, -1, 0), (0, 0, 1), 1.15),
+    ('Hunt_Lance', 'handslot.r', (0, 0, 1), (1, 0, 0), 2.5),
+    ('Hunt_Katana', 'handslot.r', (0, 0, 1), (1, 0, 0), 1.25),        # the game shows it at 80 %
+    ('Hunt_KatanaGlow', 'handslot.r', (0, 0, 1), (1, 0, 0), None),     # as the katana
+    ('Hunt_Bow', 'handslot.l', (0, 0, 1), (1, 0, 0), 1.35),
+    ('Hunt_NockedArrow', 'handslot.r', (0, 0, 1), (1, 0, 0), .78),
+    ('Hunt_Arrow', 'handslot.r', (0, 0, 1), (1, 0, 0), .78),
+]
+
+
+def axes_matrix(ya, za):
+    """Piece coordinates -> slot coordinates: piece axis ya onto slot Y, za onto slot Z."""
+    y = Vector(ya); z = Vector(za); x = y.cross(z)
+    P = Matrix((x, y, z))                   # rows: piece-space directions of slot X, Y, Z
+    return P.to_4x4()
+
+
+def seat(src, bone, ya, za, length, scale=None, grip=None):
+    """Copies the piece's mesh into slot space (grip at the slot, axes as given, scaled) and parents it to the bone."""
+    me = src.data.copy()
+    # the old slot's origin in the piece's coordinates is its grip
+    g = grip if grip is not None else Vector((0, 0, 0))
+    size = max(max(v.co[i] for v in me.vertices) - min(v.co[i] for v in me.vertices) for i in range(3))
+    s = scale if scale is not None else (length * k) / size
+    M = axes_matrix(ya, za) @ Matrix.Scale(s, 4) @ Matrix.Translation(-g)
+    me.transform(M)
+    o = bpy.data.objects.new(src.name, me)
+    bpy.context.scene.collection.objects.link(o)
+    o.parent = arm; o.parent_type = 'BONE'; o.parent_bone = bone
+    b = arm.data.bones[bone]
+    o.matrix_world = arm.matrix_world @ b.matrix_local          # at the bone's head, in its frame
+    return o, s
+
+
+if weapons:
+    lib = root / 'SourceArt/Hunter.blend'
+    want = [p[0] for p in PIECES] + ['Hunt_Quiver']
+    with bpy.data.libraries.load(str(lib), link=False) as (src, dst):
+        dst.objects = [n for n in src.objects if n in want]
+    loaded = {o.name: o for o in dst.objects if o}
+    # grips (the old hand slots' origins in each piece's coordinates, measured in Hunter.blend)
+    GRIPS = {'1H_Sword': (0, 0, -.033), 'Round_Shield': (0, .156, -.017), 'Hunt_TowerShield': (0, .156, -.017), 'Hunt_Lance': (0, 0, -.033),
+             'Hunt_Katana': (0, 0, -.033), 'Hunt_KatanaGlow': (0, 0, -.033), 'Hunt_Bow': (0, 0, 0), 'Hunt_NockedArrow': (0, 0, 0), 'Hunt_Arrow': (0, 0, -.033)}
+    scales = {}
+    for nm, bone, ya, za, length in PIECES:
+        if keep and nm not in keep and not (nm == 'Hunt_KatanaGlow' and 'Hunt_Katana' in keep): continue
+        if nm in sizes: length = float(sizes[nm])
+        src = loaded.get(nm)
+        if not src: print('SLIM_MISSING', nm); continue
+        o, s = seat(src, bone, ya, za, length, scales.get('Hunt_Katana') if nm == 'Hunt_KatanaGlow' else None, Vector(GRIPS[nm]))
+        scales[nm] = s
+        print('SLIM_PIECE', nm, bone, 'scale %.3f' % s, flush=True)
+    q = loaded.get('Hunt_Quiver')
+    if q and (not keep or 'Hunt_Quiver' in keep):
+        # on the back, behind the right shoulder, fletchings up and tilted out
+        me = q.data.copy(); size = max(max(v.co[i] for v in me.vertices) - min(v.co[i] for v in me.vertices) for i in range(3))
+        s = .7 * k / size
+        up = Vector((-.3, .2, 1)).normalized(); fwd = Vector((0, -1, 0)); x = fwd.cross(up).normalized(); fwd = up.cross(x)
+        R = Matrix((x, fwd, up)).transposed().to_4x4()
+        me.transform(Matrix.Scale(s, 4))
+        o = bpy.data.objects.new('Hunt_Quiver', me); bpy.context.scene.collection.objects.link(o)
+        o.parent = arm; o.parent_type = 'BONE'; o.parent_bone = 'chest'
+        c = rig.h0['chest'] + Vector((-.1, .17, .02)) * k
+        o.matrix_world = arm.matrix_world @ (Matrix.Translation(c) @ R)
+        print('SLIM_PIECE Hunt_Quiver chest scale %.3f' % s, flush=True)
+    for o in list(dst.objects):
+        if o and o.name in loaded and o.users == 0: bpy.data.objects.remove(o)
+
+if helmet:
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.fbx(filepath=helmet)
+    parts = [o for o in bpy.data.objects if o not in before and o.type == 'MESH']
+    for o in [o for o in bpy.data.objects if o not in before and o.type != 'MESH']: bpy.data.objects.remove(o)
+    if parts:
+        h = parts[0]
+        if len(parts) > 1:
+            bpy.ops.object.select_all(action='DESELECT')
+            for o in parts: o.select_set(True)
+            bpy.context.view_layer.objects.active = h; bpy.ops.object.join()
+        h.parent = None; bpy.context.view_layer.update()
+        h.data.transform(h.matrix_world); h.matrix_world = Matrix()
+        lo = Vector([min(v.co[i] for v in h.data.vertices) for i in range(3)]); hi = Vector([max(v.co[i] for v in h.data.vertices) for i in range(3)])
+        print('SLIM_HELMET_SIZE', tuple(round(v, 3) for v in hi - lo), flush=True)
+        if (hi.y - lo.y) > 1.3 * (hi.z - lo.z):     # lying on its back in the file: stand it up
+            h.data.transform(Matrix.Rotation(math.radians(90), 4, 'X'))
+            lo = Vector([min(v.co[i] for v in h.data.vertices) for i in range(3)]); hi = Vector([max(v.co[i] for v in h.data.vertices) for i in range(3)])
+        c = (lo + hi) / 2
+        s = (.43 * rig.height / 2.4) / max(1e-4, hi.x - lo.x)          # Codex fitted it 0.43 m wide on its 2.4 m Warden
+        head = rig.h0['head']
+        h.data.transform(Matrix.Translation(head + Vector((0, 0, .18 * rig.height / 2.4))) @ Matrix.Scale(s, 4) @ Matrix.Translation(-c))
+        h.name = name + '_Helmet'; h.data.name = name + '_Helmet'      # the game breaks off the mesh whose name ends "Helmet"
+        ht = Path(helmet).with_name(Path(helmet).stem + '_texture.png')
+        if ht.exists(): shutil.copyfile(ht, dest / (name + '_Helmet_texture.png'))
+        mw = h.matrix_world.copy()
+        h.parent = arm; h.parent_type = 'BONE'; h.parent_bone = 'head'; h.matrix_world = mw
+        print('SLIM_HELMET scale %.3f' % s, flush=True)
+
+made = [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+arm.animation_data.action = None
+print('SLIM_CLIPS', len(made), ' '.join(a.name for a in made), flush=True)
+
+for o in list(bpy.data.objects):
+    if o.type not in ('ARMATURE', 'MESH'): bpy.data.objects.remove(o)
+out = dest / (name + '.fbx')
+bpy.ops.export_scene.fbx(filepath=str(out), use_selection=False, object_types={'ARMATURE', 'MESH'}, add_leaf_bones=False,
+                         apply_scale_options='FBX_SCALE_ALL', bake_anim=True, bake_anim_use_nla_strips=False,
+                         bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward='-Z', axis_up='Y',
+                         path_mode='COPY', embed_textures=False)
+tex = fbx.with_name(fbx.stem + '_texture.png')
+if tex.exists(): shutil.copyfile(tex, dest / (name + '_texture.png'))
+print('SLIM_EXPORTED', out, out.stat().st_size, flush=True)
