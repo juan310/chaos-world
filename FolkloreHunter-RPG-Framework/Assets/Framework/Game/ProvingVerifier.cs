@@ -986,13 +986,16 @@ namespace FH.Game
             H.Teleport(S.SafeGround(o), 45); LookAlong(45);
             yield return Frames(3);
             var footL = WorldKit.Find(H.Visual, "foot.l"); var footR = WorldKit.Find(H.Visual, "foot.r");
+            // the ball of each foot (the toes bone), where a running foot meets the ground; the ankle on rigs without toes
+            var ballL = WorldKit.Find(H.Visual, "toes.l") ?? footL; var ballR = WorldKit.Find(H.Visual, "toes.r") ?? footR;
             foreach (var (label, button, want, clip) in new[] { ("full stick jogs", PadButton.None, HunterController.JogSpeed, H.JogClip), ("RT sprints", PadButton.RT, HunterController.SprintSpeed, H.SprintClip) })
             {
                 H.Stamina.Current = H.Stamina.Max;
                 Hold(button, new Vector2(0, 1));
                 yield return Wait(.5f);
-                var planted = new List<float>(); var body = new List<float>(); var sweep = new List<float>();
+                var planted = new List<float>(); var body = new List<float>(); var sweep = new List<float>(); var grounded = new List<float>();
                 Vector3 pl = footL.position, pr = footR.position, pb = H.transform.position; float t0 = Time.time; Vector3 start = H.transform.position;
+                Vector3 bl = ballL.position, br = ballR.position; int frames = 0, down = 0;
                 for (float t = 0; t < 1.2f; t += Time.unscaledDeltaTime)
                 {
                     yield return null;
@@ -1001,6 +1004,13 @@ namespace FH.Game
                     // The slower foot is the one on the ground: how fast does it slide? (Height is no guide on this rig:
                     // the swinging foot's ankle often rides lower than the planted one.)
                     planted.Add(Mathf.Min(vl, vr));
+                    // Planted feet, measured properly: the ball of a foot while it is on the ground (within 4 cm), against
+                    // the ground. Frames with both feet in the air (a run's flight) do not count as slide.
+                    frames++;
+                    foreach (var (ball, prev) in new[] { (ballL, bl), (ballR, br) })
+                        if (Physics.Raycast(ball.position + Vector3.up * .5f, Vector3.down, out var gh, 1.5f, Layers.WorldMask, QueryTriggerInteraction.Ignore) && ball.position.y - gh.point.y < .04f)
+                        { grounded.Add(Vector3.Distance(Flat(ball.position), Flat(prev)) / dt); down++; }
+                    bl = ballL.position; br = ballR.position;
                     // Diagnostic: the lower foot's sweep relative to the hunter (what the clip itself does at this rate).
                     var lowF = footL.position.y < footR.position.y ? footL : footR;
                     sweep.Add(Vector3.Dot(Flat(lowF.position - H.transform.position), H.transform.forward));
@@ -1019,6 +1029,10 @@ namespace FH.Game
                 // without slide (a run cycle authored for them is the fix). Gate only against it getting worse.
                 Note(label + ": KNOWN LIMIT foot slide: the slower foot moves at " + slide.ToString("0.00") + " m/s while the body moves " + bodyV.ToString("0.00") + " m/s (" + (slide / Mathf.Max(.01f, bodyV) * 100).ToString("0") + " %)");
                 Check(label + ": foot slide no worse than measured for 0.8.0 (under 75 % of body speed)", slide < bodyV * .75f, slide.ToString("0.00") + " vs " + bodyV.ToString("0.00") + " m/s");
+                float ballSlide = grounded.Count > 0 ? Median(grounded) : 99;
+                Note(label + ": feet on the ground " + (100f * down / Mathf.Max(1, 2 * frames)).ToString("0") + " % of foot-frames; a grounded ball of the foot moves " + ballSlide.ToString("0.00") + " m/s (median)");
+                Check(label + ": a planted foot holds the ground (the ball of a grounded foot under 30 % of body speed)", grounded.Count >= 6 && ballSlide < bodyV * .3f,
+                      ballSlide.ToString("0.00") + " vs " + bodyV.ToString("0.00") + " m/s over " + grounded.Count + " grounded foot-frames");
                 H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
             }
             // Drawn weapon: a slower jog, not the old shuffle.
