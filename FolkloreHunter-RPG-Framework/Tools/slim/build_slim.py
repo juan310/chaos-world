@@ -4,7 +4,11 @@
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
 #       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock]
-#       [--fingers] [--out <folder>]
+#       [--fingers] [--out <folder>] [--keep-clips "<source clip>=<Game_Clip>+<Game_Clip>,..."]
+# --keep-clips keeps clips that came in the source file (a Tripo export's walk, run, idle...): each is sampled at 30
+# frames a second, held in place (the game moves the body; the hips' travel over the clip is taken out) and stored under
+# the game's clip names, replacing the keyposed clips of those names. A source clip is matched by the start of its name
+# (after "Armature|", without ".001").
 # --fingers finds the fingers in the mesh, gives each three bones, and solves how they close round each held piece
 # (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
 # --out writes the model somewhere else than the game's Models folder (trials).
@@ -36,6 +40,13 @@ dest.mkdir(parents=True, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=str(fbx))
+# the source's own clips, kept aside when asked for (--keep-clips); the game's clips are made at 30 frames a second
+src_fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
+KEEP = {}
+for _a in list(bpy.data.actions):
+    if opt('--keep-clips'):
+        _a.use_fake_user = True; KEEP['KEEP__' + _a.name.split('|')[-1].split('.')[0]] = _a; _a.name = 'KEEP__' + _a.name.split('|')[-1].split('.')[0]
+bpy.context.scene.render.fps = 30; bpy.context.scene.render.fps_base = 1
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
 choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name + '_Body'
@@ -145,7 +156,8 @@ if weapons:
     # only the meshes were wanted: the old file's rig and every clip that came with it go (no chibi motion here)
     for o in list(bpy.data.objects):
         if o.name.endswith('__src') or (o.type == 'ARMATURE' and o != arm): bpy.data.objects.remove(o)
-    for a in list(bpy.data.actions): bpy.data.actions.remove(a)
+    for a in list(bpy.data.actions):
+        if not a.name.startswith('KEEP__'): bpy.data.actions.remove(a)
 
 if helmet:
     before = set(bpy.data.objects)
@@ -213,8 +225,51 @@ if m2m:
     src = retarget.Source(m2m)
     retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP, retarget.VILLAGER if villager else None)
     src.remove()
-    made = list(bpy.data.actions)                 # the keyposed clips a capture replaced are gone already
+    made = [a for a in bpy.data.actions if not a.name.startswith('KEEP__')]     # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
+if opt('--keep-clips'):
+    # the source's clips under the game's names: sampled at 30 fps, every bone keyed, the hips' travel taken out
+    sc = bpy.context.scene
+    ad = arm.animation_data or arm.animation_data_create()
+    for pair in opt('--keep-clips').split(','):
+        src_name, targets = pair.split('=')
+        src = next((a for k, a in KEEP.items() if k[6:].startswith(src_name.strip())), None)
+        if not src: print('SLIM_KEEP missing source clip', src_name, flush=True); continue
+        # its curves still name the source's bones (renaming bones only updates the clip the rig wears): the game's names
+        def _curves(a):
+            try: return list(a.fcurves)
+            except AttributeError: return [fc for l in a.layers for st in l.strips for cb in getattr(st, 'channelbags', []) for fc in cb.fcurves]
+        for fc in _curves(src):
+            for o_, n_ in choreo.NAMES.items():
+                if '"%s"' % o_ in fc.data_path: fc.data_path = fc.data_path.replace('"%s"' % o_, '"%s"' % n_)
+        ad.action = src
+        if getattr(src, 'slots', None) and len(src.slots) and hasattr(ad, 'action_slot'): ad.action_slot = src.slots[0]
+        f0, f1 = src.frame_range
+        n = max(2, int(round((f1 - f0) / src_fps * 30))) + 1
+        samples = []
+        for i in range(n):
+            t = f0 + (f1 - f0) * i / (n - 1)
+            sc.frame_set(int(t), subframe=t - int(t))
+            samples.append({pb.name: pb.matrix_basis.decompose()[:2] for pb in arm.pose.bones})
+        travel = samples[-1]['hips'][0] - samples[0]['hips'][0] if 'hips' in samples[0] else None
+        for tgt in targets.split('+'):
+            tgt = tgt.strip()
+            old_a = bpy.data.actions.get(tgt)
+            if old_a:
+                if old_a in made: made.remove(old_a)
+                bpy.data.actions.remove(old_a)
+            act = bpy.data.actions.new(tgt); act.use_fake_user = True; ad.action = act
+            for i, smp in enumerate(samples):
+                for pb in arm.pose.bones:
+                    loc, q = smp[pb.name]
+                    if pb.name == 'hips' and travel is not None: loc = loc - travel * (i / (n - 1))
+                    pb.rotation_mode = 'QUATERNION'; pb.location = loc; pb.rotation_quaternion = q
+                    pb.keyframe_insert('location', frame=1 + i); pb.keyframe_insert('rotation_quaternion', frame=1 + i)
+            made.append(act)
+            print('SLIM_KEEP %s -> %s (%d frames, travel taken out %.2f)' % (src.name[6:], tgt, n, travel.length if travel is not None else 0), flush=True)
+    for a in list(KEEP.values()): bpy.data.actions.remove(a)
+    ad.action = None
+    for pb in arm.pose.bones: pb.matrix_basis = Matrix()
 if '--footlock' in argv:
     # walks, jogs and runs with their planted feet held on the travelling ground (SightForge's foot-slide fixer)
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'sightforge' / 'eyeslib'))
