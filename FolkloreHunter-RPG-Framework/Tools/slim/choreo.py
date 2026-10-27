@@ -121,11 +121,11 @@ class Rig:
         self.put(W, 'neck', Nq @ self.R0['neck'])
         self.put(W, 'head', Nq @ rot(*P.get('head', (0, 0, 0))) @ self.R0['head'])
         to_body, Bq = self.chest_frame(W)
-        for s in ('l', 'r'):
+        for s in ('r', 'l'):
             self.put(W, 'shoulder.' + s, Cq @ rot(*P.get('sh' + s.upper(), (0, 0, 0))) @ self.R0['shoulder.' + s])
             self.arm_ik(W, s, P, to_body, Bq)
         for s in ('l', 'r'):
-            self.leg_ik(W, s, P, Hq)
+            self.leg_ik(W, s, P, Hq, W['hips'].translation)
         return W
 
     def arm_ik(self, W, s, P, to_body, Bq):
@@ -136,8 +136,15 @@ class Rig:
         cq = Quaternion() if world else Bq
         self.put(W, up, self.R0[up])          # head position only, for S
         S = W[up].translation
-        tgt = conv(self.scale_pt(P['hand' + S_], 'chest' if not world else None))
         blade = P.get('blade' + S_)
+        if s == 'l' and P.get('handL') == 'twohand':
+            # the left hand on the right hand's weapon, `gripL` metres along it (negative: toward the pommel)
+            R = W['handslot.r']; ry = R.to_quaternion() @ Vector((0, 1, 0)); rz = R.to_quaternion() @ Vector((0, 0, 1))
+            tgt = R.translation + ry * P.get('gripL', -.12) * k
+            blade, edge, cq = tuple(ry), tuple(rz), Quaternion()
+            P = dict(P); P['edgeL'] = edge
+        else:
+            tgt = conv(self.scale_pt(P['hand' + S_], 'chest' if not world else None))
         if blade is not None:
             edge = P.get('edge' + S_, (0, 0, 1))
             Rslot = cq @ frame(blade, edge)
@@ -174,23 +181,28 @@ class Rig:
         if a.cross(b).dot(axis) < 0: ang = -ang
         return Quaternion(axis, ang * .5) @ Rl
 
-    def leg_ik(self, W, s, P, Hq):
+    def leg_ik(self, W, s, P, Hq, hips):
         k = self.k; S_ = s.upper()
         up, lo, ft, to = 'upperleg.' + s, 'lowerleg.' + s, 'foot.' + s, 'toes.' + s
         self.put(W, up, self.R0[up])
         S = W[up].translation
         x, y, lift, pitch, yaw = (list(P.get('foot' + S_, ())) + [0, 0, 0, 0, 0])[:5]
         ball0 = self.h0[to]
-        Rf = Quaternion((0, 0, 1), math.radians(yaw)) @ Quaternion((1, 0, 0), math.radians(pitch))
-        ball = Vector((ball0.x + x * k, ball0.y + y * k, ball0.z + lift * k))
-        ankle = ball + Rf @ (self.h0[ft] - ball0)
+        if P.get('feetHips'):
+            # tucked or lying: the ankle given relative to the hips' rest place, turning with the hips
+            Rf = Hq @ Quaternion((0, 0, 1), math.radians(yaw)) @ Quaternion((1, 0, 0), math.radians(pitch))
+            ankle = hips + Hq @ ((self.h0[ft] - self.h0['hips']) + Vector((x, y, lift)) * k)
+        else:
+            Rf = Quaternion((0, 0, 1), math.radians(yaw)) @ Quaternion((1, 0, 0), math.radians(pitch))
+            ball = Vector((ball0.x + x * k, ball0.y + y * k, ball0.z + lift * k))
+            ankle = ball + Rf @ (self.h0[ft] - ball0)
         pole = Vector(P.get('knee' + S_, (0, -1, 0)))
         pole = Hq @ pole if P.get('kneeHips', True) else pole
         E, Wp = self.two_bone(S, ankle, self.len[up], self.len[lo], pole)
         self.put(W, up, swing(self.dir0[up], E - S) @ self.R0[up], S)
         self.put(W, lo, swing(self.dir0[lo], Wp - E) @ self.R0[lo], E)
         self.put(W, ft, Rf @ self.R0[ft], Wp)
-        tb = P.get('toes' + S_, max(0.0, pitch))          # toes stay on the ground when the heel lifts
+        tb = P.get('toes' + S_, max(0.0, pitch) if not P.get('feetHips') else 0)   # toes stay on the ground when the heel lifts
         self.put(W, to, Rf @ Quaternion((1, 0, 0), math.radians(-tb)) @ self.R0[to])
 
     @staticmethod
@@ -245,7 +257,8 @@ def _lerp(a, b, t):
 
 def _cr(p0, p1, p2, p3, t):
     """Catmull-Rom between p1 and p2 (smooth through the keys)."""
-    if any(isinstance(v, bool) or v is None for v in (p0, p1, p2, p3)): return p1 if t < .5 else p2
+    if any(isinstance(v, (bool, str)) or v is None for v in (p0, p1, p2, p3)): return p1 if t < .5 else p2
+    if not isinstance(p1, (int, float)) and any(isinstance(v, (int, float)) or len(v) != len(p1) for v in (p0, p2, p3)): return p1 if t < .5 else p2
     def f(a, b, c, d): return .5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t)
     if isinstance(p1, (int, float)): return f(p0, p1, p2, p3)
     return tuple(f(a, b, c, d) for a, b, c, d in zip(p0, p1, p2, p3))
