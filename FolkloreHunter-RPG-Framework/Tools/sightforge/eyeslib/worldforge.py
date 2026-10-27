@@ -256,6 +256,24 @@ def summary(d):
     return "\n".join(lines)
 
 
+def _box_edge(found, sv, pics):
+    """holes and open ledges on the generation box's own sides are where the made world stops, not gaps in it: those
+    are told as one finding (a game level needs walls, rock or more terrain there)"""
+    ox, oz = sv["origin"]; nx, nz = sv["size"]; st = sv["step"]
+    x1, z1 = ox + nx * st, oz + nz * st
+    keep, edge = [], []
+    for f in found:
+        m = re.search(r"at \((-?[\d.]+), (-?[\d.]+)\)", f.get("subject") or "")
+        if f.get("check") in ("hole in the ground", "open ledge") and m:
+            x, z = float(m.group(1)), float(m.group(2))
+            if min(x - ox, x1 - x, z - oz, z1 - z) < 1.0: edge.append(f); continue
+        keep.append(f)
+    if edge:
+        keep.append(finding("uncertain", "the made area ends", sv["area"], "%d holes or open ledges lie on the generation box's sides (x %.0f to %.0f, z %.0f to %.0f): the terrain stops there"
+                            % (len(edge), ox, x1, oz, z1), measured=len(edge), evidence=pics, fix="in a game level: rock walls or more terrain at the edge, or a larger box"))
+    return keep
+
+
 def contact_sheet(frames, path, every=60, width=1280):
     from PIL import Image
     pick = frames[::every][:24]
@@ -298,7 +316,7 @@ def report(ctx, prj, folder, run=None):
     for s in surveys:
         sv = T.load(s); r = T.analyse(sv)
         pic = T.picture(sv, r, os.path.join(ev, "map_%s.png" % sv["area"]))
-        res += T.findings(sv, r, [pic])
+        res += _box_edge(T.findings(sv, r, [pic]), sv, [pic])
         sections.append(("Map: what the hunter can reach (survey)", [pic], None))
     if d.get("nav"): sections.append(("Navigation (raw)", [], json.dumps(d["nav"], indent=1)))
     return ctx["report"].write(out, "WorldForge test: %s" % ((d.get("info") or {}).get("recipe") or os.path.basename(folder)), res, sections=sections, meta={"capture": folder})
