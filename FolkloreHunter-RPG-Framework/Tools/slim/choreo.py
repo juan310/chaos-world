@@ -313,21 +313,24 @@ def sample(keys, t, loop=False, length=None):
     return out
 
 
-# Clips that lie, sit or ride on purpose: the ground clamp leaves them alone.
-UNGROUNDED = ('Lie_', 'Death', 'Sit_', 'Ride_', 'Dodge_Forward')
+# Clips that sit or ride (on a chair, on the hound): their hips are carried, the ground clamp leaves them alone.
+UNGROUNDED = ('Sit_', 'Ride_')
+
+# How far above the floor each bone's head must stay (the body's thickness around it): lying, rolling and diving poses
+# rest on the floor instead of sinking through it.
+FLOOR_CLEARANCE = {'hips': .10, 'spine': .10, 'chest': .10, 'neck': .08, 'head': .09,
+                   'lowerarm.l': .03, 'lowerarm.r': .03, 'hand.l': .02, 'hand.r': .02,
+                   'lowerleg.l': .05, 'lowerleg.r': .05, 'foot.l': .035, 'foot.r': .035, 'toes.l': .015, 'toes.r': .015}
 
 
 def grounded(rig, W, name):
-    """Lifts the whole pose when a foot, toe or knee would go under the floor (the 3D mesh check found jump dashes,
-    spins and the leap slash sinking 10-27 cm into the ground): ankles and toes no lower than at rest, less 1.5 cm;
-    a knee no lower than the toes' rest height plus 3 cm (kneeling, not through the floor)."""
+    """Lifts the whole pose when any part would go under the floor (SightForge's 3D mesh check found jump dashes,
+    spins, the leap slash and the dive's landing sinking 8-27 cm into the ground). The floor is the soles' rest height."""
     if name.startswith(UNGROUNDED): return W
+    soles = min(rig.h0[b].z for b in ('toes.l', 'toes.r', 'foot.l', 'foot.r') if b in rig.h0) - .03
     need = 0.0
-    for s in ('l', 'r'):
-        for b, floor in (('foot.' + s, rig.h0.get('foot.' + s)), ('toes.' + s, rig.h0.get('toes.' + s))):
-            if b in W and floor is not None: need = max(need, floor.z - .015 - W[b].translation.z)
-        kb, tb = 'lowerleg.' + s, rig.h0.get('toes.' + s)
-        if kb in W and tb is not None: need = max(need, tb.z + .03 - W[kb].translation.z)
+    for b, clear in FLOOR_CLEARANCE.items():
+        if b in W: need = max(need, soles + clear - W[b].translation.z)
     if need <= 1e-4: return W
     lift = Matrix.Translation((0, 0, need))
     return {b: lift @ m for b, m in W.items()}

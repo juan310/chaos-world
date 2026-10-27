@@ -6,6 +6,6 @@
     "1H_": ["1H_Sword", "Round_Shield"], "SnS_": ["1H_Sword", "Round_Shield"], "Block": ["1H_Sword", "Round_Shield"],
     "Idle_Combat": ["1H_Sword", "Round_Shield"], "Idle_B": ["1H_Sword", "Round_Shield"], "Hunt_Clash": ["1H_Sword", "Round_Shield"]
   },
-  "ungrounded": ["Lie_", "Death", "Sit_", "Ride_", "Dodge_Forward"],
+  "ungrounded": ["Sit_", "Ride_"],
   "skip": ["Helmet", "Quiver"]
 }
