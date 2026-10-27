@@ -3,7 +3,7 @@
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
-#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>]
+#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>]
 # --texture uses another picture as the body's texture (the flank-repaired copy from paint_sides.py).
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
 # mesh (named "Helmet", so the helm part breaks it off) on the head. --villager makes a townsperson: no weapons, only the
@@ -33,6 +33,19 @@ bpy.ops.import_scene.fbx(filepath=str(fbx))
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
 choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name + '_Body'
+smooth = int(opt('--smooth', '0'))
+if smooth:
+    # the auto-rig's skin weights hand over too sharply at the shoulders, hips and spine: big swings tear the skin there
+    # (the 3D mesh check measured it). Smoothed between neighbouring vertices, normalised, at most 4 bones a vertex.
+    bpy.ops.object.select_all(action='DESELECT'); body.select_set(True); bpy.context.view_layer.objects.active = body
+    for g in ('upperarm.l', 'upperarm.r', 'shoulder.l', 'shoulder.r', 'upperleg.l', 'upperleg.r', 'hips', 'spine', 'chest'):
+        vg = body.vertex_groups.get(g)
+        if not vg: continue
+        body.vertex_groups.active_index = vg.index
+        bpy.ops.object.vertex_group_smooth(group_select_mode='ACTIVE', factor=.5, repeat=smooth, expand=.2)
+    bpy.ops.object.vertex_group_limit_total(group_select_mode='BONE_DEFORM', limit=4)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode='BONE_DEFORM', lock_active=False)
+    print('SLIM_SMOOTHED weights x%d' % smooth, flush=True)
 rig = choreo.Rig(arm)
 k = rig.k
 
