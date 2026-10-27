@@ -87,5 +87,10 @@ if ($Stage -in 'codexmonsters') {
     Blend 'Gravebound.blend' @("$st\Boneguard", 'Gravebound_Warrior', '1', '--monster', '--prop', "$sw|handslot.r|blade|0.44|0.07|Sword", '--prop', "$ss|handslot.l|shield|0.34|0.5|Shield") 'Gravebound_Warrior'
     Blend 'Gravebound.blend' @("$st\IronRevenant", 'Gravebound_Knight', '1', '--monster', '--prop', "$kg|handslot.r|blade|0.64|0.1|GreatSword") 'Gravebound_Knight'
     Blend 'Gravebound.blend' @("$st\GraveHexer", 'Gravebound_Mage', '1', '--monster', '--prop', "$ms|handslot.r|staff|1.02|0.42|Staff") 'Gravebound_Mage'
-    Blend 'Gravebound.blend' @("$st\GraveWardenBody", 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword", '--prop', "$st\WardenHelmet|head|helm|1.35|0.35|Helmet") 'GraveWarden'
+    Blend 'Gravebound.blend' @("$st\GraveWardenBody", 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword", '--prop', "$st\WardenHelmet|head|helm|2.1|0.12|Helmet") 'GraveWarden'
+}
+
+if ($Stage -in 'codexwarden') {
+    $st = 'C:\AW\briarhound_work\codex_bodies'; $wg = Latest 'static_WardenGreatsword_*'
+    Blend 'Gravebound.blend' @("$st\GraveWardenBody", 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword", '--prop', "$st\WardenHelmet|head|helm|2.1|0.12|Helmet") 'GraveWarden'
 }
