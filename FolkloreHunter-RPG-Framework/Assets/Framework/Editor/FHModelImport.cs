@@ -5,6 +5,9 @@ using UnityEngine;
 /// KayKit characters exported with FBX_SCALE_ALL, readable meshes, and per-state foot pivots for the werewolf sprites.</summary>
 public class FHModelImport : AssetPostprocessor
 {
+    // bumped when the import rules change, so Unity re-imports what they apply to
+    public override uint GetVersion() => 2;
+
     void OnPreprocessModel()
     {
         var m = (ModelImporter)assetImporter;
@@ -22,7 +25,14 @@ public class FHModelImport : AssetPostprocessor
     {
         var t = (TextureImporter)assetImporter;
         t.textureType = TextureImporterType.Default; t.mipmapEnabled = true; t.filterMode = FilterMode.Bilinear; t.maxTextureSize = 1024;
-        if (assetPath.Contains("/Models/Codex/")) t.maxTextureSize = 4096;      // the Codex characters' 2K-4K atlases
+        // The characters' own atlases at full size (the Codex bodies' 2K-4K textures, also as copied beside the slim game
+        // models: Hunter_*_Slim, Skel_*, Villager_*, the Warden's helmet), compressed at high quality, sharp at an angle.
+        var file = System.IO.Path.GetFileName(assetPath);
+        if (assetPath.Contains("/Models/Codex/") || (assetPath.Contains("/Models/") && (file.StartsWith("Skel_") || file.StartsWith("Villager_") || file.Contains("_Slim_"))))
+        {
+            t.maxTextureSize = 4096; t.textureCompression = TextureImporterCompression.CompressedHQ; t.anisoLevel = 4;
+        }
+        if (assetPath.Contains("/Models/Weapons/")) { t.maxTextureSize = 2048; t.anisoLevel = 4; }   // the starting weapon set
         if (assetPath.Contains("/Monsters/")) {
             t.maxTextureSize = 4096;
             if (assetPath.Contains("_normal")) t.textureType = TextureImporterType.NormalMap;
