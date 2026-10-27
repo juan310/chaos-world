@@ -81,7 +81,7 @@ for act in acts:
             o = pieces.get(pn)
             if not o: continue
             eo = o.evaluated_get(dg)
-            for v in eo.data.vertices[::3]:
+            for v in list(eo.data.vertices)[::3]:
                 p = eo.matrix_world @ v.co
                 hit = bvh.find_nearest(p)
                 if hit[0] is None: continue
