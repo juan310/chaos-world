@@ -461,7 +461,9 @@ namespace FH.Game
                     float ground = S.GroundHeight(m.transform.position);
                     Check(m.Def.name + ": the slim " + m.Model.Substring(5) + " (Codex body, clips authored on its own skeleton) stands on the ground at its height",
                           Mathf.Abs(bb.min.y - ground) < .2f && Mathf.Abs(bb.size.y - m.Def.height) < .4f,
-                          "height " + bb.size.y.ToString("0.00") + " m (def " + m.Def.height + "), lowest " + (bb.min.y - ground).ToString("0.00") + " m");
+                          "height " + bb.size.y.ToString("0.00") + " m (def " + m.Def.height + "), lowest " + (bb.min.y - ground).ToString("0.00") + " m; rest-pose meshes "
+                          + string.Join(", ", m.Visual.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith(m.Model)).Select(r => { var rb = CharacterFactory.RestBounds(new[] { r }); return r.name + " " + (rb.min.y - ground).ToString("0.00") + ".." + (rb.max.y - ground).ToString("0.00"); }))
+                          + ", scale " + m.Visual.lossyScale.y.ToString("0.000") + ", clip " + m.Anim.Current);
                     var sword = WorldKit.Find(m.Visual, "1H_Sword");
                     if (sword)
                     {
