@@ -505,6 +505,8 @@ namespace FH.Game
                 var monster = group.Key;
                 if (!swingHits.TryRegister(Attack.SwingId, monster.InstanceKey)) continue;
                 var box = group.OrderBy(h => DistanceToSegment(h.transform.position, BladeBase, BladeTip)).First();
+                // A Rend strike that connects tears the open wound its blade passes (within a metre), not only the bone nearest it.
+                if (Attack.Def is HuntMoveDef rd && rd.rend && monster.Wounds) { var w0 = monster.Wounds.WoundNear(BladeBase, BladeTip, 1f); if (w0) box = w0; }
                 Vector3 point = ClosestOnSegment(box.transform.position, BladeBase, BladeTip);
                 var atk = Attack.Def;
                 bool crit = Random.value * 100 < Stats[Stat.CritChance];

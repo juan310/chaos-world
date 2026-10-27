@@ -98,6 +98,21 @@ namespace FH.Game
                 if (!m.scar && m.box && m.orb && Tracker.IsOpen(m.key, now)) yield return (m.box, m.orb.transform.position);
         }
 
+        /// <summary>The open wound within <paramref name="within"/> metres of the segment a..b (a Rend's blade, or the
+        /// point an arrow struck), the nearest one; null when none is that close.</summary>
+        public Hurtbox WoundNear(Vector3 a, Vector3 b, float within)
+        {
+            Hurtbox best = null; float bestD = within;
+            foreach (var (box, at) in OpenWounds())
+            {
+                var ab = b - a;
+                float t = ab.sqrMagnitude < 1e-6f ? 0 : Mathf.Clamp01(Vector3.Dot(at - a, ab) / ab.sqrMagnitude);
+                float d = Vector3.Distance(at, a + ab * t);
+                if (d < bestD) { bestD = d; best = box; }
+            }
+            return best;
+        }
+
         void LateUpdate()
         {
             if (Tracker == null) return;

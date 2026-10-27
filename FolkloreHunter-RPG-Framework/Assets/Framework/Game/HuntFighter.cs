@@ -156,6 +156,8 @@ namespace FH.Game
             Spirit = set.Class == WeaponClass.Katana ? new SpiritGauge() : null;
             shownGlow = -99;     // Equip just switched every katana renderer on: the glow is re-decided next frame
             dodges.Reset();
+            ClashGauge.Reset();                  // the clash meter belongs to the weapon in hand
+            Tracer.Clear();
             foreach (var kv in loadouts)
                 foreach (var p in kv.Value)
                     if (p != null && p.t) foreach (var r in p.t.GetComponentsInChildren<Renderer>(true)) r.enabled = kv.Key == set.Class;

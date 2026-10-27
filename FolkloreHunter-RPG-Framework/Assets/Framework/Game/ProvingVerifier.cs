@@ -37,7 +37,7 @@ namespace FH.Game
                 try { if (!run.MoveNext()) break; current = run.Current; }
                 catch (Exception e) { Check("no exception during verification", false, e.ToString()); break; }
                 yield return current;
-                if (Time.realtimeSinceStartup - started > 420) { Check("verification finished in time", false, "timed out"); break; }
+                if (Time.realtimeSinceStartup - started > 600) { Check("verification finished in time", false, "timed out"); break; }
             }
             GamePad.Inject(null);
             File.WriteAllText(Path.Combine(root, "verification.txt"), string.Join("\n", lines) + "\nFAILURES " + failures + "\nVersion " + Application.version + "  ·  " + DateTime.Now.ToString("u"));
@@ -187,6 +187,197 @@ namespace FH.Game
         }
 
         // ---------------- 0.9: the hunters from the main character sheet ----------------
+        // ---------------- 0.9 battle: wounds, Sight and Rend, Resolve, Unravel, Thorn Rush, power clash, Thorn Tracer ----------------
+        /// <summary>A wound opened on the monster's chest (or first) hurtbox without the blows (fixture for the Rend checks
+        /// of the other weapons: opening a wound by blows is checked with the sword).</summary>
+        Hurtbox OpenWoundFixture(MonsterActor m, int index = 0)
+        {
+            var boxes = m.GetComponentsInChildren<Hurtbox>().Where(b => !m.Wounds.IsOpen(b) && !m.Wounds.Tracker.IsScarred(MonsterWounds.Key(b), Time.time)).ToList();
+            var box = boxes.FirstOrDefault(b => (b.Bone ?? b.name).ToLower().Contains("chest")) ?? boxes.FirstOrDefault(b => (b.Bone ?? b.name).ToLower().Contains("spine")) ?? boxes.ElementAtOrDefault(index) ?? boxes.FirstOrDefault();
+            if (box) m.Wounds.Landed(box, box.transform.position, m.Wounds.Tracker.Threshold + 1, false);
+            return box;
+        }
+
+        /// <summary>LT held (Hunter's Sight), then Y: the weapon's Rend. Returns once the move has run.</summary>
+        IEnumerator SightRend()
+        {
+            Hold(PadButton.LT); yield return Wait(.35f);
+            Pad(PadButton.LT | PadButton.Y); yield return Frames(3);
+            Hold(PadButton.LT); yield return Frames(2);
+            yield return Until(() => F.Current != null && F.Current.rend, 1f);
+        }
+
+        IEnumerator BattleChecks()
+        {
+            S.ProvingRig.ClearMonsters();
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            S.ProvingRig.SetWeapon("sword_shield");
+            yield return Frames(3);
+            H.Health = H.Stats[Stat.MaxHealth];
+            var m = Fresh(Target());
+            Face(m, 2.1f); yield return Frames(3);
+            Check("hunt monsters carry wounds", m.Wounds != null, m.DisplayName);
+            if (m.Wounds == null) yield break;
+
+            // Blows on one spot open a wound.
+            for (int i = 0; i < 14 && m.Wounds.Tracker.OpenCount(Time.time) == 0; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.42f); if (i % 3 == 2) { yield return UntilNeutral(); Face(m, 2.1f); } }
+            yield return UntilNeutral();
+            var open = m.Wounds.OpenWounds().ToList();
+            Check("blows that keep landing on one spot open a wound (a red glow on that bone)", open.Count > 0 && m.GetComponentsInChildren<Renderer>().Any(r => r.name.StartsWith("Wound ") && r.enabled),
+                  "open " + open.Count + ", threshold " + m.Wounds.Tracker.Threshold.ToString("0"));
+
+            // Hunter's Sight.
+            Face(m, 2.1f); yield return Frames(2);
+            Hold(PadButton.LT); yield return Wait(.4f);
+            Check("holding LT with the weapon out is Hunter's Sight (the camera closes in)", F.Sight && S.CameraRig.Sight, F.LastEvent);
+            yield return Wait(.3f);
+            yield return Snap("w01-sight");
+            // Y in Sight: the Rend tears the wound.
+            float hp0 = m.Brain.Health; int torn0 = m.Wounds.Torn;
+            Pad(PadButton.LT | PadButton.Y); yield return Frames(3); Hold(PadButton.LT); yield return Frames(2);
+            yield return Until(() => F.Current != null && F.Current.rend, 1f);
+            Check("Y in Sight is the sword's Rend (Rending Leap)", F.LastMove == "Rending Leap", F.LastMove + " / " + F.LastEvent);
+            yield return Until(() => m.Wounds.Torn > torn0, 1.6f);
+            yield return Wait(.1f);
+            yield return Snap("w02-rend");
+            float dealt = hp0 - m.Brain.Health;
+            Check("the Rend tears the wound: heavy damage, the monster flinches, Resolve rises", m.Wounds.Torn > torn0 && F.Resolve.Stacks(Time.time) >= 1 && (m.Brain.Mode == MonsterMode.Stagger || m.Brain.Mode == MonsterMode.Downed),
+                  "torn " + m.Wounds.Torn + ", damage " + dealt.ToString("0") + ", resolve " + F.Resolve.Stacks(Time.time) + ", " + m.Brain.Mode);
+            Release(); yield return UntilNeutral();
+            Check("a torn spot scars over and takes no new wound for a while", open.Count > 0 && m.Wounds.Tracker.IsScarred(MonsterWounds.Key(open[0].box), Time.time), F.LastEvent);
+            // Tap LT with the weapon out: still the spell.
+            float ready = H.SpellReadyAt; H.Magic = H.Stats[Stat.MaxMagic];
+            yield return Wait(.3f);
+            Pad(PadButton.LT); yield return Frames(3); Release(); yield return Frames(4);
+            Check("a tap of LT with the weapon out still casts the spell (no Sight)", H.SpellReadyAt > ready && !F.Sight, "ready " + ready.ToString("0.0") + " -> " + H.SpellReadyAt.ToString("0.0"));
+            yield return UntilNeutral();
+
+            // Unravel: the third wound torn in the fight topples it (two more wounds opened by fixture, torn with the controls).
+            Note("fixture: two more wounds opened directly on the monster for the Unravel check");
+            for (int k = 0; k < 2; k++)
+            {
+                m.Brain.Settle(); Face(m, 2.1f); yield return Frames(2);
+                var box = OpenWoundFixture(m, k + 1);
+                int t0 = m.Wounds.Torn;
+                yield return SightRend();
+                yield return Until(() => m.Wounds.Torn > t0, 1.6f);
+                Release(); yield return UntilNeutral();
+            }
+            Check("every third wound torn topples the monster (Unravel) and Resolve stacks to three", m.Wounds.Torn >= 3 && m.Brain.Mode == MonsterMode.Downed && F.Resolve.Stacks(Time.time) == HunterResolve.Max,
+                  "torn " + m.Wounds.Torn + ", " + m.Brain.Mode + ", resolve " + F.Resolve.Stacks(Time.time));
+            yield return Snap("w03-unravel");
+            yield return Wait(1f);
+
+            // Thorn Rush: back-step, Y (Leaping Slash), then Y as each glint shows: perfect links to the Shield Crash.
+            m = Fresh(m); m.Brain.Settle();
+            yield return Wait(3.5f);
+            Face(m, 3.2f); yield return Frames(3);
+            var seq = new List<string>();
+            Pad(PadButton.A, new Vector2(0, -1)); yield return Frames(2); Release(); yield return Frames(2);
+            Check("stick back and A with the sword out is a back-step", F.LastEvade == EvadeKind.Backstep, F.LastEvent);
+            yield return Wait(.12f);
+            int links0 = F.PerfectLinks, glints0 = F.Glints; float ko0 = m.Reactions.StunBuild; int topples0 = m.Reactions.Topples;
+            yield return Tap(PadButton.Y, 2);
+            for (float t = 0; t < 5f && seq.Count < 5; t += Time.unscaledDeltaTime)
+            {
+                if (CurrentId != "-" && seq.LastOrDefault() != CurrentId.Replace("_perfect", "")) seq.Add(CurrentId.Replace("_perfect", ""));
+                if (F.Glinting && seq.Count < 5) { string before = CurrentId; yield return Tap(PadButton.Y, 2); yield return Until(() => CurrentId != before, .8f); continue; }
+                yield return null;
+            }
+            yield return Snap("w04-shield-crash");
+            yield return UntilNeutral();
+            Check("back-step then Y: Leaping Slash, Thorn Rush I, II, III, Shield Crash", string.Join(",", seq) == "leaping_slash,rush_1,rush_2,rush_3,shield_crash", string.Join(",", seq));
+            Check("each rush move glints, and Y in the glint is a perfect link (quicker, stronger)", F.Glints - glints0 >= 4 && F.PerfectLinks - links0 >= 4, "glints " + (F.Glints - glints0) + ", perfect links " + (F.PerfectLinks - links0));
+            Check("the Shield Crash stuns hard", m.Reactions.StunBuild > ko0 || m.Reactions.Topples > topples0, "stun " + ko0.ToString("0") + " -> " + m.Reactions.StunBuild.ToString("0") + ", topples " + m.Reactions.Topples);
+            // Pressed before the glint: a plain link.
+            m = Fresh(m); m.Brain.Settle(); Face(m, 3.2f); yield return Frames(3);
+            Pad(PadButton.A, new Vector2(0, -1)); yield return Frames(2); Release(); yield return Wait(.12f);
+            yield return Tap(PadButton.Y, 2);
+            yield return Until(() => F.Current != null && F.Current.id.StartsWith("leaping_slash") && HuntRoutes.CanChain(F.Current, H.Attack.Normalized), 1.5f);
+            yield return Tap(PadButton.Y, 2);
+            yield return Until(() => CurrentId.StartsWith("rush_1"), 1f);
+            Check("Y before the glint is a plain link", CurrentId == "rush_1" && F.LastLink == RushTiming.Link.Plain, CurrentId + " " + F.LastLink);
+            yield return UntilNeutral();
+
+            // Power clash against a live Grave Warden: guard its blow with the meter full, mash Y.
+            S.ProvingRig.ClearMonsters();
+            var warden = S.ProvingRig.Spawn("grave_warden", true);
+            warden.Passive = false; warden.Calm(1);
+            warden.Brain.AttackFilter = a => a.Shape == AoeShape.None;
+            Note("fixture: the clash meter filled directly (perfect guards filling it are checked with the guard)");
+            for (int i = 0; i < 2; i++)
+            {
+                bool win = i == 0;
+                while (!F.ClashGauge.Ready) F.ClashGauge.PerfectGuard();
+                H.Health = H.Stats[Stat.MaxHealth];
+                Face(warden, 2.0f);
+                Hold(PadButton.RB);
+                yield return Until(() => F.Clashing || F.LastEvent == "guarded" || H.Hurt, 9);
+                bool clashed = F.Clashing;
+                Release();
+                if (i == 0) { yield return Wait(.2f); yield return Snap("w05-clash"); }
+                float hpc = H.Health;
+                int won0 = F.ClashesWon, lost0 = F.ClashesLost;
+                for (float t = 0; t < 2.2f && F.Clashing; t += Time.unscaledDeltaTime)
+                {
+                    if (win) { yield return Tap(PadButton.Y, 2); yield return Frames(1); }
+                    else yield return null;
+                }
+                if (win)
+                {
+                    Check("with the clash meter full the guarded blow is a power clash", clashed, F.LastEvent);
+                    Check("mashing Y wins the clash: the Warden is thrown down and the Clash Bash lands", F.ClashesWon > won0 && warden.Brain.Mode == MonsterMode.Downed && F.LastMove == "Clash Bash",
+                          "won " + F.ClashesWon + ", " + warden.Brain.Mode + ", " + F.LastMove);
+                    yield return Wait(.3f);
+                    yield return Snap("w06-clash-won");
+                }
+                else Check("not pressing loses the clash: the hunter is pushed back, unhurt", F.ClashesLost > lost0 && F.LastReaction == HitReaction.Knockback && H.Health >= hpc - .01f, "lost " + F.ClashesLost + ", " + F.LastReaction + ", hp " + hpc.ToString("0") + " -> " + H.Health.ToString("0"));
+                yield return UntilNeutral(4);
+                yield return Until(() => warden.Brain.Mode != MonsterMode.Downed, 5);
+            }
+            Check("each clash asks one more perfect guard", F.ClashGauge.Need == ClashMeter.BaseNeed + 2, "need " + F.ClashGauge.Need);
+            S.ProvingRig.ClearMonsters();
+            yield return Frames(2);
+
+            // Lance and katana Rends (wound by fixture), the bow's Thorn Tracer.
+            foreach (var (weapon, rend) in new[] { ("lance", "Piercing Rend"), ("katana", "Spirit Rend") })
+            {
+                S.ProvingRig.SetWeapon(weapon); yield return Frames(3);
+                m = Fresh(Target()); Face(m, 2.2f); yield return Frames(2);
+                yield return Tap(PadButton.Y, 2); yield return UntilNeutral();          // draw
+                Face(m, 2.2f); yield return Frames(2);
+                OpenWoundFixture(m);
+                int t0 = m.Wounds.Torn; float spirit0 = F.Spirit != null ? F.Spirit.Value : 0;
+                yield return SightRend();
+                bool right = F.LastMove == rend;
+                yield return Until(() => m.Wounds.Torn > t0, 1.6f);
+                yield return Wait(.1f);
+                yield return Snap("w07-rend-" + weapon);
+                Release(); yield return UntilNeutral();
+                Check(weapon + ": Y in Sight is the " + rend + " and it tears the wound" + (weapon == "katana" ? " (the spirit gauge fills by half)" : ""),
+                      right && m.Wounds.Torn > t0 && (weapon != "katana" || F.Spirit.Value >= Mathf.Min(100, spirit0 + 40)), F.LastMove + ", torn " + m.Wounds.Torn + (F.Spirit != null ? ", gauge " + spirit0.ToString("0") + " -> " + F.Spirit.Value.ToString("0") : ""));
+            }
+            S.ProvingRig.SetWeapon("bow"); yield return Frames(3);
+            m = Fresh(Target()); Face(m, 9f); yield return Frames(2);
+            yield return Tap(PadButton.Y, 2); yield return UntilNeutral();
+            Face(m, 9f); yield return Frames(2);
+            OpenWoundFixture(m);
+            int bt0 = m.Wounds.Torn, planted0 = F.TracersPlanted, bursts0 = F.Tracer.Bursts;
+            yield return SightRend();
+            Check("bow: Y in Sight looses the Thorn Tracer", F.LastMove == "Thorn Tracer", F.LastMove);
+            yield return Until(() => F.TracersPlanted > planted0, 2f);
+            Release(); yield return UntilNeutral();
+            Check("the tracer arrow tears the wound and stays in the monster", F.TracersPlanted > planted0 && m.Wounds.Torn > bt0 && F.Tracer.Active(Time.time), "planted " + F.TracersPlanted + ", torn " + m.Wounds.Torn);
+            yield return Snap("w08-tracer");
+            float hpb = m.Brain.Health;
+            for (int i = 0; i < 14 && F.Tracer.Bursts == bursts0; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.5f); }
+            Check("the tracer's arrows follow it and the eighth bursts it", F.Tracer.Bursts > bursts0, "hits " + F.Tracer.Hits + ", bursts " + F.Tracer.Bursts);
+            yield return UntilNeutral();
+            S.ProvingRig.ClearMonsters();
+            S.ProvingRig.SetWeapon("sword_shield");
+            yield return Frames(3);
+        }
+
         IEnumerator NewLookChecks()
         {
             var before = H.Look;
@@ -1401,6 +1592,7 @@ namespace FH.Game
             }
             Check("raising the guard just before the blow is a perfect guard", perfect, F.LastEvent);
             Check("Y after a perfect guard is the guard counter", perfect && (CurrentId == "counter" || F.LastMove == "Guard Counter"), CurrentId + " / " + F.LastMove);
+            Check("a perfect guard fills the power clash meter", !perfect || F.ClashGauge.Perfects >= 1 || F.ClashGauge.Clashes > 0, F.ClashGauge.Perfects + "/" + F.ClashGauge.Need);
             yield return UntilNeutral();
 
             // Knockdown and get-up (fixture: the Warden's attacks set to knock down).
@@ -1536,6 +1728,7 @@ namespace FH.Game
             yield return BossChecks();
             yield return RangeChecks();
             yield return CaptureHunterPoses();
+            yield return BattleChecks();
             yield return NewLookChecks();
             yield return SkeletonUpgradeChecks();
 

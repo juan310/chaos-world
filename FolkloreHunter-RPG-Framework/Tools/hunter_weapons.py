@@ -500,11 +500,16 @@ def battle_clips(rig):
     The game times each strike from the hand's fastest moment (AnimationDriver.PlayStrike)."""
     P = Poser(rig); made = []
     idle = P.snapshot(bpy.data.actions['Idle'], bpy.data.actions['Idle'].frame_range[0])
-    tall = P.pb['head'].head.z - min(P.pb[f].head.z for f in ('foot.l', 'foot.r'))
+    foot0 = min(P.pb[f].head.z for f in ('foot.l', 'foot.r'))
+    tall = P.pb['head'].head.z - foot0
     air = _rots(P, 'Jump_Idle', .5, LEGS)
     take = _rots(P, 'Jump_Start', .6, LEGS)
     land = _rots(P, 'Jump_Land', .15, LEGS)
     guard = _rots(P, 'Blocking', .5, ARM_L)
+
+    def plant(P, lift):
+        # the lowest ankle exactly `lift` over the ground: bent legs crouch the body instead of lifting the feet
+        _lift(P, foot0 + lift - min(P.pb[f].head.z for f in ('foot.l', 'foot.r')))
 
     def pose(lift=0.0, legs=None, legk=1.0, lean=0.0, twist=0.0, shield=True, fn=None):
         def f(P):
@@ -513,7 +518,7 @@ def battle_clips(rig):
             if lean: P.turn('spine', (1, 0, 0), lean)
             if twist: P.turn('spine', (0, 0, 1), twist)
             if fn: fn(P)
-            _lift(P, lift * tall)
+            plant(P, max(0.0, lift) * tall)
         return f
 
     # Leaping Slash: crouch, spring forward with the sword raised, cut down as the hunter lands.
