@@ -126,7 +126,7 @@ namespace FH.Game
             }
             // scenery
             var props = new List<string>();
-            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            foreach (var r in Object.FindObjectsByType<Renderer>())
             {
                 if (!r.enabled || !r.gameObject.activeInHierarchy || !(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
                 if (r.GetComponentInParent<HunterController>() || r.GetComponentInParent<MonsterActor>() || r.GetComponentInParent<NpcActor>() || r.GetComponentInParent<HoundCompanion>() || r.GetComponentInParent<LootBag>()) continue;
@@ -146,7 +146,7 @@ namespace FH.Game
                           + ",\"walkThrough\":" + (walkThrough ? "true" : "false") + ",\"above\":" + F(below < 99 ? below : -1) + ",\"under\":" + Q(under) + "}");
             }
             var invisible = new List<string>();
-            foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsSortMode.None))
+            foreach (var c in Object.FindObjectsByType<Collider>())
             {
                 if (c.isTrigger || !c.enabled || !c.gameObject.activeInHierarchy || ((1 << c.gameObject.layer) & Layers.WorldMask) == 0) continue;
                 if (c is TerrainCollider || c.GetComponentInParent<HunterController>() || c.GetComponentInParent<MonsterActor>() || c.GetComponentInParent<NpcActor>() || c.GetComponentInParent<HoundCompanion>()) continue;

@@ -58,7 +58,7 @@ namespace FH.Game
             go.transform.rotation = Quaternion.LookRotation(a.velocity);
             go.SetActive(true);
             if (delay > 0) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.enabled = false;
-            Fired++; traceId = Fired;
+            Fired++; a.traceId = Fired;
             return a;
         }
 
