@@ -17,6 +17,14 @@ NAMES = {
     'LeftUpperLeg': 'upperleg.l', 'LeftLowerLeg': 'lowerleg.l', 'LeftFoot': 'foot.l', 'LeftToes': 'toes.l',
     'RightUpperLeg': 'upperleg.r', 'RightLowerLeg': 'lowerleg.r', 'RightFoot': 'foot.r', 'RightToes': 'toes.r',
 }
+# a humanoid rig with Unity-style names (Tripo's export: Left_UpperArm, ..., its own finger bones) -> the game's
+for _s, _x in (('Left', 'l'), ('Right', 'r')):
+    NAMES.update({_s + '_Shoulder': 'shoulder.' + _x, _s + '_UpperArm': 'upperarm.' + _x, _s + '_LowerArm': 'lowerarm.' + _x,
+                  _s + '_Hand': 'hand.' + _x, _s + '_UpperLeg': 'upperleg.' + _x, _s + '_LowerLeg': 'lowerleg.' + _x,
+                  _s + '_Foot': 'foot.' + _x, _s + '_Toes': 'toes.' + _x})
+    for _f in ('Thumb', 'Index', 'Middle', 'Ring', 'Pinky'):
+        for _k, _j in enumerate(('Proximal', 'Intermediate', 'Distal')):
+            NAMES[_s + '_' + _f + _j] = '%s_%d.%s' % (_f.lower(), _k + 1, _x)       # the finger bones HandGrip uses
 MALE_HEIGHT = 1.83
 FPS = 30
 

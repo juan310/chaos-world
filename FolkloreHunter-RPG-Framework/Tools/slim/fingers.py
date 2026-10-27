@@ -185,6 +185,7 @@ def detect(body, arm, side, log=print):
 
 # ------------------------------------------------------------------------------------------------ rig and skin
 def joints(f, nm):
+    if 'joints' in f: return f['joints']                 # a rig's own finger bones: their real joints
     s = SEGS[nm]; acc = 0; pts = [f['base']]
     for x in s:
         acc += x; pts.append(f['base'] + (f['end'] - f['base']) * acc)
@@ -357,7 +358,35 @@ def grips(arm, found, pieces, log=print):
     return out
 
 
+def from_bones(body, arm, side, log=print):
+    """a rig that comes with finger bones (thumb_1..3 .. pinky_1..3): the fingers read from them, their thickness from
+    the vertices they carry"""
+    AM = arm.matrix_world; W = body.matrix_world; B = arm.data.bones
+    gi = {g.index: g.name for g in body.vertex_groups}
+    fingers = {}
+    for nm in NAMES:
+        bs = [B.get(bone_name(nm, k + 1, side)) for k in range(3)]
+        if not all(bs): return {'ok': False, 'why': 'the rig has no %s bones on hand.%s' % (nm, side)}
+        js = [AM @ b.head_local for b in bs] + [AM @ bs[2].tail_local]
+        d = (js[-1] - js[0]).normalized()
+        names = {b.name for b in bs}; rs = []
+        for v in body.data.vertices:
+            if any(gi.get(g.group) in names and g.weight > .5 for g in v.groups):
+                p = W @ v.co; t = (p - js[0]).dot(d); rs.append(((p - js[0]) - d * t).length)
+        rs.sort()
+        L = sum((js[k + 1] - js[k]).length for k in range(3))
+        fingers[nm] = {'joints': js, 'base': js[0], 'end': js[-1], 'dir': d, 'length': L, 'radius': rs[len(rs) // 2] if rs else L * .18, 'vertices': len(rs)}
+    log('FINGERS hand.%s (the rig\'s own bones): %s' % (side, ', '.join('%s %.1f cm (r %.1f mm)' % (n, f['length'] * 100, f['radius'] * 1000) for n, f in fingers.items())))
+    return {'ok': True, 'side': side, 'fingers': fingers, 'own': True}
+
+
 def run(body, arm, pieces, log=print):
+    if all(arm.data.bones.get(bone_name(n, k, s)) for n in NAMES for k in (1, 2, 3) for s in ('l', 'r')):
+        found = {s: from_bones(body, arm, s, log) for s in ('l', 'r')}
+        data = grips(arm, found, pieces, log)
+        data['hands'] = {s: {'fingers': {n: {'length': round(f['length'], 4), 'radius': round(f['radius'], 4), 'vertices': f['vertices']} for n, f in h['fingers'].items()}, 'own': True}
+                         if h.get('ok') else {'why': h.get('why')} for s, h in found.items()}
+        return data
     found = {s: detect(body, arm, s, log) for s in ('l', 'r')}
     for s, h in found.items():
         if not h.get('ok'): log('FINGERS hand.%s: no finger bones (%s)' % (s, h.get('why')))

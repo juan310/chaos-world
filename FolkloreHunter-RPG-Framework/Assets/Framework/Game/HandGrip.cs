@@ -72,11 +72,17 @@ namespace FH.Game
                 if (!ok) continue;
                 for (int f = 0; f < 5; f++)
                 {
-                    // the finger lies straight at rest: its direction is its first bone's to its second
-                    var d = (h.Bones[f, 1].position - h.Bones[f, 0].position).normalized;
                     var nn = f == 0 ? (n + tp * thumbTilt).normalized : n;
-                    var axW = Vector3.Cross(d, nn).normalized;
-                    for (int k = 0; k < 3; k++) h.Axis[f, k] = Quaternion.Inverse(h.Bones[f, k].rotation) * axW;
+                    for (int k = 0; k < 3; k++)
+                    {
+                        // each bone's own direction at rest: toward the next joint (the last one: toward its end bone if the
+                        // rig has one, else the way the bone before it points)
+                        var b = h.Bones[f, k];
+                        var next = k < 2 ? h.Bones[f, k + 1] : (b.childCount > 0 ? b.GetChild(0) : null);
+                        var d = next ? (next.position - b.position).normalized : (b.position - h.Bones[f, k - 1].position).normalized;
+                        var axW = Vector3.Cross(d, nn).normalized;
+                        h.Axis[f, k] = Quaternion.Inverse(b.rotation) * axW;
+                    }
                 }
                 hands.Add(h);
             }
