@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using FH.Core;
 using UnityEngine;
@@ -58,15 +59,30 @@ namespace FH.Game
         }
 
         /// <summary>The slim characters (Tools/slim): their clips roll, dive and lie down, and Unity's import bounds cover every
-        /// clip, so their size is measured on the mesh as it stands (the bind pose they are made in).</summary>
+        /// clip, so their size is measured on the mesh in its bind pose (the rest pose they are made in).</summary>
         static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_");
 
         static Bounds StandingBounds(Renderer[] body)
         {
             bool any = false; var b = new Bounds();
-            var mesh = new Mesh();
             foreach (var r in body)
             {
+                var m = r is SkinnedMeshRenderer smr ? smr.sharedMesh : r.GetComponent<MeshFilter>() ? r.GetComponent<MeshFilter>().sharedMesh : null;
+                if (!m) continue;
+                foreach (var v in m.vertices) { var p = r.transform.TransformPoint(v); if (!any) { b = new Bounds(p, Vector3.zero); any = true; } else b.Encapsulate(p); }
+            }
+            return any ? b : body[0].bounds;
+        }
+
+        /// <summary>The bounds of the meshes as they are posed this frame (skinned meshes baked); Unity's own skinned
+        /// bounds are looser than the body.</summary>
+        public static Bounds PosedBounds(IEnumerable<Renderer> renderers)
+        {
+            bool any = false; var b = new Bounds();
+            var mesh = new Mesh();
+            foreach (var r in renderers)
+            {
+                if (!r.enabled) continue;
                 Vector3[] v;
                 if (r is SkinnedMeshRenderer smr) { smr.BakeMesh(mesh, true); v = mesh.vertices; for (int i = 0; i < v.Length; i++) v[i] = smr.transform.position + smr.transform.rotation * v[i]; }
                 else if (r.GetComponent<MeshFilter>() && r.GetComponent<MeshFilter>().sharedMesh) { v = r.GetComponent<MeshFilter>().sharedMesh.vertices; for (int i = 0; i < v.Length; i++) v[i] = r.transform.TransformPoint(v[i]); }
@@ -74,7 +90,7 @@ namespace FH.Game
                 foreach (var p in v) { if (!any) { b = new Bounds(p, Vector3.zero); any = true; } else b.Encapsulate(p); }
             }
             UnityEngine.Object.Destroy(mesh);
-            return any ? b : body[0].bounds;
+            return b;
         }
 
         static bool IsWeapon(string n) => n.Contains("Sword") || n.Contains("Shield") || n.Contains("Staff") || n.Contains("Wand") || n.StartsWith("Hunt_");

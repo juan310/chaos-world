@@ -128,8 +128,18 @@ if helmet:
             lo = Vector([min(v.co[i] for v in h.data.vertices) for i in range(3)]); hi = Vector([max(v.co[i] for v in h.data.vertices) for i in range(3)])
         c = (lo + hi) / 2
         s = (.43 * rig.height / 2.4) / max(1e-4, hi.x - lo.x)          # Codex fitted it 0.43 m wide on its 2.4 m Warden
-        head = rig.h0['head']
-        h.data.transform(Matrix.Translation(head + Vector((0, 0, .18 * rig.height / 2.4))) @ Matrix.Scale(s, 4) @ Matrix.Translation(-c))
+        # seated on the skull itself (the vertices the head bone carries): its crown a little above the skull's top,
+        # centred over the skull, so the head fills the helmet's bowl
+        g = body.vertex_groups.get('head')
+        skull = [body.matrix_world @ v.co for v in body.data.vertices if g and any(e.group == g.index and e.weight > .5 for e in v.groups)]
+        if skull:
+            top = max(p.z for p in skull)
+            mid = sum(skull, Vector()) / len(skull)
+            at = Vector((mid.x, mid.y, top + .04 * rig.height / 2.4 - (hi.z - c.z) * s))
+            print('SLIM_SKULL top %.3f centre %.3f %.3f, %d verts' % (top, mid.x, mid.y, len(skull)), flush=True)
+        else:
+            at = rig.h0['head'] + Vector((0, 0, .18 * rig.height / 2.4))
+        h.data.transform(Matrix.Translation(at) @ Matrix.Scale(s, 4) @ Matrix.Translation(-c))
         h.name = name + '_Helmet'; h.data.name = name + '_Helmet'      # the game breaks off the mesh whose name ends "Helmet"
         ht = Path(helmet).with_name(Path(helmet).stem + '_texture.png')
         if ht.exists(): shutil.copyfile(ht, dest / (name + '_Helmet_texture.png'))
@@ -160,6 +170,9 @@ print('SLIM_CLIPS', len(made), ' '.join(a.name for a in made), flush=True)
 
 for o in list(bpy.data.objects):
     if o.type not in ('ARMATURE', 'MESH'): bpy.data.objects.remove(o)
+# the file's own pose is the rest pose (not the last frame a clip left behind): the game sizes the body from it
+for pb in arm.pose.bones: pb.matrix_basis = Matrix()
+bpy.context.view_layer.update()
 out = dest / (name + '.fbx')
 bpy.ops.export_scene.fbx(filepath=str(out), use_selection=False, object_types={'ARMATURE', 'MESH'}, add_leaf_bones=False,
                          apply_scale_options='FBX_SCALE_ALL', bake_anim=True, bake_anim_use_nla_strips=False,

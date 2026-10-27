@@ -402,7 +402,7 @@ namespace FH.Game
                 Check(body + " hunter: the slim hunter (Codex body, clips authored on its own skeleton) with a hairstyle", H.Slim && H.Hair,
                       H.Look + ", hair " + (H.Hair ? H.Hair.name : "none") + ", " + H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length + " skinned meshes");
                 var rends = H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>();
-                var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+                var b = CharacterFactory.PosedBounds(rends);
                 float ground = S.GroundHeight(H.transform.position);
                 var headBone = WorldKit.Find(H.Visual, "head");
                 string parts = string.Join("; ", rends.Select(r => r.name + (r.enabled ? "" : " (off)") + " " + r.bounds.size.y.ToString("0.00")));
@@ -451,7 +451,7 @@ namespace FH.Game
                 bool fresh = m.Model == m.Def.model;
                 if (m.Model.StartsWith("Skel_"))
                 {
-                    var bb = m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Select(r => r.bounds).Aggregate((a, c) => { a.Encapsulate(c); return a; });
+                    var bb = CharacterFactory.PosedBounds(m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>());
                     float ground = S.GroundHeight(m.transform.position);
                     Check(m.Def.name + ": the slim " + m.Model.Substring(5) + " (Codex body, clips authored on its own skeleton) stands on the ground at its height",
                           Mathf.Abs(bb.min.y - ground) < .2f && Mathf.Abs(bb.size.y - m.Def.height) < .4f,
@@ -866,7 +866,7 @@ namespace FH.Game
             H.Teleport(S.SafeGround(o), 45); LookAlong(45);
             yield return Frames(3);
             var footL = WorldKit.Find(H.Visual, "foot.l"); var footR = WorldKit.Find(H.Visual, "foot.r");
-            foreach (var (label, button, want, clip) in new[] { ("full stick jogs", PadButton.None, HunterController.JogSpeed, "Hunt_Jog"), ("RT sprints", PadButton.RT, HunterController.SprintSpeed, "Hunt_Sprint") })
+            foreach (var (label, button, want, clip) in new[] { ("full stick jogs", PadButton.None, HunterController.JogSpeed, H.JogClip), ("RT sprints", PadButton.RT, HunterController.SprintSpeed, H.SprintClip) })
             {
                 H.Stamina.Current = H.Stamina.Max;
                 Hold(button, new Vector2(0, 1));
@@ -1601,7 +1601,7 @@ namespace FH.Game
             Check("X sheathes: sword back on the back", F.Sheathed && H.SwordTransform.parent.name == "chest");
             Hold(PadButton.RT, new Vector2(0, 1));
             yield return Wait(.5f);
-            Check("RT sprints while sheathed", F.Sprinting && (H.Anim.Current.Contains("Hunt_Sprint") || H.Anim.Current.Contains("Running")), H.Anim.Current);
+            Check("RT sprints while sheathed", F.Sprinting && (H.Anim.Current.Contains(H.SprintClip) || H.Anim.Current.Contains("Running")), H.Anim.Current);
             Release();
             yield return Wait(.3f);
 

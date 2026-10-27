@@ -71,6 +71,9 @@ namespace FH.Game
         public const float JogSpeed = 3.6f, SprintSpeed = 5.2f;
         float huntWalkNatural, jogNatural, sprintNatural;
         string walkClip = "Walking_A", jogClip = "Hunt_Jog", sprintClip = "Hunt_Sprint";
+        /// <summary>The stride clips this body jogs and sprints with (its own gait cycles, or the classic hunter's).</summary>
+        public string JogClip => jogClip;
+        public string SprintClip => sprintClip;
         public const float RunCost = 9;
 
         public void Initialize(GameSession s)
