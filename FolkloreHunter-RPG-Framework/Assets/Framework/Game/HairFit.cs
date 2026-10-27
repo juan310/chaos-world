@@ -17,9 +17,13 @@ namespace FH.Game
             var hb = HeadBounds(skin, head, scale);
             var center = hb.center; center.y = hb.max.y - .112f * scale;
             var size = new Vector3(Mathf.Clamp(hb.extents.x, .07f * scale, .13f * scale) + .004f, .125f * scale, Mathf.Clamp(hb.extents.z, .07f * scale, .12f * scale) + .005f);
+            // the anchor follows the head bone (HairFollow) instead of being its child: the exported bones may carry a
+            // non-uniform scale, which squashed the hair into a narrow slab over the face
             var anchor = new GameObject("Hair anchor").transform;
-            anchor.SetParent(head, false); anchor.position = center; anchor.rotation = root.rotation;
-            anchor.localScale = Vector3.one / head.lossyScale.x;
+            anchor.SetParent(visual, false); anchor.position = center; anchor.rotation = root.rotation;
+            anchor.localScale = Vector3.one / Mathf.Max(1e-4f, visual.lossyScale.x);
+            anchor.gameObject.AddComponent<HairFollow>().Bind(head);
+            Debug.Log("FH_HAIR head lossyScale " + head.lossyScale.ToString("F4") + ", head bounds " + hb + ", size " + size.ToString("F3") + ", scale " + scale.ToString("F3"));
             return HunterHair.Create(female, ((style % 10) + 10) % 10, size, anchor);
         }
 
