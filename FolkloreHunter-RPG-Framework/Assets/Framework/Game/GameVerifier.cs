@@ -157,8 +157,8 @@ namespace FH.Game
             Check("new game opens slot selection", Top is SlotScreen);
             Click("Slot 1");
             yield return Frames(4);
-            // Character creation (0.9): the real hunter changes as a look is picked; the classic knight is kept for
-            // this play-through, so the valley's checks below see the same hunter as before.
+            // Character creation (0.9): the real hunter changes as a look is picked; the valley's checks below are played
+            // by the male hunter (the chibi knight is no longer offered: one body size for the battle system).
             Check("a new game opens character creation", Top is FH.UI.CharacterCreatorScreen, S.Ui.Describe());
             Click("Female hunter");
             yield return Frames(3);
@@ -166,9 +166,9 @@ namespace FH.Game
             yield return Frames(3);
             Check("picking the female hunter and a hairstyle dresses the hunter in it", S.Hunter.Look.StartsWith("Hunter_Female") || !FH.Game.CharacterFactory.Exists("Hunter_Female"), S.Hunter.Look);
             yield return Snap("01b-character-creation");
-            Click("Classic knight");
+            Click("Male hunter");
             yield return Frames(3);
-            Check("the classic knight is still offered", S.Hunter.Look == "Hunter", S.Hunter.Look);
+            Check("the male hunter is worn, and the chibi knight is not offered", S.Hunter.Look.StartsWith("Hunter_Male") && !FindObjectsByType<UnityEngine.UI.Text>(FindObjectsInactive.Exclude).Any(t => t.text == "Classic knight"), S.Hunter.Look);
             Click("Begin the hunt");
             yield return Frames(4);
             Check("new game starts play at the cottage", S.Mode == SessionMode.Playing && S.Ui.Top == null && S.CurrentArea == "home", S.CurrentArea);

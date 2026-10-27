@@ -20,7 +20,7 @@ namespace FH.Core
     public class PlayerState
     {
         public string name = "Hunter";
-        /// <summary>The look chosen at a new game (Appearance): "male", "female" or "classic"; empty in saves from before 0.9 (classic).</summary>
+        /// <summary>The look chosen at a new game (Appearance): "male" or "female"; empty in saves from before 0.9 and "classic" in early 0.9 saves (both wear the male hunter).</summary>
         public string body = "";
         public int hair = 1;
         public int level = 1, xp, attributePoints, skillPoints;

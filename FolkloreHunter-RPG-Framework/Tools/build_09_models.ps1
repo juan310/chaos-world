@@ -75,11 +75,12 @@ if ($Stage -in 'all', 'weapons') {
 if ($Stage -in 'codexmonsters') {
     $cx = 'C:\Users\juana\Documents\FolkloreHunter-CombatTest-Codex\SourceArt'
     $st = 'C:\AW\briarhound_work\codex_bodies'
-    foreach ($b in @(@('Boneguard', "$cx\Skeletons\Boneguard\Model"), @('IronRevenant', "$cx\Skeletons\IronRevenant\Model\WeightRepair"),
+    # (loop names chosen not to clash: PowerShell names ignore case, so $b and $f would overwrite $B and $F above)
+    foreach ($body in @(@('Boneguard', "$cx\Skeletons\Boneguard\Model"), @('IronRevenant', "$cx\Skeletons\IronRevenant\Model\WeightRepair"),
                      @('GraveHexer', "$cx\Skeletons\GraveHexer\Model\WeightRepair"), @('GraveWardenBody', "$cx\GraveWarden\Body\Model\WeightRepair"),
                      @('WardenHelmet', "$cx\GraveWarden\Helmet\Model"))) {
-        New-Item -ItemType Directory -Force "$st\$($b[0])" | Out-Null
-        foreach ($f in 'rigged.glb', 'model.glb') { if (Test-Path "$($b[1])\$f") { Copy-Item "$($b[1])\$f" "$st\$($b[0])\$f" -Force } }
+        New-Item -ItemType Directory -Force "$st\$($body[0])" | Out-Null
+        foreach ($glb in 'rigged.glb', 'model.glb') { if (Test-Path "$($body[1])\$glb") { Copy-Item "$($body[1])\$glb" "$st\$($body[0])\$glb" -Force } }
     }
     $sw = Latest 'static_WarriorSword_*'; $ss = Latest 'static_WarriorShield_*'; $kg = Latest 'static_KnightGreatsword_*'
     $ms = Latest 'static_MageStaff_*'; $wg = Latest 'static_WardenGreatsword_*'

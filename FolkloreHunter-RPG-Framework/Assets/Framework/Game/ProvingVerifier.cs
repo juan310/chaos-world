@@ -427,10 +427,10 @@ namespace FH.Game
                 Check(body + " hunter: full stick jogs at the hunt pace", jog > 2.8f, jog.ToString("0.00") + " m/s");
                 yield return CaptureHunterPoses(body);
             }
-            H.ApplyLook(Appearance.Models(Appearance.Classic, 1));
+            H.ApplyLook(Appearance.Models(Appearance.Male, 1));
             S.ProvingRig.SetWeapon("sword_shield");
             yield return Frames(3);
-            Check("the classic knight can be put back on", H.Look == "Hunter", H.Look + " (was " + before + ")");
+            Check("back in the male hunter for the rest of the checks", H.Look.StartsWith("Hunter_Male"), H.Look + " (was " + before + ")");
         }
 
         // ---------------- 0.9: the skeletons and the Grave Warden from the supplied sheets ----------------

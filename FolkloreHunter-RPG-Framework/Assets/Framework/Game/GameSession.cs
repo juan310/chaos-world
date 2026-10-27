@@ -128,7 +128,7 @@ namespace FH.Game
             Ui.ShowTitle();
         }
 
-        public void NewGame(int slot, string hunterName, string body = Appearance.Classic, int hair = 1)
+        public void NewGame(int slot, string hunterName, string body = Appearance.Male, int hair = 1)
         {
             Slot = slot;
             var state = GameCore.NewGameState(Db, "slot" + slot + "-" + DateTime.UtcNow.Ticks);

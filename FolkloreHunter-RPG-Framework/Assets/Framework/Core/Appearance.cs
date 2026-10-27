@@ -3,7 +3,8 @@ using System;
 namespace FH.Core
 {
     /// <summary>The hunter's look, chosen when a new game starts: the male or female hunter from the main character
-    /// sheet with one of ten hairstyles each, or the classic KayKit knight. Names follow the hairstyle sheets.</summary>
+    /// sheet with one of ten hairstyles each. Names follow the hairstyle sheets. (The chibi KayKit knight is no longer
+    /// offered: one body size for the whole battle system. Saves that chose it, or predate 0.9, wear the male hunter.)</summary>
     public static class Appearance
     {
         public const string Male = "male", Female = "female", Classic = "classic";
@@ -19,17 +20,17 @@ namespace FH.Core
 
         public static int ClampHair(int hair) => Math.Max(1, Math.Min(10, hair));
 
-        /// <summary>Model resources to try in order: the chosen hairstyle, the body's base model, the classic hunter.
-        /// Saves from before 0.9 (no body recorded) keep the classic hunter.</summary>
+        /// <summary>Model resources to try in order: the chosen hairstyle, then the body's base model. Anything but the
+        /// female hunter (the male hunter, an old "classic" choice, a save from before 0.9) is the male hunter. The
+        /// KayKit "Hunter" is last only so a build without the new models still runs.</summary>
         public static string[] Models(string body, int hair)
         {
-            if (body != Male && body != Female) return new[] { "Hunter" };
-            string b = body == Male ? "Male" : "Female";
+            string b = body == Female ? "Female" : "Male";
             return new[] { "Hunter_" + b + "_" + ClampHair(hair).ToString("00"), "Hunter_" + b, "Hunter" };
         }
 
         public static string Describe(string body, int hair)
-            => body == Male || body == Female ? (body == Male ? "Male hunter, " : "Female hunter, ") + Hairstyles(body)[ClampHair(hair) - 1] : "Classic hunter";
+            => (body == Female ? "Female hunter, " + FemaleHair[ClampHair(hair) - 1] : "Male hunter, " + MaleHair[ClampHair(hair) - 1]);
 
         /// <summary>A name cleaned for the save and the HUD: printable, trimmed, at most 18 characters; empty becomes "Hunter".</summary>
         public static string CleanName(string name)

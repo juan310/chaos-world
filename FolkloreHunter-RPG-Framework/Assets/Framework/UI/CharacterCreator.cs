@@ -49,17 +49,12 @@ namespace FH.UI
             var bodies = UiKit.Row("Bodies", col, 10, 54);
             Pick(bodies, "Male hunter", body == Appearance.Male, () => SetBody(Appearance.Male));
             Pick(bodies, "Female hunter", body == Appearance.Female, () => SetBody(Appearance.Female));
-            Pick(bodies, "Classic knight", body == Appearance.Classic, () => SetBody(Appearance.Classic));
-            if (body != Appearance.Classic)
+            UiKit.Paragraph(col, "Hairstyle:  <color=#f5d68c>" + Appearance.Hairstyles(body)[hair - 1] + "</color>", 22);
+            for (int row = 0; row < 2; row++)
             {
-                UiKit.Paragraph(col, "Hairstyle:  <color=#f5d68c>" + Appearance.Hairstyles(body)[hair - 1] + "</color>", 22);
-                for (int row = 0; row < 2; row++)
-                {
-                    var r = UiKit.Row("Hair row " + row, col, 8, 250);
-                    for (int i = 1; i <= 5; i++) Portrait(r, row * 5 + i);
-                }
+                var r = UiKit.Row("Hair row " + row, col, 8, 250);
+                for (int i = 1; i <= 5; i++) Portrait(r, row * 5 + i);
             }
-            else UiKit.Paragraph(col, "The KayKit knight the valley started with: helmet, cape, sword and shield.", 20, UiKit.Muted);
             UiKit.Paragraph(col, "Name", 20, UiKit.Muted);
             var nameRow = UiKit.Row("Name row", col, 10, 54);
             nameField = NameField(nameRow);
