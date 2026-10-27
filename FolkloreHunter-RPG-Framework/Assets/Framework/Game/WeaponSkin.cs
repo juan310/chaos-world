@@ -39,7 +39,7 @@ namespace FH.Game
                 if (!src) continue;
                 var grip = kind == Kind.Bow ? WorldKit.Find(visual, "handslot.l") ?? hand : kind == Kind.Shield ? WorldKit.Find(visual, "handslot.l") ?? hand : hand;
                 mf.sharedMesh = Fit(src, mf.sharedMesh, t, grip, kind);
-                if (kind == Kind.Bow && mf.sharedMesh.subMeshCount > 1) BowString.Attach(t, mf);
+                if (kind == Kind.Bow) { if (mf.sharedMesh.subMeshCount > 1) BowString.Attach(t, mf); else BowString.AttachAtTips(t, mf); }
                 var tex = Resources.Load<Texture2D>("Models/Weapons/" + model + "_texture");
                 var r = t.GetComponent<Renderer>();
                 if (r && tex)

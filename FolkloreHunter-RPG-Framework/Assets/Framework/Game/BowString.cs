@@ -34,6 +34,25 @@ namespace FH.Game
             s.EndA = a; s.EndB = b; s.Width = Mathf.Max(.003f, Mathf.Min(size[(ax + 1) % 3], size[(ax + 2) % 3]) * bow.lossyScale.x);
         }
 
+        /// <summary>A bow modelled without a string: the string runs between its limb tips (the two ends of its length,
+        /// on the side away from the wood's mass, a little in from the very tips).</summary>
+        public static void AttachAtTips(Transform bow, MeshFilter mf)
+        {
+            var mesh = mf.sharedMesh; var v = mesh.vertices; var b = mesh.bounds; var size = b.size;
+            int L = size.x >= size.y && size.x >= size.z ? 0 : size.y >= size.z ? 1 : 2;
+            // the tip vertices: the last 3 % of the length at each end; the string sits on their inner (string) side
+            Vector3 SideOf(float lo, float hi)
+            {
+                Vector3 sum = Vector3.zero; int n = 0;
+                foreach (var p in v) if (p[L] >= lo && p[L] <= hi) { sum += p; n++; }
+                return n > 0 ? sum / n : b.center;
+            }
+            float len = size[L];
+            var a = SideOf(b.min[L], b.min[L] + len * .03f); var c = SideOf(b.max[L] - len * .03f, b.max[L]);
+            var s = bow.gameObject.GetComponent<BowString>() ?? bow.gameObject.AddComponent<BowString>();
+            s.EndA = a; s.EndB = c; s.Width = Mathf.Max(.003f, .004f * bow.lossyScale.x / Mathf.Max(1e-4f, bow.lossyScale.x));
+        }
+
         void Start()
         {
             var visual = transform.root;
