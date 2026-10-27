@@ -3,7 +3,8 @@
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
-#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>]
+#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>]
+# --texture uses another picture as the body's texture (the flank-repaired copy from paint_sides.py).
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
 # mesh (named "Helmet", so the helm part breaks it off) on the head. --villager makes a townsperson: no weapons, only the
 # everyday captured moves, and --cloth recolours the outfit's red cloth (its sash, cape and trim) to its own colour.
@@ -181,7 +182,7 @@ bpy.ops.export_scene.fbx(filepath=str(out), use_selection=False, object_types={'
                          apply_scale_options='FBX_SCALE_ALL', bake_anim=True, bake_anim_use_nla_strips=False,
                          bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward='-Z', axis_up='Y',
                          path_mode='COPY', embed_textures=False)
-tex = fbx.with_name(fbx.stem + '_texture.png')
+tex = Path(opt('--texture')) if opt('--texture') else fbx.with_name(fbx.stem + '_texture.png')
 cloth = opt('--cloth')
 if tex.exists() and cloth:
     # the outfit's red cloth (strongly red, saturated texels) turned to the villager's colour; leather, steel and skin stay
