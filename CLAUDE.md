@@ -18,6 +18,12 @@ The hunt combat is inspired by Monster Hunter's style of play, but everything a 
   chibi KayKit characters must not be used for them in any way: not as a visible model, not as a hidden rig driving
   them, and not as the source of their animations. Every animation they play is authored on the slim skeleton itself.
 
+## Development tools (the owner's permission)
+- Claude may build its own tools when they help develop this game now or later, including new modules for SightForge /
+  Claude Eyes Studio on the owner's PC (the 3D mesh system, Studio 0.16, is the first). Back up the app first the way
+  Studio's own upgrades do (backups/app_<old>_before_<new>_<date>), keep the source and installer in git
+  (`FolkloreHunter-RPG-Framework/Tools/sightforge/`), and tell the owner what was added. Local and free only (see below).
+
 ## Other standing constraints
 - No paid generation, purchases, subscriptions, asset-store imports, external publishing or account changes without
   explicit authorization. The local Forge on the owner's PC is free and allowed.
