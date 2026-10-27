@@ -52,12 +52,22 @@ def shoot(name, dirv, lo, hi):
     sc.render.filepath = str(out / (name + '.png')); bpy.ops.render.render(write_still=True)
 
 
-up = 'Z'
+def curves(act):
+    """an action's curves (Blender 5 keeps them in layers, strips and channel bags)"""
+    try: return list(act.fcurves)
+    except AttributeError:
+        out = []
+        for l in act.layers:
+            for st in l.strips:
+                for cb in getattr(st, 'channelbags', []): out += list(cb.fcurves)
+        return out
+
+
 shoot('rest_front', Vector((0, -1, 0)), lo, hi); shoot('rest_side', Vector((1, 0, 0)), lo, hi); shoot('rest_back', Vector((0, 1, 0)), lo, hi)
 for act in acts:
     f0, f1 = act.frame_range
-    moved = sorted({fc.data_path.split('"')[1] for fc in act.fcurves if fc.data_path.startswith('pose.bones') and len({round(k.co[1], 4) for k in fc.keyframe_points}) > 1})
-    info = {'name': act.name, 'frames': [f0, f1], 'curves': len(act.fcurves), 'bonesMoving': len(moved), 'pictures': []}
+    moved = sorted({fc.data_path.split('"')[1] for fc in curves(act) if fc.data_path.startswith('pose.bones') and len({round(k.co[1], 4) for k in fc.keyframe_points}) > 1})
+    info = {'name': act.name, 'frames': [f0, f1], 'curves': len(curves(act)), 'bonesMoving': len(moved), 'pictures': []}
     if arm:
         arm.animation_data_create(); arm.animation_data.action = act
         roots = []
