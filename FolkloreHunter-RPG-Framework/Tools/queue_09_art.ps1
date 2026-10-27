@@ -91,3 +91,28 @@ if ($Stage -in 'weaponmodels') {
     & $py Tools\forge_queue.py static Weapon_Spear (Item 'items_StartingWeapons_*' 'spear') "long spear with a leaf-shaped steel head and banded wooden shaft" 2.4
     & $py Tools\forge_queue.py static Weapon_KiteShield (Item 'items_StartingWeapons_*' 'kite_shield') "wooden kite shield with an iron rim and spine, studded boss, stag emblem" 1.3
 }
+
+# Realistic villagers (no chibi figures: one body size in the game). Mira, Bram and Lady Elowen made from the main
+# character sheet's hunters with the edit tool, then a back view, then rigged models built like the hunters.
+$npcs = @(
+    @('NpcMira', "$c\female_body.png", 'turn her into a village herbalist: a long green linen dress with a brown leather apron, a shawl over the shoulders, a satchel of herbs and dried flowers at the belt; keep her face, hair, build and standing pose; no armour, no weapons; plain light grey background', 'young village herbalist woman, chestnut hair, long green linen dress, brown leather apron, shawl, herb satchel'),
+    @('NpcBram', "$c\male_body.png", 'turn him into a burly village blacksmith: a short beard, rolled-up linen shirt with bare muscular forearms, a heavy scorched leather smith apron, leather gloves tucked in the belt, work trousers and boots; keep his face, build and standing pose; no armour, no weapons; plain light grey background', 'burly bearded village blacksmith, linen shirt with rolled sleeves, heavy leather smith apron, work trousers, boots'),
+    @('NpcElowen', "$c\female_body.png", 'turn her into a noble lady steward: a long deep purple and silver gown, a fur-trimmed dark cloak, a slim silver circlet, hair worn up; keep her face, build and standing pose; no armour, no weapons; plain light grey background', 'noble lady steward, long deep purple and silver gown, fur-trimmed dark cloak, silver circlet, hair worn up')
+)
+if ($Stage -in 'npcs') { foreach ($n in $npcs) { & $py Tools\forge_queue.py edit $n[0] $n[1] $n[2] } }
+if ($Stage -in 'npcbacks') {
+    $back = 'turn the character around: the same person seen from directly behind, full body, same clothes and hair seen from the back; plain dark grey background'
+    foreach ($n in $npcs) {
+        $front = Latest "edit_$($n[0])_*"
+        if (-not $front -or -not (Test-Path "$front\edit_1.png")) { "MISSING villager picture $($n[0])"; continue }
+        & $py Tools\forge_prep.py pad "$front\edit_1.png" "$w\$($n[0])_front.png" .08
+        & $py Tools\forge_queue.py edit "$($n[0])Back" "$w\$($n[0])_front.png" $back
+    }
+}
+if ($Stage -in 'npcmodels') {
+    foreach ($n in $npcs) {
+        $bk = Latest "edit_$($n[0])Back_*"
+        if (-not $bk -or -not (Test-Path "$bk\edit_1.png")) { "MISSING villager back $($n[0])"; continue }
+        & $py Tools\forge_queue.py model $n[0] "$w\$($n[0])_front.png" $n[3] "$bk\edit_1.png"
+    }
+}

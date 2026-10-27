@@ -94,3 +94,12 @@ if ($Stage -in 'codexwarden') {
     $st = 'C:\AW\briarhound_work\codex_bodies'; $wg = Latest 'static_WardenGreatsword_*'
     Blend 'Gravebound.blend' @("$st\GraveWardenBody", 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword", '--prop', "$st\WardenHelmet|head|helm|2.1|0.12|Helmet") 'GraveWarden'
 }
+
+# The realistic villagers on the hunter skeleton (every hunter clip, including Idle, Walking_A and Interact).
+if ($Stage -in 'npcs') {
+    foreach ($n in 'NpcMira', 'NpcBram', 'NpcElowen') {
+        $job = Latest "model_${n}_*"
+        if (-not $job) { "MISSING villager $n"; continue }
+        Blend 'Hunter.blend' @($job, $n) "Hunter_$n"
+    }
+}

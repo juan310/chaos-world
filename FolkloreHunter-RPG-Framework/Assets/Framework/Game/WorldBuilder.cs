@@ -319,7 +319,10 @@ namespace FH.Game
 
         static void Npc(string id, string model, float height, Color? tint, Vector3 spot, float yaw, Vector3 home, float homeYaw, Transform parent)
         {
-            string use = CharacterFactory.Exists(model) ? model : (id == "bram" ? "Hunter" : "Herbalist");
+            // 0.9: realistic villagers on the hunter's body scale (Hunter_NpcMira...) when they have been made; the KayKit
+            // figures only as a fallback for a build without them.
+            string realistic = "Hunter_Npc" + (id == "lady_elowen" ? "Elowen" : char.ToUpper(id[0]) + id.Substring(1));
+            string use = CharacterFactory.Exists(realistic) ? realistic : CharacterFactory.Exists(model) ? model : (id == "bram" ? "Hunter" : "Herbalist");
             var go = new GameObject("NPC - " + id);
             go.layer = Layers.Actor;
             go.transform.SetParent(parent);
@@ -328,6 +331,9 @@ namespace FH.Game
             var npc = go.AddComponent<NpcActor>();
             npc.NpcId = id; npc.Id = "npc_" + id; npc.Range = 2.4f;
             npc.Visual = CharacterFactory.Create(use, go.transform, height, use == model ? (Color?)null : tint);
+            if (use == realistic)                        // a villager made on the hunter's skeleton carries no weapons
+                foreach (var r in npc.Visual.GetComponentsInChildren<Renderer>(true))
+                    if (r.name.Contains("Sword") || r.name.Contains("Shield") || r.name.StartsWith("Hunt_")) r.enabled = false;
             npc.SettlementSpot = spot; npc.SettlementYaw = yaw;
             npc.HomeSpot = home == Vector3.zero ? Vector3.zero : Ground(home.x, home.z); npc.HomeYaw = homeYaw;
             refs.Npcs.Add(npc);
