@@ -128,6 +128,7 @@ namespace FH.Game
             if (idle != null) { foreach (AnimationState st in Anim.Anim) { st.enabled = false; st.weight = 0; } idle.enabled = true; idle.weight = 1; idle.time = 0; Anim.Anim.Sample(); }
             hand = WorldKit.Find(Visual, "handslot.r");
             WeaponSkin.Apply(Visual, hand);       // the starting weapon set's models, where they have been made
+            var swordR = WorldKit.Find(Visual, "1H_Sword"); skinnedSword = swordR && swordR.GetComponent<Renderer>() ? swordR.GetComponent<Renderer>().sharedMaterial : null;
             footL = WorldKit.Find(Visual, "foot.l");
             footR = WorldKit.Find(Visual, "foot.r");
             sword = WorldKit.Find(Visual, "1H_Sword");
@@ -194,6 +195,8 @@ namespace FH.Game
 
         public void RefreshEquipmentPresentation() => ApplyEquipmentVisuals();
 
+        Material skinnedSword;
+
         void ApplyEquipmentVisuals()
         {
             // The rig has one sword mesh; upgraded blades are shown by tinting it rather than inventing new art.
@@ -201,7 +204,8 @@ namespace FH.Game
             var item = session.Core.Db.Item(weapon.id);
             var r = sword.GetComponent<Renderer>();
             if (!r) return;
-            var baseMat = CharacterFactory.Atlas("Hunter");
+            // the sword wears its own texture once the starting weapon set's model replaced it (WeaponSkin)
+            var baseMat = WeaponSkin.Applied.Contains("1H_Sword") && skinnedSword ? skinnedSword : CharacterFactory.Atlas("Hunter");
             r.sharedMaterial = item.rarity >= Rarity.Uncommon ? TintedBlade(baseMat, item.rarity) : baseMat;
             var equipment = GetComponent<HuntEquipment>(); if (!equipment) equipment = gameObject.AddComponent<HuntEquipment>();
             equipment.Refresh(session, this);
@@ -210,7 +214,7 @@ namespace FH.Game
         static Material TintedBlade(Material baseMat, Rarity rarity)
         {
             var c = rarity == Rarity.Uncommon ? new Color(.78f, 1f, .82f) : new Color(.85f, .8f, 1f);
-            var m = WorldKit.Mat("Hunter Atlas blade " + rarity, c);
+            var m = WorldKit.Mat(baseMat.name + " blade " + rarity, c);
             m.mainTexture = baseMat.mainTexture;
             m.EnableKeyword("_EMISSION");
             m.SetColor("_EmissionColor", c * .25f);

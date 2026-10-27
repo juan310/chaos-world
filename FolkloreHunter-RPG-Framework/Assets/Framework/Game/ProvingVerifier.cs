@@ -411,12 +411,14 @@ namespace FH.Game
                 var clips = new[] { "Hunt_Jog", "Hunt_Sprint", "Bow_Draw", "Katana_Iai", "Lance_Charge", "Dodge_Forward", "Dodge_Right", "Ride_Idle", "2H_Melee_Attack_Chop", "1H_Melee_Attack_Chop" };
                 Check(body + " hunter: every clip of the hunt moveset plays on the new body", clips.All(H.Anim.Has), string.Join(", ", clips.Where(c => !H.Anim.Has(c))));
                 Check(body + " hunter: sword, shield, lance, bow and katana sit in the new hands", new[] { "1H_Sword", "Round_Shield", "Hunt_Lance", "Hunt_Bow", "Hunt_Katana" }.All(n => WorldKit.Find(H.Visual, n)));
+                F.SetSheathed(false); yield return Frames(3);              // drawn: the sword in the hand, not on the back
                 {
                     float sg = WeaponSkin.GuardFromHand(WorldKit.Find(H.Visual, "1H_Sword"), WorldKit.Find(H.Visual, "handslot.r"));
                     float kg = WeaponSkin.GuardFromHand(WorldKit.Find(H.Visual, "Hunt_Katana"), WorldKit.Find(H.Visual, "handslot.r"));
                     Check(body + " hunter: sword and katana held the right way round (cross-guard at the hand, blade away from it)", sg >= 0 && sg < .3f && kg >= 0 && kg < .3f,
                           "guard " + sg.ToString("0.00") + " / " + kg.ToString("0.00") + " of the length from the hand");
                 }
+                F.SetSheathed(true); yield return Frames(2);
                 yield return Snap("n01-" + body + "-look");
                 // a real fight: the draw slash and the combo land on a monster
                 var m = Fresh(S.ProvingRig.Spawn("gravebound", true)); m.Passive = true;

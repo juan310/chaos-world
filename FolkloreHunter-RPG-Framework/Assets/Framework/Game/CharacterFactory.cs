@@ -33,7 +33,10 @@ namespace FH.Game
             o.transform.localRotation = Quaternion.identity;
             var renderers = o.GetComponentsInChildren<Renderer>();
             var body = renderers.Where(x => !IsWeapon(x.name)).ToArray();
-            Bounds b = Slim(resource) ? RestBounds(body) : body[0].bounds;
+            // (a slim body is sized by its skinned mesh alone: a bone-held piece such as the Warden's helmet sits where the file's
+            // default pose puts its bone, which need not be the rest pose)
+            var skinned = body.OfType<SkinnedMeshRenderer>().ToArray<Renderer>();
+            Bounds b = Slim(resource) ? RestBounds(skinned.Length > 0 ? skinned : body) : body[0].bounds;
             if (!Slim(resource)) foreach (var rr in body.Skip(1)) b.Encapsulate(rr.bounds);
             float k = targetHeight / Mathf.Max(.1f, b.size.y);
             float bottom = b.min.y - parent.position.y;

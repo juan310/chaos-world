@@ -213,7 +213,8 @@ namespace FH.Game
             var monsters = S.Monsters.Where(m => m && m.Alive).ToList();
             Check("rigged Gravebound spawned from data", monsters.Count(m => m.MonsterId == "gravebound") >= 4, monsters.Count.ToString());
             Check("monsters use skinned meshes with authored clips", monsters.All(m => m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && m.Anim.Has("Walking_A") && m.Def.attacks.All(a => m.Anim.Has(a.anim))));
-            var msword = monsters.Select(m => WorldKit.Find(m.Visual, "1H_Sword (held)")).FirstOrDefault();
+            // the slim skeletons hold their own sword (1H_Sword); the older model is given a copy (1H_Sword (held))
+            var msword = monsters.Select(m => WorldKit.Find(m.Visual, "1H_Sword (held)") ?? WorldKit.Find(m.Visual, "1H_Sword")).FirstOrDefault(t => t);
             Check("monster sword is attached to its hand slot bone", msword && msword.parent && msword.parent.name.Contains("handslot.r"));
             // Real skin deformation by the walk clip (bake two frames of the skinned mesh).
             float deform = 0;
@@ -492,7 +493,11 @@ namespace FH.Game
             if (!m.Alive) { Note("helm test skipped: monster already dead"); yield break; }
             var head = m.Hurtboxes.FirstOrDefault(b => b.Parts.Contains("helmet"));
             var helmet = m.PartRenderer("helmet");
-            Check("helm is a separate mesh on the Gravebound", helmet != null, helmet ? helmet.GetType().Name + " " + helmet.name : "missing");
+            // The slim Boneguard (Codex's skeleton warrior) wears no separate helm mesh: the helm still breaks (its part,
+            // loot and the exposed skull), only nothing visibly falls off.
+            bool slim = m.Model.StartsWith("Skel_");
+            if (slim && helmet == null) Note("the slim " + m.Model + " has no separate helm mesh; the helm break is checked by its part, loot and skull");
+            else Check("helm is a separate mesh on the Gravebound", helmet != null, helmet ? helmet.GetType().Name + " " + helmet.name : "missing");
             if (m.Parts.Broken.Contains("helmet")) Note("helm was already broken by earlier real sword swings");
             var w = C.Stats.EquippedWeapon();
             float firstHit = -1;
@@ -505,7 +510,7 @@ namespace FH.Game
             }
             bool broke = m.Parts.Broken.Contains("helmet");
             Check("repeated head strikes break the helm", broke);
-            Check("broken helm mesh is hidden and a physical piece falls", helmet && !helmet.enabled && FindObjectsByType<Rigidbody>().Any(r => r.name.Contains("broken piece")));
+            if (helmet || !slim) Check("broken helm mesh is hidden and a physical piece falls", helmet && !helmet.enabled && FindObjectsByType<Rigidbody>().Any(r => r.name.Contains("broken piece")));
             if (m.Alive && broke)
             {
                 m.Brain.Health = m.Def.maxHealth;   // measure the full blow, not the health that happened to be left

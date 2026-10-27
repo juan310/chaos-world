@@ -24,10 +24,17 @@ namespace FH.Game
         }
         public override void Use(GameSession s) => s.Ui.OpenDialogue(this);
 
+        /// <summary>The model the villager wears (its clips come from it).</summary>
+        public string Model;
+
         public void Begin(string model)
         {
+            Model = model;
             if (Visual) { anim = new AnimationDriver(Visual, model); anim.Play("Idle"); }
         }
+
+        // The world is built in the editor and saved with the scene; the clips are bound when the game runs.
+        void Start() { if (anim == null && Visual && !string.IsNullOrEmpty(Model)) Begin(Model); }
 
         /// <summary>Spouses move into the estate: a visible consequence of the relationship state.</summary>
         public void PlaceFor(GameSession s)
