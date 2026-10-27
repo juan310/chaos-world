@@ -93,14 +93,25 @@ def detect(body, arm, side, log=print):
     g, pred = _dijkstra(P, adj, wrist)
     reach = [i for i in hv if g[i] < math.inf]
     gmax = max(g[i] for i in reach)
-    # tips: local maxima of the walk from the wrist, the farthest first, standing apart
-    cand = [i for i in reach if all(g[j] <= g[i] for j in adj[i]) and g[i] > .35 * gmax]
-    cand.sort(key=lambda i: -g[i])
-    tips = []
-    for i in cand:
-        if all((P[i] - P[t]).length > .07 * gmax for t in tips): tips.append(i)
-        if len(tips) == 5: break
-    if len(tips) < 5: return {'ok': False, 'why': 'found %d fingertips on hand.%s, not 5' % (len(tips), side)}
+    # tips: the peaks of the walk from the wrist that stand highest above where they join the rest of the hand
+    # (persistence: going down from the top, two pieces meeting leave the lower peak behind at that level; bumps on a
+    # finger stand a few millimetres, a finger stands centimetres)
+    order = sorted(reach, key=lambda i: -g[i])
+    uf = _UF(); on = set(); peak = {}; prom = {}
+    for i in order:
+        on.add(i); uf.f(i); peak[uf.f(i)] = i
+        for j in adj[i]:
+            if j not in on: continue
+            a, b = uf.f(i), uf.f(j)
+            if a == b: continue
+            pa, pb = peak[a], peak[b]
+            lo_, hi_ = (pa, pb) if g[pa] < g[pb] else (pb, pa)
+            if lo_ != i: prom[lo_] = g[lo_] - g[i]
+            uf.u(a, b); peak[uf.f(i)] = hi_
+    top = max(reach, key=lambda i: g[i]); prom[top] = math.inf
+    tips = sorted(prom, key=lambda i: -prom[i])[:5]
+    log('FINGERS hand.%s peaks: %s' % (side, ', '.join('%.3f/%.3f' % (g[t], prom[t] if prom[t] < 9 else -1) for t in sorted(prom, key=lambda i: -prom[i])[:8])))
+    if len(tips) < 5 or prom[tips[4]] < .08 * gmax: return {'ok': False, 'why': 'found %d fingertips standing clear on hand.%s, not 5' % (sum(1 for t in tips if prom[t] >= .08 * gmax), side)}
     # the level where each tip's piece first joins another tip's piece (going down from the tips): its web
     order = sorted(reach, key=lambda i: -g[i])
     uf = _UF(); on = set(); web = {}
