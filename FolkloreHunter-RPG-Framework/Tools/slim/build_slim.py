@@ -9,6 +9,8 @@
 # frames a second, held in place (the game moves the body; the hips' travel over the clip is taken out) and stored under
 # the game's clip names, replacing the keyposed clips of those names. A source clip is matched by the start of its name
 # (after "Armature|", without ".001").
+# --lib-clips "<pack>:<clip>=<Game_Clip>+...,..." puts clips from SightForge's motion library (motionlib add) on this body
+# through the retarget pose solver (it fits any proportions and rest pose; travel over the ground taken out).
 # --fingers finds the fingers in the mesh, gives each three bones, and solves how they close round each held piece
 # (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
 # --out writes the model somewhere else than the game's Models folder (trials).
@@ -269,6 +271,32 @@ if opt('--keep-clips'):
             print('SLIM_KEEP %s -> %s (%d frames, travel taken out %.2f)' % (src.name[6:], tgt, n, travel.length if travel is not None else 0), flush=True)
     for a in list(KEEP.values()): bpy.data.actions.remove(a)
     ad.action = None
+    for pb in arm.pose.bones: pb.matrix_basis = Matrix()
+if opt('--lib-clips'):
+    # clips from SightForge's motion library (Tools/sightforge/eyeslib/motionlib.py), retargeted onto this body
+    import os, retarget
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'sightforge' / 'eyeslib'))
+    import motionlib_blender as MLB
+    libdir = Path(os.environ.get('CLAUDE_EYES_STUDIO_HOME') or (Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'ClaudeEyesStudio')) / 'motionlib'
+    lib_src = {}
+    for item in opt('--lib-clips').split(','):
+        left, targets = item.split('=')
+        pack, clip = left.strip().split(':', 1)
+        if pack not in lib_src: lib_src[pack] = MLB.source(libdir / pack)
+        src = lib_src[pack]
+        info = next((c for c in src.manifest['clips'] if c['name'] == clip), None)
+        if not info: print('SLIM_LIB missing clip', pack, clip, flush=True); continue
+        for tgt in targets.split('+'):
+            tgt = tgt.strip()
+            old_a = bpy.data.actions.get(tgt)
+            if old_a:
+                if old_a in made: made.remove(old_a)
+                bpy.data.actions.remove(old_a)
+            act = src.clip(rig, tgt, clip, loop=info['loops'], pin=True, speed=src.fps / choreo.FPS)
+            made.append(act)
+            print('SLIM_LIB %s:%s -> %s (%.1f s, %s)' % (pack, clip, tgt, info['seconds'], 'loop' if info['loops'] else 'once'), flush=True)
+    for s_ in lib_src.values(): s_.remove()
+    arm.animation_data.action = None
     for pb in arm.pose.bones: pb.matrix_basis = Matrix()
 if '--footlock' in argv:
     # walks, jogs and runs with their planted feet held on the travelling ground (SightForge's foot-slide fixer)
