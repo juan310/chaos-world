@@ -33,6 +33,22 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
 - First game run with the Tripo male (1 m tall build): 219 checks, 7 failures; weapons floated off the hands (fixed by
   building at real height), a hairstyle sat on the modelled hair (fixed: `_info.json` ownHair). Next run verifies both.
 
+## Shield arm and the body gate (2026-10-27, evening)
+- Every body is now built into `C:\AW\briarhound_work\staging` and installed only if SightForge's `bodycheck` passes
+  (`slimall.ps1`; `gateonly` re-checks the staged bodies without rebuilding; slimall refreshes Studio's SightForge
+  modules from git first, so the gate runs the code in git). The installed body is the baseline: only a clip worse than
+  it fails; standing problems are listed as KNOWN.
+- Shield arm in the sword-and-shield clips: a two-bone solve to the keyposed wrist (relative to the hips), the elbow nearest
+  the keyposed elbow, each arm bone keeping the keyposes' roll. Blender's IK first tried wrung the wrist, then the elbow
+  (the gate failed it twice); the solve keeps both. Shield and sword much less inside the body (male Idle_Combat 9.9 -> 0 cm,
+  Slice_Diagonal 11 -> 1 cm, Rush_1 11 -> 1 cm). Both Tripo hunters passed and are installed.
+- Still KNOWN on the male: tower shield into the legs in Lance_High_Thrust (10 cm), katana idle into the thigh (9 cm),
+  nocked arrow into the shoulders in the bow shots (5-8 cm), SnS_Rush_2/3 and Shield_Crash (7-8 cm), skin in SnS_Rush_3 6.2 %.
+- The female's skin tears far more (13-24 % of the body in attacks and bow clips, 8.6 % in her run): the Tripo download
+  tears the same in its own clips (run 8.9 %), so it is Tripo's auto-skinning (waist sash, upper arms and thighs).
+  `--skin-relax` (SightForge `skinfix_blender.py`) only took the mean from 5.15 to 4.86 %; the sash needs real
+  reweighting (next).
+
 ## Next
 1. Fingers: solve against the skin, not a centre-line cylinder (fingers stop at the piece's surface); check the index and
    ring order on the right hand; then build all bodies with `--fingers`, run `hands`, and check the grips in the game
