@@ -51,7 +51,7 @@ namespace FH.Game
             m.SetFloat("_Glossiness", gloss);
             // relief: a normal map beside the texture (<tex>_n), when there is one
             var bump = (kit != null ? Resources.Load<Texture2D>(KitPath + kit + "_n") : null) ?? Resources.Load<Texture2D>("Models/Lair/" + tex + "_art_n") ?? Resources.Load<Texture2D>(Tex + tex + "_n");
-            if (bump) { m.SetTexture("_BumpMap", bump); m.SetFloat("_BumpScale", 1.1f); m.EnableKeyword("_NORMALMAP"); }
+            if (bump) { m.SetTexture("_BumpMap", bump); m.SetFloat("_BumpScale", .6f); m.EnableKeyword("_NORMALMAP"); }   // gentle: strong relief on wet stone sparkles
             if (cutout)
             {
                 m.SetFloat("_Mode", 1); m.SetFloat("_Cutoff", .5f); m.EnableKeyword("_ALPHATEST_ON");
@@ -62,7 +62,7 @@ namespace FH.Game
             return m;
         }
 
-        static Material Floor => Textured("Crypt cobbles", "cobble_floor", .8f);           // wet: the fires glint in it (with the probes)
+        static Material Floor => Textured("Crypt cobbles", "cobble_floor", .62f);           // wet: the fires glint in it (with the probes)
         static Material Wall => Textured("Crypt wall stone", "wall_stone", .12f);
         static Material Stone => Textured("Crypt dressed stone", "wall_stone", .2f, false, new Color(.82f, .78f, .74f));
         static Material Iron => WorldKit.Mat("Crypt iron", new Color(.16f, .15f, .15f), .7f);
@@ -401,9 +401,10 @@ namespace FH.Game
                 TiledBox("Door wall", new Vector3(s * (w / 2 + (HallHalfWidth + 1 - w / 2) / 2 + .4f), y0 + HallHeight / 2, DoorZ), new Vector3(HallHalfWidth + 1 - w / 2 + .8f, HallHeight, .8f), Wall, 2.5f);
             TiledBox("Door lintel wall", new Vector3(0, y0 + (h + HallHeight) / 2, DoorZ), new Vector3(w + .2f, HallHeight - h, .8f), Wall, 2.5f);
             // the carved portal: piers, tracery and the plaque over the leaves
-            bool portal = Place("Portal", new Vector3(0, y0, DoorZ - .05f), new Vector3(9.4f, 9.6f, 1f), Vector3.back, false);
+            // in front of the door wall (its back on the wall's face), so the leaves stand recessed in the carving
+            bool portal = Place("Portal", new Vector3(0, y0, DoorZ - .92f), new Vector3(9.4f, 9.6f, 1f), Vector3.back, false);
             var inscription = Textured("The dead obey the Warden", "inscription", .3f);
-            Quad("Inscription: THE DEAD OBEY THE WARDEN", new Vector3(0, y0 + h + .5f, DoorZ - (portal ? .62f : .42f)), new Vector2(5.6f, .53f), inscription, Quaternion.Euler(0, 0, 0));
+            Quad("Inscription: THE DEAD OBEY THE WARDEN", new Vector3(0, y0 + h + .5f, DoorZ - (portal ? 1.44f : .42f)), new Vector2(5.6f, .53f), inscription, Quaternion.Euler(0, 0, 0));
             var door = new GameObject("Great door").AddComponent<GreatDoor>(); door.transform.SetParent(g, false);
             door.transform.position = o + new Vector3(0, y0 + 1.2f, DoorZ - .8f);
             door.Id = "warden_door"; door.Range = 3.2f;

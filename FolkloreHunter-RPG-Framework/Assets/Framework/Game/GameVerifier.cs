@@ -740,6 +740,9 @@ namespace FH.Game
                   lair ? lair.GetComponentsInChildren<LineRenderer>().Length + " chains" : "no crypt");
             var guards = S.Monsters.Where(m => m && m.Alive && m.SpawnId != null && m.SpawnId.StartsWith("sp_crypt_guard")).ToList();
             Check("two skeleton guards stand in the hallway", guards.Count == 2, guards.Count + " guards, models " + string.Join("/", guards.Select(m => m.Model)));
+            // the crypt is built in the editor: count the carved kit pieces in the scene
+            var carved = lair ? lair.GetComponentsInChildren<Transform>(true).Where(t => t.name.EndsWith(" (carved)")).GroupBy(t => t.name.Replace(" (carved)", "")).Select(gr => gr.Key + " x" + gr.Count()).ToList() : new List<string>();
+            Note(carved.Count > 0 ? "crypt kit pieces in place: " + string.Join(", ", carved) : "the carved crypt kit is not in this build (drawn stand-ins)");
             float hall = WardenLair.HallFloor;
             yield return CryptView("15a-warden-hallway", new Vector3(.4f, hall + 2.4f, WardenLair.HallStart + 3.2f), new Vector3(0, hall + 2.6f, WardenLair.DoorZ));
             if (gd) gd.Use(S);

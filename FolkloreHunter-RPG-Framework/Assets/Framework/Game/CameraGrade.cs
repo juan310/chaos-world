@@ -38,13 +38,13 @@ namespace FH.Game
             mat.SetFloat(Threshold, Mathf.Lerp(1.1f, .85f, k));
             mat.SetFloat(Knee, .5f);
             mat.SetFloat(Intensity, Mathf.Lerp(.22f, .85f, k));
-            mat.SetFloat(Exposure, Mathf.Lerp(1f, 1.45f, k));
+            mat.SetFloat(Exposure, Mathf.Lerp(1f, 1.3f, k));
             mat.SetFloat(Tonemap, k);
-            mat.SetFloat(Saturation, Mathf.Lerp(1.04f, 1.12f, k));
-            mat.SetFloat(Contrast, Mathf.Lerp(1.03f, 1.12f, k));
+            mat.SetFloat(Saturation, Mathf.Lerp(1.04f, .94f, k));
+            mat.SetFloat(Contrast, Mathf.Lerp(1.03f, 1.18f, k));
             mat.SetFloat(Vignette, Mathf.Lerp(.18f, .55f, k));
             mat.SetColor(ShadowTint, Color.Lerp(Color.white, new Color(.82f, .86f, 1.05f), k));   // cool, deep shadows
-            mat.SetColor(HighTint, Color.Lerp(Color.white, new Color(1.08f, .97f, .86f), k));     // warm firelight
+            mat.SetColor(HighTint, Color.Lerp(Color.white, new Color(1.03f, .98f, .92f), k));     // warm firelight (the lights are warm already)
 
             int w = Mathf.Max(1, src.width / 2), h = Mathf.Max(1, src.height / 2), n = 0;
             var fmt = src.format;
