@@ -436,11 +436,16 @@ namespace FH.Game
                 Release(); yield return Wait(.4f);
                 Check(body + " hunter: full stick jogs at the hunt pace", jog > 2.8f, jog.ToString("0.00") + " m/s");
                 yield return CaptureHunterPoses(body);
-                S.ProvingRig.SetWeapon("sword_shield"); F.SetSheathed(false); yield return Frames(3);
-                H.enabled = false;
-                yield return Closeups(H.Visual, H.transform, H.Anim, HunterController.LookHeight, "Closeups", body.ToString().ToLower(),
-                    new[] { ("Idle", 0f), ("1H_Melee_Attack_Chop", .3f), ("SnS_Rush_1", .4f), ("Katana_Iai", .4f), ("Bow_Draw", .6f), ("Lance_High_Thrust", .4f) });
-                H.enabled = true; H.Anim.Current = ""; H.Anim.Play("Idle"); F.SetSheathed(true); yield return Frames(2);
+                foreach (var (set, poses) in new[] {
+                    ("sword_shield", new[] { ("Idle_Combat", 0f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Slice_Diagonal", .45f), ("SnS_Rush_1", .4f), ("SnS_Leap_Slash", .5f) }),
+                    ("katana", new[] { ("2H_Melee_Idle", 0f), ("2H_Melee_Attack_Chop", .4f), ("Katana_Iai", .5f), ("2H_Melee_Attack_Spin", .5f) }),
+                    ("lance", new[] { ("Lance_High_Thrust", .4f), ("Lance_Charge", .3f) }),
+                    ("bow", new[] { ("Bow_Draw", .6f) }) })
+                {
+                    H.enabled = true; S.ProvingRig.SetWeapon(set); F.SetSheathed(false); yield return Frames(3); H.enabled = false;
+                    yield return Closeups(H.Visual, H.transform, H.Anim, HunterController.LookHeight, "Closeups", body.ToString().ToLower() + "_" + set, poses);
+                }
+                H.enabled = true; S.ProvingRig.SetWeapon("sword_shield"); H.Anim.Current = ""; H.Anim.Play("Idle"); F.SetSheathed(true); yield return Frames(2);
             }
             H.ApplyLook(Appearance.Models(Appearance.Male, 1));
             S.ProvingRig.SetWeapon("sword_shield");
@@ -511,6 +516,8 @@ namespace FH.Game
             m.Anim.Current = ""; m.Anim.Play("Idle");
         }
 
+        static readonly string[] HeldWeapons = { "1H_Sword", "Hunt_Katana", "Hunt_Lance" };
+
         /// <summary>Close views (front and side, plain background, its own light) of a character's model in chosen poses,
         /// for review by eye (Captures/Proving/&lt;folder&gt;): texture detail, grips, gear, the coat.</summary>
         IEnumerator Closeups(Transform visual, Transform root, AnimationDriver anim, float height, string folderName, string name, (string clip, float at)[] poses)
@@ -533,7 +540,21 @@ namespace FH.Game
                 {
                     cam.transform.position = c + dir * 6; cam.transform.LookAt(c);
                     light.transform.rotation = Quaternion.LookRotation(-dir + Vector3.down * .6f + root.right * .3f);
-                    yield return Render(cam, rt, Path.Combine(folder, name + "_" + clip + "_" + (int)(at * 100) + "_" + view + ".png"));
+                    string shot = Path.Combine(folder, name + "_" + clip + "_" + (int)(at * 100) + "_" + view);
+                    yield return Render(cam, rt, shot + ".png");
+                    // the weapon in the right hand alone, same camera: Claude Eyes finds the hand in the picture above and
+                    // the hilt, guard and blade in this one (Tools/review_grips_sightforge.py)
+                    var held = visual.GetComponentsInChildren<Renderer>().Where(r => r.enabled && r.gameObject.activeInHierarchy && HeldWeapons.Contains(r.name)
+                                                                                  && r.transform.parent && r.transform.parent.name == "handslot.r").ToList();
+                    if (held.Count > 0)
+                    {
+                        foreach (var (o, layer) in keep) if (o) o.layer = 0;
+                        foreach (var r in held) r.gameObject.layer = Layers.Review;
+                        yield return Render(cam, rt, shot + "_weapon.png");
+                        File.WriteAllText(shot + "_weapon.json", "{\"weapon\": \"" + string.Join(",", held.Select(r => r.name)) + "\", \"pixelsPerMetre\": "
+                                          + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + "}");
+                        foreach (var (o, _) in keep) if (o) o.layer = Layers.Review;
+                    }
                 }
             }
             foreach (var (o, layer) in keep) if (o) o.layer = layer;
