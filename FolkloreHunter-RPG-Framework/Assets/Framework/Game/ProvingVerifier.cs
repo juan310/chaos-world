@@ -408,7 +408,7 @@ namespace FH.Game
                 S.ProvingRig.SetWeapon("sword_shield");
                 F.SetSheathed(true);
                 yield return Frames(4);
-                Check(body + " hunter: the slim hunter (Codex body, clips authored on its own skeleton) with a hairstyle", H.Slim && H.Hair,
+                Check(body + " hunter: the slim hunter (Codex body, clips authored on its own skeleton) with a hairstyle", H.Slim && (H.Hair || CharacterFactory.OwnHair(H.Look)),
                       H.Look + ", hair " + (H.Hair ? H.Hair.name : "none") + ", " + H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length + " skinned meshes");
                 var rends = H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>();
                 var b = CharacterFactory.PosedBounds(rends);

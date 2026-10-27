@@ -9,6 +9,10 @@
 # frames a second, held in place (the game moves the body; the hips' travel over the clip is taken out) and stored under
 # the game's clip names, replacing the keyposed clips of those names. A source clip is matched by the start of its name
 # (after "Armature|", without ".001").
+# --height <m> rescales a body made at another size (Tripo exports 1 m tall) to real height before anything else, so
+# the game's weapon placement, hand slots and gait speeds read it as they read the other bodies; its kept clips'
+# movements are scaled with it. --own-hair: the body has modelled hair (the game then adds no hairstyle), written
+# beside the model as <name>_info.json.
 # --lib-clips "<pack>:<clip>=<Game_Clip>+...,..." puts clips from SightForge's motion library (motionlib add) on this body
 # through the retarget pose solver (it fits any proportions and rest pose; travel over the ground taken out).
 # --fingers finds the fingers in the mesh, gives each three bones, and solves how they close round each held piece
@@ -49,6 +53,30 @@ for _a in list(bpy.data.actions):
     if opt('--keep-clips'):
         _a.use_fake_user = True; KEEP['KEEP__' + _a.name.split('|')[-1].split('.')[0]] = _a; _a.name = 'KEEP__' + _a.name.split('|')[-1].split('.')[0]
 bpy.context.scene.render.fps = 30; bpy.context.scene.render.fps_base = 1
+if opt('--height'):
+    _top = [o for o in bpy.data.objects if o.parent is None]
+    _mesh = max((o for o in bpy.data.objects if o.type == 'MESH'), key=lambda o: len(o.data.vertices))
+    bpy.context.view_layer.update()
+    _zs = [(_mesh.matrix_world @ v.co).z for v in _mesh.data.vertices]
+    _f = float(opt('--height')) / max(1e-4, max(_zs) - min(_zs))
+    if abs(_f - 1) > .02:
+        _arm0 = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+        for o in _top: o.scale = o.scale * _f
+        bpy.context.view_layer.update()
+        _s = _arm0.scale.x                                  # what the bones' rest positions (and clip moves) are multiplied by
+        bpy.ops.object.select_all(action='DESELECT')
+        for o in bpy.data.objects: o.select_set(True)
+        bpy.context.view_layer.objects.active = _arm0
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        def _curves(a):
+            try: return list(a.fcurves)
+            except AttributeError: return [fc for l in a.layers for st in l.strips for cb in getattr(st, 'channelbags', []) for fc in cb.fcurves]
+        for a in KEEP.values():
+            for fc in _curves(a):
+                if fc.data_path.endswith('.location'):
+                    for kp in fc.keyframe_points:
+                        kp.co[1] *= _s; kp.handle_left[1] *= _s; kp.handle_right[1] *= _s
+        print('SLIM_HEIGHT %.3f m -> %s m (x%.3f)' % (max(_zs) - min(_zs), opt('--height'), _f), flush=True)
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
 choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name + '_Body'
@@ -354,4 +382,7 @@ if tex.exists() and cloth:
     img.filepath_raw = str(dest / (name + '_texture.png')); img.file_format = 'PNG'; img.save()
     print('SLIM_CLOTH %d of %d texels recoloured' % (int(red.sum()), len(px)), flush=True)
 elif tex.exists(): shutil.copyfile(tex, dest / (name + '_texture.png'))
+if '--own-hair' in argv:
+    import json as _json
+    (dest / (name + '_info.json')).write_text(_json.dumps({'ownHair': True, 'source': fbx.name}, indent=1))
 print('SLIM_EXPORTED', out, out.stat().st_size, flush=True)

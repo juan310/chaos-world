@@ -170,7 +170,7 @@ namespace FH.Game
         void WearHair()
         {
             Hair = null;
-            if (!Slim) return;
+            if (!Slim || CharacterFactory.OwnHair(Look)) return;      // a body with its own modelled hair wears no hairstyle
             int hair = 1;
             var m = System.Text.RegularExpressions.Regex.Match(lookKey, @"Hunter_(Male|Female)_(\d\d)");
             if (m.Success) int.TryParse(m.Groups[2].Value, out hair);

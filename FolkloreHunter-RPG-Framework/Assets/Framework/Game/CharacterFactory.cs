@@ -65,6 +65,13 @@ namespace FH.Game
 
         /// <summary>The slim characters (Tools/slim): their clips roll, dive and lie down, and Unity's import bounds cover every
         /// clip, so their size is measured on the mesh in its bind pose (the rest pose they are made in).</summary>
+        /// <summary>A body with modelled hair (its build wrote Models/&lt;model&gt;_info.json with "ownHair"): no hairstyle is added.</summary>
+        public static bool OwnHair(string resource)
+        {
+            var t = Resources.Load<TextAsset>("Models/" + resource + "_info");
+            return t && System.Text.RegularExpressions.Regex.IsMatch(t.text, "\"ownHair\"\\s*:\\s*true");
+        }
+
         static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_") || resource.StartsWith("Villager_");
 
         /// <summary>The meshes' bounds in their bind pose, in world space (independent of the clip playing).</summary>
