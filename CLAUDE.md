@@ -13,6 +13,11 @@ The hunt combat is inspired by Monster Hunter's style of play, but everything a 
   Unravel on every third torn wound).
 - Internal design docs may name the inspiration and cite sources; internal code ids may stay as they are.
 
+## One body design: no chibi (the owner's rule)
+- The player, villagers and humanoid monsters use the slim, tall realistic bodies (Codex's models, Models/Codex/). The
+  chibi KayKit characters must not be used for them in any way: not as a visible model, not as a hidden rig driving
+  them, and not as the source of their animations. Every animation they play is authored on the slim skeleton itself.
+
 ## Other standing constraints
 - No paid generation, purchases, subscriptions, asset-store imports, external publishing or account changes without
   explicit authorization. The local Forge on the owner's PC is free and allowed.
