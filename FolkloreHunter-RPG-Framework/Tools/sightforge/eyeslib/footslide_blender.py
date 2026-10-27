@@ -23,8 +23,11 @@ BLEND = 2
 
 
 def legs(arm):
+    """(side, thigh, shin, foot, contact): the contact point is the ball of the foot (the toes bone's head) where the rig
+    has toes: a running foot is down on its ball while the heel and ankle rise; else the ankle"""
     R = rigmap.blender_roles(arm)
-    return [(s, R["upperleg." + s], R["lowerleg." + s], R["foot." + s]) for s in "lr" if all(R.get(k + "." + s) for k in ("upperleg", "lowerleg", "foot"))]
+    return [(s, R["upperleg." + s], R["lowerleg." + s], R["foot." + s], R.get("toes." + s) or R["foot." + s])
+            for s in "lr" if all(R.get(k + "." + s) for k in ("upperleg", "lowerleg", "foot"))]
 
 
 def use(arm, act):
@@ -45,8 +48,8 @@ def sample(arm, act, lg):
     tr = {s: [] for s, *_ in lg}
     for f in range(f0, f1 + 1):
         sc.frame_set(f)
-        for s, _, _, ft in lg:
-            tr[s].append((mw @ arm.pose.bones[ft].head).copy())
+        for s, _, _, ft, ct in lg:
+            tr[s].append((mw @ arm.pose.bones[ct].head).copy())
     return f0, f1, tr
 
 
@@ -128,7 +131,7 @@ def lock(arm, act, lg, g, fps):
     gv = Vector((g[0], g[1], 0))
     targets = {}
     locked = 0
-    for s, th, sh, ft in lg:
+    for s, th, sh, ft, ct in lg:
         track = tr[s][:M]; pl = planted(track)
         for ph in _phases(pl, loop):
             t = [k / fps for k, _ in ph]
@@ -142,12 +145,16 @@ def lock(arm, act, lg, g, fps):
     use(arm, act)
     for i in sorted(targets):
         sc.frame_set(f0 + i)
-        for s, th, sh, ft in lg:
+        for s, th, sh, ft, ct in lg:
             if s not in targets[i]: continue
             tw, w = targets[i][s]
             Mth, Msh, Mft = pbs[th].matrix.copy(), pbs[sh].matrix.copy(), pbs[ft].matrix.copy()
             hip, knee, ank = Mth.translation.copy(), Msh.translation.copy(), Mft.translation.copy()
-            T = ank.lerp(mwi @ tw, w)
+            # the contact point held in place across the ground (its height stays the clip's own); the ankle moves with
+            # it, the foot keeping its angle
+            c = pbs[ct].head.copy(); cw = arm.matrix_world @ c
+            want = mwi @ Vector((tw.x, tw.y, cw.z))
+            T = ank + (c.lerp(want, w) - c)
             k2, T = solve(hip, knee, ank, T)
             R1 = (knee - hip).rotation_difference(k2 - hip)
             Mth2 = Matrix.Translation(hip) @ R1.to_matrix().to_4x4() @ Matrix.Translation(-hip) @ Mth
@@ -222,5 +229,5 @@ if __name__ == "__main__" and "--" in sys.argv and Path(sys.argv[sys.argv.index(
                                  apply_scale_options="FBX_SCALE_ALL", bake_anim=True, bake_anim_use_nla_strips=False,
                                  bake_anim_use_all_actions=True, bake_anim_simplify_factor=0, axis_forward="-Z", axis_up="Y",
                                  path_mode="COPY", embed_textures=False)
-    (outd / "footslide.json").write_text(json.dumps({"model": str(model), "fixed": fixto, "legs": legs(arm), "clips": res}, indent=1))
+    (outd / "footslide.json").write_text(json.dumps({"model": str(model), "fixed": fixto, "legs": [list(l) for l in legs(arm)], "clips": res}, indent=1))
     print("FOOTSLIDE_DONE", len(res), "clips", flush=True)

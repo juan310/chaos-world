@@ -123,6 +123,7 @@ def strip(frames, path, title, count=8):
     from PIL import Image
     idx = [round(i * (len(frames) - 1) / max(1, count - 1)) for i in range(count)]
     cells = []
+    frames = [{r: (p[0], p[2], p[1]) for r, p in f.items()} for f in frames]     # Blender is Z up; the views draw Y up
     allp = [p for f in frames for p in f.values()]
     for plane, along in (("side", (0.0, 1.0)), ("side", (1.0, 0.0))):
         row = []
