@@ -105,7 +105,7 @@ def shoot(side, tag):
           tuple(round(max((body.matrix_world @ Vector(b))[i] for b in body.bound_box), 2) for i in range(3))), flush=True)
     for nm, d in (('back', Vector((0, 0, -1))), ('palm', Vector((0, 0, 1))), ('thumb side', Vector((1 if side == 'l' else -1, 0, 0)))):
         dw = (M.to_3x3() @ d).normalized()
-        cam.location = c + dw * (L * 2.2 + .15)
+        cam.location = c + dw * (L * 3.6 + .25)
         cam.rotation_euler = (c - cam.location).to_track_quat('-Z', 'Y').to_euler()
         fn = out / ('%s_%s_%s.png' % (tag, side, nm.replace(' ', '_')))
         sc.render.filepath = str(fn); bpy.ops.render.render(write_still=True); pics.append(fn.name)
