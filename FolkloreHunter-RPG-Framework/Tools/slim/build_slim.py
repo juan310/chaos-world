@@ -78,6 +78,11 @@ if opt('--height'):
                         kp.co[1] *= _s; kp.handle_left[1] *= _s; kp.handle_right[1] *= _s
         print('SLIM_HEIGHT %.3f m -> %s m (x%.3f)' % (max(_zs) - min(_zs), opt('--height'), _f), flush=True)
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
+# a source that comes with clips (Tripo) is left wearing one: back to the rest pose before anything is measured or
+# seated on it (weapons seated on a posed hand were exported 0.3 to 0.7 m off their hand slots)
+if arm.animation_data: arm.animation_data.action = None
+for _pb in arm.pose.bones: _pb.matrix_basis = Matrix()
+bpy.context.view_layer.update()
 choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name + '_Body'
 smooth = int(opt('--smooth', '0'))
@@ -136,6 +141,9 @@ def axes_matrix(ya, za):
 
 def seat(src, bone, ya, za, length, scale=None, grip=None):
     """Copies the piece's mesh into slot space (grip at the slot, axes as given, scaled) and parents it to the bone."""
+    if arm.animation_data and arm.animation_data.action: arm.animation_data.action = None
+    for pb in arm.pose.bones: pb.matrix_basis = Matrix()
+    bpy.context.view_layer.update()
     me = src.data.copy()
     # the old slot's origin in the piece's coordinates is its grip
     g = grip if grip is not None else Vector((0, 0, 0))
