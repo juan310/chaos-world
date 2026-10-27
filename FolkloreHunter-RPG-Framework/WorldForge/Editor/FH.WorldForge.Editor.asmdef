@@ -1,0 +1,7 @@
+{
+  "name": "FH.WorldForge.Editor",
+  "rootNamespace": "FH.WorldForge",
+  "references": ["FH.WorldForge"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

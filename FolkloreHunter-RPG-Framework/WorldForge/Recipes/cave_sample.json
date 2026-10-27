@@ -1,0 +1,610 @@
+{
+ "name": "cave_sample",
+ "seed": 11,
+ "min": {
+  "x": -30,
+  "y": -6,
+  "z": -14
+ },
+ "max": {
+  "x": 30,
+  "y": 26,
+  "z": 98
+ },
+ "voxel": 0.45,
+ "chunk": 10,
+ "ground": {
+  "enabled": true,
+  "height": 0,
+  "hills": 2.2,
+  "hillScale": 38,
+  "detail": 0.3
+ },
+ "features": [
+  {
+   "name": "mountain",
+   "type": "mountain",
+   "points": [
+    {
+     "x": 0,
+     "y": 6,
+     "z": 62
+    }
+   ],
+   "width": 4,
+   "height": 16,
+   "depth": 2,
+   "radius": 26,
+   "length": 34,
+   "curvature": 0,
+   "roughness": 2.6,
+   "noiseScale": 6,
+   "strata": 0.35,
+   "blend": 2.5,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 1,
+   "material": ""
+  },
+  {
+   "name": "left wall",
+   "type": "rockwall",
+   "points": [
+    {
+     "x": -8.5,
+     "y": 0,
+     "z": 12
+    },
+    {
+     "x": -12,
+     "y": 0,
+     "z": 22
+    },
+    {
+     "x": -15,
+     "y": 0,
+     "z": 30
+    }
+   ],
+   "width": 4,
+   "height": 6.5,
+   "depth": 4,
+   "radius": 6,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 1.1,
+   "noiseScale": 2.4,
+   "strata": 0.3,
+   "blend": 1.5,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 2,
+   "material": ""
+  },
+  {
+   "name": "right wall",
+   "type": "rockwall",
+   "points": [
+    {
+     "x": 8.5,
+     "y": 0,
+     "z": 10
+    },
+    {
+     "x": 12,
+     "y": 0,
+     "z": 21
+    },
+    {
+     "x": 15,
+     "y": 0,
+     "z": 30
+    }
+   ],
+   "width": 4,
+   "height": 5.5,
+   "depth": 4,
+   "radius": 6,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 1.1,
+   "noiseScale": 2.4,
+   "strata": 0.3,
+   "blend": 1.5,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 3,
+   "material": ""
+  },
+  {
+   "name": "path",
+   "type": "path",
+   "points": [
+    {
+     "x": 0,
+     "y": 0.6,
+     "z": -10
+    },
+    {
+     "x": 1,
+     "y": 0.8,
+     "z": 0
+    },
+    {
+     "x": -1,
+     "y": 1.0,
+     "z": 10
+    },
+    {
+     "x": 0,
+     "y": 1.3,
+     "z": 20
+    },
+    {
+     "x": 0,
+     "y": 1.4,
+     "z": 27
+    }
+   ],
+   "width": 3.6,
+   "height": 3.6,
+   "depth": 2,
+   "radius": 6,
+   "length": 0,
+   "curvature": 0.8,
+   "roughness": 0.35,
+   "noiseScale": 1.6,
+   "strata": 0.2,
+   "blend": 1.2,
+   "floor": 0.06,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 4,
+   "material": ""
+  },
+  {
+   "name": "boulders",
+   "type": "boulders",
+   "points": [
+    {
+     "x": 0,
+     "y": 0.6,
+     "z": -8
+    },
+    {
+     "x": 0,
+     "y": 1.0,
+     "z": 10
+    },
+    {
+     "x": 0,
+     "y": 1.4,
+     "z": 26
+    }
+   ],
+   "width": 4.4,
+   "height": 4,
+   "depth": 2,
+   "radius": 0.6,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 0.35,
+   "noiseScale": 1.6,
+   "strata": 0.2,
+   "blend": 1,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 16,
+   "seed": 5,
+   "material": ""
+  },
+  {
+   "name": "colonnade",
+   "type": "ruin",
+   "points": [
+    {
+     "x": -6.5,
+     "y": 0.6,
+     "z": 1
+    },
+    {
+     "x": -6.5,
+     "y": 0.8,
+     "z": 9
+    }
+   ],
+   "width": 4,
+   "height": 3.2,
+   "depth": 2,
+   "radius": 0.42,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 0.35,
+   "noiseScale": 1.6,
+   "strata": 0.2,
+   "blend": 1,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 2.4,
+   "count": 0,
+   "seed": 6,
+   "material": ""
+  },
+  {
+   "name": "arch",
+   "type": "arch",
+   "points": [
+    {
+     "x": -2.7,
+     "y": 1.1,
+     "z": 16
+    },
+    {
+     "x": 2.7,
+     "y": 1.2,
+     "z": 16
+    }
+   ],
+   "width": 0.8,
+   "height": 4.6,
+   "depth": 2,
+   "radius": 6,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 0.12,
+   "noiseScale": 0.8,
+   "strata": 0.2,
+   "blend": 1,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 7,
+   "material": ""
+  },
+  {
+   "name": "tunnel",
+   "type": "tunnel",
+   "points": [
+    {
+     "x": 0,
+     "y": 1.4,
+     "z": 26
+    },
+    {
+     "x": -1.5,
+     "y": 1.2,
+     "z": 36
+    },
+    {
+     "x": 1.5,
+     "y": 1.0,
+     "z": 46
+    },
+    {
+     "x": 0,
+     "y": 0.8,
+     "z": 56
+    },
+    {
+     "x": 0,
+     "y": 0.6,
+     "z": 63
+    }
+   ],
+   "width": 4.2,
+   "height": 4.0,
+   "depth": 2,
+   "radius": 6,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 0.45,
+   "noiseScale": 1.4,
+   "strata": 0.2,
+   "blend": 0.6,
+   "floor": 0.07,
+   "flare": 0.7,
+   "spacing": 3,
+   "count": 0,
+   "seed": 8,
+   "material": ""
+  },
+  {
+   "name": "chamber",
+   "type": "chamber",
+   "points": [
+    {
+     "x": 0,
+     "y": 0.5,
+     "z": 74
+    }
+   ],
+   "width": 4,
+   "height": 10,
+   "depth": 2,
+   "radius": 12,
+   "length": 13,
+   "curvature": 0,
+   "roughness": 0.7,
+   "noiseScale": 2.5,
+   "strata": 0.3,
+   "blend": 1.2,
+   "floor": 0.1,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 9,
+   "material": ""
+  },
+  {
+   "name": "oculus",
+   "type": "hole",
+   "points": [
+    {
+     "x": 3,
+     "y": 12.5,
+     "z": 76
+    },
+    {
+     "x": 5,
+     "y": 26,
+     "z": 79
+    }
+   ],
+   "width": 4,
+   "height": 4,
+   "depth": 2,
+   "radius": 1.6,
+   "length": 0,
+   "curvature": 0,
+   "roughness": 0.35,
+   "noiseScale": 1.2,
+   "strata": 0.2,
+   "blend": 0.5,
+   "floor": 0.08,
+   "flare": 0.6,
+   "spacing": 3,
+   "count": 0,
+   "seed": 10,
+   "material": ""
+  }
+ ],
+ "lights": [
+  {
+   "type": "torch_pair",
+   "name": "",
+   "feature": "tunnel",
+   "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   "spacing": 7,
+   "offset": 1.5,
+   "mount": 1.9,
+   "intensity": 1.7,
+   "range": 8,
+   "flicker": 1,
+   "color": {
+    "r": 1,
+    "g": 0.58,
+    "b": 0.26,
+    "a": 1
+   },
+   "count": 4
+  },
+  {
+   "type": "torch_row",
+   "name": "",
+   "feature": "tunnel",
+   "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   "spacing": 7,
+   "offset": 6,
+   "mount": 1.8,
+   "intensity": 1.7,
+   "range": 8,
+   "flicker": 1,
+   "color": {
+    "r": 1,
+    "g": 0.58,
+    "b": 0.26,
+    "a": 1
+   },
+   "count": 4
+  },
+  {
+   "type": "brazier_ring",
+   "name": "",
+   "feature": "chamber",
+   "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   "spacing": 0.62,
+   "offset": 4,
+   "mount": 1.75,
+   "intensity": 2.0,
+   "range": 10,
+   "flicker": 1,
+   "color": {
+    "r": 1,
+    "g": 0.58,
+    "b": 0.26,
+    "a": 1
+   },
+   "count": 4
+  },
+  {
+   "type": "eyes",
+   "name": "",
+   "feature": "",
+   "position": {
+    "x": -6,
+    "y": 3.0,
+    "z": 84
+   },
+   "spacing": 7,
+   "offset": 4,
+   "mount": 1.75,
+   "intensity": 0.6,
+   "range": 2.5,
+   "flicker": 1,
+   "color": {
+    "r": 1,
+    "g": 0.35,
+    "b": 0.08,
+    "a": 1
+   },
+   "count": 4
+  },
+  {
+   "type": "magic",
+   "name": "",
+   "feature": "",
+   "position": {
+    "x": -6.5,
+    "y": 2.6,
+    "z": 5
+   },
+   "spacing": 7,
+   "offset": 4,
+   "mount": 1.75,
+   "intensity": 1.2,
+   "range": 6,
+   "flicker": 1,
+   "color": {
+    "r": 0.35,
+    "g": 0.85,
+    "b": 1,
+    "a": 1
+   },
+   "count": 4
+  }
+ ],
+ "water": [
+  {
+   "type": "puddles",
+   "feature": "tunnel",
+   "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   "radius": 1.0,
+   "count": 5,
+   "level": 0,
+   "ripples": 0.5,
+   "color": {
+    "r": 0.07,
+    "g": 0.09,
+    "b": 0.1,
+    "a": 0.82
+   }
+  },
+  {
+   "type": "puddles",
+   "feature": "path",
+   "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   "radius": 0.9,
+   "count": 2,
+   "level": 0,
+   "ripples": 0.5,
+   "color": {
+    "r": 0.07,
+    "g": 0.09,
+    "b": 0.1,
+    "a": 0.82
+   }
+  },
+  {
+   "type": "puddles",
+   "feature": "chamber",
+   "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+   },
+   "radius": 1.3,
+   "count": 3,
+   "level": 0,
+   "ripples": 0.5,
+   "color": {
+    "r": 0.07,
+    "g": 0.09,
+    "b": 0.1,
+    "a": 0.82
+   }
+  }
+ ],
+ "atmosphere": {
+  "time": "day",
+  "sunAngles": {
+   "x": 42,
+   "y": 35,
+   "z": 0
+  },
+  "fog": 0.012,
+  "mist": 0.35,
+  "dust": 0.4,
+  "rain": 0,
+  "drips": 0.6,
+  "lightShafts": true,
+  "wetness": 0.25
+ },
+ "palette": {
+  "rock": {
+   "r": 0.42,
+   "g": 0.4,
+   "b": 0.37,
+   "a": 1
+  },
+  "dirt": {
+   "r": 0.36,
+   "g": 0.27,
+   "b": 0.18,
+   "a": 1
+  },
+  "moss": {
+   "r": 0.24,
+   "g": 0.31,
+   "b": 0.14,
+   "a": 1
+  },
+  "ruin": {
+   "r": 0.55,
+   "g": 0.52,
+   "b": 0.46,
+   "a": 1
+  },
+  "tiling": 2.4
+ },
+ "quality": "Medium",
+ "test": {
+  "route": [
+   "path",
+   "tunnel",
+   "chamber"
+  ],
+  "viewpoints": [],
+  "arena": "chamber",
+  "bossRadius": 1.3,
+  "bossHeight": 3.6
+ }
+}

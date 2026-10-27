@@ -1,0 +1,8 @@
+{
+  "name": "com.folklorehunter.worldforge",
+  "version": "0.1.0",
+  "displayName": "WorldForge",
+  "description": "Procedural environments for Folklore Hunter: terrain, cliffs, caves, tunnels, chambers, rivers, ruins, water, lights and effects, made from an editable recipe; checked by SightForge.",
+  "unity": "6000.0",
+  "author": { "name": "Folklore Hunter" }
+}

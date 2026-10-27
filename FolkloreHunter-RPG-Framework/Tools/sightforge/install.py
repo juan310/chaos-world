@@ -1,9 +1,9 @@
-"""Installs this folder's SightForge / Claude Eyes Studio modules (0.16 -> 0.17), the way Studio's own upgrades go: the
+"""Installs this folder's SightForge / Claude Eyes Studio modules (0.16 -> 0.17 -> 0.18), the way Studio's own upgrades go: the
 whole app is copied to backups/app_<old>_before_<new>_<date> first, then
   eyeslib/*.py, eyeslib/motionbricks/*.py   the engines (copied from this folder)
   eyes_inspect.py                           one hook that adds every development tool's command (each module's
                                             register(sp, ctx)), so later tools need no further edits
-  studio.py                                 VERSION 0.17
+  studio.py                                 VERSION 0.18 (0.18: WorldForge)
 Running it again only refreshes the copied modules and the list of tools.
 
   python Tools/sightforge/install.py
@@ -18,10 +18,10 @@ import shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 HOME = os.environ.get("CLAUDE_EYES_STUDIO_HOME") or os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClaudeEyesStudio")
 APP = os.path.join(HOME, "app")
-NEW = "0.17"
+NEW = "0.18"
 
 # the development tools, each an eyeslib module with register(sp, ctx) and cmd(a, ctx)
-DEVTOOLS = ("originality", "weaponfit", "smear", "hits", "problem", "perf", "springs", "terrain", "footslide", "motionbricks")
+DEVTOOLS = ("originality", "weaponfit", "smear", "hits", "problem", "perf", "springs", "terrain", "footslide", "motionbricks", "worldforge")
 
 HOOK = '''
 
