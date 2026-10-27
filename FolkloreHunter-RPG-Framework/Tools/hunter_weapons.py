@@ -318,6 +318,21 @@ class Poser:
         E = S + axis * a + n * h
         self.aim(up, E - S); self.aim(lo, (S + axis * d) - E)
 
+    def leg(self, side, target, pole):
+        """Upper and lower leg so the ankle reaches `target`, the knee bending toward `pole`; the foot keeps its
+        orientation in the world (flat on the ground as it was)."""
+        up, lo, ft = 'upperleg.' + side, 'lowerleg.' + side, 'foot.' + side
+        self.update()
+        keep = self.pb[ft].matrix.to_3x3().copy() if ft in self.pb else None
+        S = self.head(up); L1, L2 = self.length(up), self.length(lo)
+        T = Vector(target); d = min((T - S).length, (L1 + L2) * .995); axis = (T - S).normalized()
+        a = (L1 * L1 - L2 * L2 + d * d) / (2 * d); h = math.sqrt(max(0, L1 * L1 - a * a))
+        n = Vector(pole) - axis * Vector(pole).dot(axis); n = n.normalized() if n.length > 1e-6 else axis.orthogonal().normalized()
+        E = S + axis * a + n * h
+        self.aim(up, E - S); self.aim(lo, (S + axis * d) - E)
+        if keep is not None:
+            m = keep.to_4x4(); m.translation = self.pb[ft].head.copy(); self.pb[ft].matrix = m; self.update()
+
     def snapshot(self, action, frame):
         self.use(action); bpy.context.scene.frame_set(int(round(frame))); self.update()
         return {p.name: (p.location.copy(), p.rotation_quaternion.copy(), p.scale.copy()) for p in self.pb}
@@ -372,11 +387,14 @@ def katana_iai(P):
 def bow_clips(rig):
     """The bow moveset's own clips, posed after Monster Hunter's bow (held in the left hand, drawn to the cheek)."""
     P = Poser(rig); made = []
-    made.append(P.clip('Bow_Draw', [(0, 'Idle', 0, bow_pose(1.0)), (.6, 'Idle', .5, bow_pose(1.05)), (1.2, 'Idle', 1, bow_pose(1.0))]))
-    made.append(P.clip('Bow_Shoot', [(0, 'Idle', 0, bow_pose(1.0)), (.06, 'Idle', .1, bow_pose(.2, release=1)), (.2, 'Idle', .3, bow_pose(.25, release=.6)), (.45, 'Idle', .5, bow_pose(.7))]))
-    made.append(P.clip('Bow_Power_Shoot', [(0, 'Idle', 0, bow_pose(1.0, cant=80)), (.07, 'Idle', .1, bow_pose(.2, cant=80, release=1)), (.25, 'Idle', .3, bow_pose(.3, cant=70, release=.5)), (.5, 'Idle', .5, bow_pose(.7, cant=30))]))
-    made.append(P.clip('Bow_Arc_Shoot', [(0, 'Idle', 0, bow_pose(.6, pitch=15)), (.25, 'Idle', .2, bow_pose(1.0, pitch=55)), (.32, 'Idle', .3, bow_pose(.2, pitch=58, release=1)), (.7, 'Idle', .6, bow_pose(.6, pitch=20))]))
-    made.append(P.clip('Bow_Piercer', [(0, 'Idle', 0, bow_pose(.8, cant=45, lean=8)), (.7, 'Idle', .4, bow_pose(1.3, cant=50, lean=14)), (.78, 'Idle', .5, bow_pose(.1, cant=50, lean=4, release=1)), (1.45, 'Idle', .9, bow_pose(.6, cant=20))]))
+    f0 = _foot0(P)
+    def wide(fn):          # pose study 9-10: a wide, low archer's base under the draw
+        return lambda P: (stance(P, f0, .4, .1, .1, .12), fn(P))
+    made.append(P.clip('Bow_Draw', [(0, 'Idle', 0, wide(bow_pose(1.0))), (.6, 'Idle', .5, wide(bow_pose(1.05))), (1.2, 'Idle', 1, wide(bow_pose(1.0)))]))
+    made.append(P.clip('Bow_Shoot', [(0, 'Idle', 0, wide(bow_pose(1.0))), (.06, 'Idle', .1, wide(bow_pose(.2, release=1))), (.2, 'Idle', .3, wide(bow_pose(.25, release=.6))), (.45, 'Idle', .5, wide(bow_pose(.7)))]))
+    made.append(P.clip('Bow_Power_Shoot', [(0, 'Idle', 0, wide(bow_pose(1.0, cant=80))), (.07, 'Idle', .1, wide(bow_pose(.2, cant=80, release=1))), (.25, 'Idle', .3, wide(bow_pose(.3, cant=70, release=.5))), (.5, 'Idle', .5, wide(bow_pose(.7, cant=30)))]))
+    made.append(P.clip('Bow_Arc_Shoot', [(0, 'Idle', 0, wide(bow_pose(.6, pitch=15))), (.25, 'Idle', .2, wide(bow_pose(1.0, pitch=55))), (.32, 'Idle', .3, wide(bow_pose(.2, pitch=58, release=1))), (.7, 'Idle', .6, wide(bow_pose(.6, pitch=20)))]))
+    made.append(P.clip('Bow_Piercer', [(0, 'Idle', 0, wide(bow_pose(.8, cant=45, lean=8))), (.7, 'Idle', .4, wide(bow_pose(1.3, cant=50, lean=14))), (.78, 'Idle', .5, wide(bow_pose(.1, cant=50, lean=4, release=1))), (1.45, 'Idle', .9, wide(bow_pose(.6, cant=20)))]))
     for side, base in (('L', 'Dodge_Left'), ('R', 'Dodge_Right')):
         made.append(P.clip('Bow_Step_' + side, [(t, base, t / .6, bow_pose(.5)) for t in (0, .15, .3, .45, .6)]))
     old = bpy.data.actions.get('Bow_Aim_Walk')
@@ -487,6 +505,23 @@ def _lift(P, dz):
     hp = P.pb['hips']; hp.matrix = Matrix.Translation((0, 0, dz)) @ hp.matrix; P.update()
 
 
+def stance(P, foot0, wide=0.0, front=0.0, back=0.0, drop=0.0):
+    """A fighting stance from the 0.9 pose study (Docs/Concepts/Poses-0.9): the hips drop by `drop`, the left foot plants
+    `front` ahead and the right foot `back` behind, each `wide` out to its side (all as shares of the leg's length), on the
+    ground (armature z `foot0`); the knees bend forward and a little out. Arms and spine are left as they are."""
+    legl = P.length('upperleg.l') + P.length('lowerleg.l')
+    _lift(P, -drop * legl)
+    hl, hr = P.head('upperleg.l'), P.head('upperleg.r')
+    P.leg('l', Vector((hl.x + wide * legl, hl.y - front * legl, foot0)), (.35, -1, 0))
+    P.leg('r', Vector((hr.x - wide * legl, hr.y + back * legl, foot0)), (-.35, -1, 0))
+
+
+def _foot0(P):
+    """Armature height of the ankles standing idle (the ground for the stances)."""
+    P.snapshot(bpy.data.actions['Idle'], bpy.data.actions['Idle'].frame_range[0])
+    return min(P.pb[f].head.z for f in ('foot.l', 'foot.r'))
+
+
 def _shield_up(P, high=0.0, out=0.0):
     """The shield arm raised in front of the chest (high 0..1 lifts it overhead, out pushes it forward)."""
     S = P.head('upperarm.l'); reach = P.length('upperarm.l') + P.length('lowerarm.l')
@@ -511,9 +546,10 @@ def battle_clips(rig):
         # the lowest ankle exactly `lift` over the ground: bent legs crouch the body instead of lifting the feet
         _lift(P, foot0 + lift - min(P.pb[f].head.z for f in ('foot.l', 'foot.r')))
 
-    def pose(lift=0.0, legs=None, legk=1.0, lean=0.0, twist=0.0, shield=True, fn=None):
+    def pose(lift=0.0, legs=None, legk=1.0, lean=0.0, twist=0.0, shield=True, fn=None, st=None):
         def f(P):
             if legs: _apply(P, legs, legk)
+            if st: stance(P, foot0, *st)
             if shield and guard: _apply(P, guard)
             if lean: P.turn('spine', (1, 0, 0), lean)
             if twist: P.turn('spine', (0, 0, 1), twist)
@@ -521,64 +557,72 @@ def battle_clips(rig):
             plant(P, max(0.0, lift) * tall)
         return f
 
+    # Stances from the 0.9 pose study (Docs/Concepts/Poses-0.9): (wide, front foot, back foot, hip drop) as shares of leg length.
+    LAND = (.22, .5, .5, .24)          # 8 "recovery, feet under body" after a jump: low, both feet planted
+    LOADED = (.2, .3, .7, .2)          # 6 "shield block, loaded rear leg"
+    THROUGH = (.18, .6, .45, .14)      # 7 "diagonal cut, hip rotation": the weight goes onto the front foot
+    LUNGE = (.2, .75, .55, .26)        # 12 "committed thrust"
+    BRACE = (.3, .35, .85, .22)        # 6/11 braced behind the shield, the rear leg pushing
+    ARCHER = (.4, .1, .1, .14)         # 9-10 the archer's wide base
+
     # Leaping Slash: crouch, spring forward with the sword raised, cut down as the hunter lands.
     D = '1H_Melee_Attack_Chop'
     made.append(P.clip('SnS_Leap_Slash', [
-        (0, D, 0, pose(-.05, take, lean=8)), (.12, D, .2, pose(.08, air, lean=-4)), (.24, D, .38, pose(.16, air, .9, lean=-8)),
-        (.32, D, .5, pose(.08, air, .6, lean=6)), (.4, D, .62, pose(0, land, lean=14)), (.58, D, .8, pose(-.04, land, .6, lean=10)),
+        (0, D, 0, pose(0, take, lean=8)), (.12, D, .2, pose(.08, air, lean=-4)), (.24, D, .38, pose(.16, air, .9, lean=-8)),
+        (.32, D, .5, pose(.08, air, .6, lean=6)), (.4, D, .62, pose(0, st=LAND, lean=14)), (.58, D, .8, pose(0, st=THROUGH, lean=10)),
         (.8, D, 1, pose(0, None, lean=2))]))
-    # Thorn Rush I: a rising diagonal cut (the diagonal slice played upward) with a step and a turn of the hips.
+    # Thorn Rush I: a rising diagonal cut (the diagonal slice played upward), from the loaded rear leg through to the front.
     R = '1H_Melee_Attack_Slice_Diagonal'
     made.append(P.clip('SnS_Rush_1', [
-        (0, R, 1, pose(-.03, land, .5, lean=10, twist=-14)), (.14, R, .72, pose(-.03, land, .5, lean=8, twist=-8)),
-        (.24, R, .45, pose(0, None, lean=-4, twist=10)), (.36, R, .25, pose(.02, None, lean=-8, twist=18)), (.68, R, 0, pose(0, None, twist=4))]))
+        (0, R, 1, pose(0, st=LOADED, lean=10, twist=-14)), (.14, R, .72, pose(0, st=LOADED, lean=8, twist=-8)),
+        (.24, R, .45, pose(0, st=THROUGH, lean=-4, twist=10)), (.36, R, .25, pose(0, st=THROUGH, lean=-8, twist=18)), (.68, R, 0, pose(0, None, twist=4))]))
     # Thorn Rush II: two spinning horizontal cuts with the shield held in (the two-handed spinning swing, shield arm guarding).
     S2 = '2H_Melee_Attack_Spinning'
-    made.append(P.clip('SnS_Rush_2', [(t, S2, t / .76, pose(-.02 * math.sin(math.pi * t / .76), None, lean=6)) for t in (0, .1, .2, .3, .4, .5, .6, .76)]))
+    made.append(P.clip('SnS_Rush_2', [(t, S2, t / .76, pose(0, None, lean=6)) for t in (0, .1, .2, .3, .4, .5, .6, .76)]))
     # Thorn Rush III: a leaping spin, sword out wide, landing low.
     S3 = '2H_Melee_Attack_Spin'
     made.append(P.clip('SnS_Rush_3', [
-        (0, S3, 0, pose(-.05, take, lean=6)), (.14, S3, .25, pose(.12, air, lean=-2)), (.26, S3, .5, pose(.2, air, lean=0)),
-        (.38, S3, .72, pose(.1, air, .6, lean=6)), (.5, S3, .86, pose(0, land, lean=12)), (.8, S3, 1, pose(0, None, lean=2))]))
-    # Shield Crash: jump high with the shield raised overhead in both... the shield arm, then slam it down on landing.
+        (0, S3, 0, pose(0, take, lean=6)), (.14, S3, .25, pose(.12, air, lean=-2)), (.26, S3, .5, pose(.2, air, lean=0)),
+        (.38, S3, .72, pose(.1, air, .6, lean=6)), (.5, S3, .86, pose(0, st=LAND, lean=12)), (.8, S3, 1, pose(0, None, lean=2))]))
+    # Shield Crash: jump high with the shield raised overhead, then slam it down on landing.
     B = 'Block_Attack'
     made.append(P.clip('SnS_Shield_Crash', [
-        (0, B, 0, pose(-.06, take, lean=6, shield=False, fn=lambda P: _shield_up(P, .2))),
+        (0, B, 0, pose(0, take, lean=6, shield=False, fn=lambda P: _shield_up(P, .2))),
         (.16, B, .1, pose(.18, air, lean=-10, shield=False, fn=lambda P: _shield_up(P, .9))),
         (.3, B, .2, pose(.26, air, lean=-12, shield=False, fn=lambda P: _shield_up(P, 1.0, .2))),
         (.38, B, .4, pose(.1, air, .6, lean=12, shield=False, fn=lambda P: _shield_up(P, .1, .8))),
-        (.44, B, .5, pose(-.04, land, lean=26, shield=False, fn=lambda P: _shield_up(P, -.45, .9))),
-        (.68, B, .7, pose(-.06, land, lean=22, shield=False, fn=lambda P: _shield_up(P, -.4, .8))),
+        (.44, B, .5, pose(0, st=LAND, lean=26, shield=False, fn=lambda P: _shield_up(P, -.45, .9))),
+        (.68, B, .7, pose(0, st=LAND, lean=22, shield=False, fn=lambda P: _shield_up(P, -.4, .8))),
         (1.0, B, 1, pose(0, None, lean=4))]))
     # Rending Leap: a low lunge onto the wound, a diagonal cut, then a back-hand horizontal cut through it.
     H2 = '1H_Melee_Attack_Slice_Horizontal'
     made.append(P.clip('SnS_Rend', [
-        (0, R, 0, pose(-.08, take, lean=14)), (.1, R, .2, pose(.06, air, .7, lean=2)), (.2, R, .45, pose(0, land, lean=16)),
-        (.32, R, .7, pose(-.04, land, .7, lean=14)), (.42, H2, .25, pose(-.04, land, .7, lean=12, twist=-10)),
-        (.54, H2, .5, pose(-.03, land, .5, lean=10, twist=12)), (.7, H2, .75, pose(-.02, None, lean=6)), (1.0, H2, 1, pose(0, None))]))
-    # Piercing Rend: braced behind the tower shield, three driving thrusts into the wound.
+        (0, R, 0, pose(0, take, lean=14)), (.1, R, .2, pose(.06, air, .7, lean=2)), (.2, R, .45, pose(0, st=LUNGE, lean=16)),
+        (.32, R, .7, pose(0, st=LUNGE, lean=14)), (.42, H2, .25, pose(0, st=THROUGH, lean=12, twist=-10)),
+        (.54, H2, .5, pose(0, st=THROUGH, lean=10, twist=12)), (.7, H2, .75, pose(0, None, lean=6)), (1.0, H2, 1, pose(0, None))]))
+    # Piercing Rend: braced behind the tower shield, three driving thrusts into the wound (lunging on each).
     T = '1H_Melee_Attack_Stab'
-    keys = [(0, T, 0, pose(-.05, land, .6, lean=12))]
+    keys = [(0, T, 0, pose(0, st=BRACE, lean=12))]
     for i, t0 in enumerate((.12, .34, .56)):
-        keys += [(t0, T, .3, pose(-.05, land, .6, lean=10 + 2 * i)), (t0 + .1, T, .52, pose(-.06, land, .6, lean=18 + 2 * i)), (t0 + .2, T, .75, pose(-.05, land, .6, lean=12))]
+        keys += [(t0, T, .3, pose(0, st=BRACE, lean=10 + 2 * i)), (t0 + .1, T, .52, pose(0, st=LUNGE, lean=18 + 2 * i)), (t0 + .2, T, .75, pose(0, st=BRACE, lean=12))]
     keys.append((1.1, T, 1, pose(0, None, lean=2)))
     made.append(P.clip('Lance_Rend', keys))
-    # Power clash: braced hard behind the shield, leaning in, the legs wide (looped, trembling a little).
-    made.append(P.clip('Hunt_Clash', [(t, 'Blocking', .5, pose(-.06, land, .8, lean=18 + (3 if k % 2 else -1), twist=(2 if k % 2 else -2)))
+    # Standoff: braced hard behind the shield, leaning in, the rear leg pushing (looped, trembling a little).
+    made.append(P.clip('Hunt_Clash', [(t, 'Blocking', .5, pose(0, st=BRACE, lean=18 + (3 if k % 2 else -1), twist=(2 if k % 2 else -2)))
                                        for k, t in enumerate((0, .1, .2, .3, .4))], loop=True))
-    # Spirit Rend: a low dash with the katana drawn up across the body, then a cut down through the wound.
+    # Ember Rend: a low dash with the katana drawn up across the body, then a cut down through the wound.
     K1, K2 = '2H_Melee_Attack_Slice', '2H_Melee_Attack_Chop'
     made.append(P.clip('Katana_Rend', [
-        (0, K1, 0, pose(-.07, take, lean=16, shield=False)), (.12, K1, .3, pose(-.02, land, .7, lean=10, shield=False)),
-        (.22, K1, .55, pose(0, None, lean=-2, twist=12, shield=False)), (.34, K2, .3, pose(.04, None, lean=-6, shield=False)),
-        (.46, K2, .55, pose(-.05, land, lean=20, shield=False)), (.62, K2, .75, pose(-.05, land, .6, lean=16, shield=False)),
+        (0, K1, 0, pose(0, take, lean=16, shield=False)), (.12, K1, .3, pose(0, st=LOADED, lean=10, shield=False)),
+        (.22, K1, .55, pose(0, st=THROUGH, lean=-2, twist=12, shield=False)), (.34, K2, .3, pose(.04, None, lean=-6, shield=False)),
+        (.46, K2, .55, pose(0, st=LUNGE, lean=20, shield=False)), (.62, K2, .75, pose(0, st=LUNGE, lean=16, shield=False)),
         (.9, K2, 1, pose(0, None, lean=4, shield=False))]))
-    # Thorn Tracer: a deep, braced draw with the bow canted a little, and a hard release.
+    # Seeker Thorn: a deep, braced draw from the archer's wide base, the bow canted a little, and a hard release.
     made.append(P.clip('Bow_Tracer', [
-        (0, 'Idle', 0, pose(-.02, land, .4, shield=False, fn=bow_pose(.9, cant=25, lean=6))),
-        (.3, 'Idle', .3, pose(-.03, land, .5, shield=False, fn=bow_pose(1.3, cant=25, lean=10))),
-        (.36, 'Idle', .35, pose(-.03, land, .5, shield=False, fn=bow_pose(.15, cant=25, lean=6, release=1))),
-        (.55, 'Idle', .5, pose(-.02, land, .4, shield=False, fn=bow_pose(.3, cant=20, release=.5))),
-        (.8, 'Idle', .7, pose(0, None, shield=False, fn=bow_pose(.7)))]))
+        (0, 'Idle', 0, pose(0, st=ARCHER, shield=False, fn=bow_pose(.9, cant=25, lean=6))),
+        (.3, 'Idle', .3, pose(0, st=ARCHER, shield=False, fn=bow_pose(1.3, cant=25, lean=10))),
+        (.36, 'Idle', .35, pose(0, st=ARCHER, shield=False, fn=bow_pose(.15, cant=25, lean=6, release=1))),
+        (.55, 'Idle', .5, pose(0, st=ARCHER, shield=False, fn=bow_pose(.3, cant=20, release=.5))),
+        (.8, 'Idle', .7, pose(0, st=ARCHER, shield=False, fn=bow_pose(.7)))]))
     P.use(None)
     return made

@@ -201,7 +201,9 @@ namespace FH.Game
         /// <summary>LT held (Hunter's Sight), then Y: the weapon's Rend. Returns once the move has run.</summary>
         IEnumerator SightRend()
         {
-            Hold(PadButton.LT); yield return Wait(.35f);
+            Hold(PadButton.LT);
+            yield return Until(() => F.Sight, 2f);           // game time, not a fixed real wait: a busy GPU stretches frames
+            yield return Frames(2);
             Pad(PadButton.LT | PadButton.Y); yield return Frames(3);
             Hold(PadButton.LT); yield return Frames(2);
             yield return Until(() => F.Current != null && F.Current.rend, 1f);
@@ -228,7 +230,7 @@ namespace FH.Game
 
             // Hunter's Sight.
             Face(m, 2.1f); yield return Frames(2);
-            Hold(PadButton.LT); yield return Wait(.4f);
+            Hold(PadButton.LT); yield return Until(() => F.Sight, 2f);
             Check("holding LT with the weapon out is Hunter's Sight (the camera closes in)", F.Sight && S.CameraRig.Sight, F.LastEvent);
             yield return Wait(.3f);
             yield return Snap("w01-sight");
@@ -256,7 +258,8 @@ namespace FH.Game
             Note("fixture: two more wounds opened directly on the monster for the Unravel check");
             for (int k = 0; k < 2; k++)
             {
-                m.Brain.Settle(); Face(m, 2.1f); yield return Frames(2);
+                m.Brain.Settle(); m.Brain.Health = m.Def.maxHealth;    // the Rends hit hard: keep it standing for the third tear
+                Face(m, 2.1f); yield return Frames(2);
                 var box = OpenWoundFixture(m, k + 1);
                 int t0 = m.Wounds.Torn;
                 yield return SightRend();
@@ -395,8 +398,10 @@ namespace FH.Game
                 var rends = H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>();
                 var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
                 float ground = S.GroundHeight(H.transform.position);
+                var headBone = WorldKit.Find(H.Visual, "head");
+                string parts = string.Join("; ", rends.Select(r => r.name + (r.enabled ? "" : " (off)") + " " + r.bounds.size.y.ToString("0.00")));
                 Check(body + " hunter: the character sheet's model is worn, standing on the ground at full height", H.Look == want && Mathf.Abs(b.min.y - ground) < .15f && b.size.y > 1.55f,
-                      H.Look + ", height " + b.size.y.ToString("0.00") + " m, lowest point " + (b.min.y - ground).ToString("0.00") + " m from the ground");
+                      H.Look + ", height " + b.size.y.ToString("0.00") + " m, lowest point " + (b.min.y - ground).ToString("0.00") + " m from the ground, head bone " + (headBone ? (headBone.position.y - ground).ToString("0.00") : "-") + " m, clip " + H.Anim.Current + ", meshes: " + parts);
                 var clips = new[] { "Hunt_Jog", "Hunt_Sprint", "Bow_Draw", "Katana_Iai", "Lance_Charge", "Dodge_Forward", "Dodge_Right", "Ride_Idle", "2H_Melee_Attack_Chop", "1H_Melee_Attack_Chop" };
                 Check(body + " hunter: every clip of the hunt moveset plays on the new body", clips.All(H.Anim.Has), string.Join(", ", clips.Where(c => !H.Anim.Has(c))));
                 Check(body + " hunter: sword, shield, lance, bow and katana sit in the new hands", new[] { "1H_Sword", "Round_Shield", "Hunt_Lance", "Hunt_Bow", "Hunt_Katana" }.All(n => WorldKit.Find(H.Visual, n)));
