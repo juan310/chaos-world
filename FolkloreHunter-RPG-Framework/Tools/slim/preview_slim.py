@@ -8,8 +8,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import choreo, moves
 argv = sys.argv[sys.argv.index('--') + 1:]
 fbx, out = argv[0], Path(argv[1]); out.mkdir(parents=True, exist_ok=True)
-m2m = argv[argv.index('--m2m') + 1] if '--m2m' in argv else None
-names = [a for i, a in enumerate(argv[2:], 2) if a != '--m2m' and (i < 1 or argv[i - 1] != '--m2m')]
+def opt(flag): return argv[argv.index(flag) + 1] if flag in argv else None
+m2m, mbj, soma = opt('--m2m'), opt('--mb'), opt('--soma')
+flags = ('--m2m', '--mb', '--soma')
+names = [a for i, a in enumerate(argv[2:], 2) if a not in flags and argv[i - 1] not in flags]
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=fbx)
@@ -44,7 +46,11 @@ sh = bar('Shield', 'handslot.l', .05, .6, (.5, .25, .1, 1))
 
 rig = choreo.Rig(arm)
 clips = []
-if m2m:
+if mbj:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'motionbricks'))
+    import mb_bridge
+    clips = [c for c in mb_bridge.load(rig, mb_bridge.Soma(soma), mbj) if not names or c.name in names]
+elif m2m:
     import retarget
     src = retarget.Source(m2m)
     clips = retarget.apply(rig, src, only=names or None)
