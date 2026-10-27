@@ -434,6 +434,11 @@ namespace FH.Game
                 Release(); yield return Wait(.4f);
                 Check(body + " hunter: full stick jogs at the hunt pace", jog > 2.8f, jog.ToString("0.00") + " m/s");
                 yield return CaptureHunterPoses(body);
+                S.ProvingRig.SetWeapon("sword_shield"); F.SetSheathed(false); yield return Frames(3);
+                H.enabled = false;
+                yield return Closeups(H.Visual, H.transform, H.Anim, HunterController.LookHeight, "Closeups", body.ToString().ToLower(),
+                    new[] { ("Idle", 0f), ("1H_Melee_Attack_Chop", .3f), ("SnS_Rush_1", .4f), ("Katana_Iai", .4f), ("Bow_Draw", .6f), ("Lance_High_Thrust", .4f) });
+                H.enabled = true; H.Anim.Current = ""; H.Anim.Play("Idle"); F.SetSheathed(true); yield return Frames(2);
             }
             H.ApplyLook(Appearance.Models(Appearance.Male, 1));
             S.ProvingRig.SetWeapon("sword_shield");
@@ -497,32 +502,40 @@ namespace FH.Game
         /// winding up and striking, at the moment's pose (sampled, the worn body refreshed).</summary>
         IEnumerator Portraits(MonsterActor m)
         {
-            string folder = Path.Combine(root, "Monsters"); Directory.CreateDirectory(folder);
-            var keep = new List<(GameObject go, int layer)>();
-            foreach (var x in m.Visual.GetComponentsInChildren<Transform>(true)) { keep.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; }
-            var go = new GameObject("Monster review camera"); var cam = go.AddComponent<Camera>();
-            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.24f, .24f, .26f, 1);
-            cam.orthographic = true; cam.orthographicSize = m.Def.height * .62f;
-            var rt = new RenderTexture(560, 640, 24); cam.targetTexture = rt;
-            var light = new GameObject("Review light").AddComponent<Light>(); light.type = LightType.Directional; light.cullingMask = 1 << Layers.Review; light.intensity = 1.1f;
             m.enabled = false;
-            Vector3 c = m.transform.position + Vector3.up * m.Def.height * .5f;
-            foreach (var (clip, at) in new[] { ("Idle", 0f), ("Walking_A", .25f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Chop", .55f), ("Spellcast_Shoot", .5f) })
+            yield return Closeups(m.Visual, m.transform, m.Anim, m.Def.height, "Monsters", m.MonsterId,
+                new[] { ("Idle", 0f), ("Walking_A", .25f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Chop", .55f), ("Spellcast_Shoot", .5f) });
+            m.enabled = true;
+            m.Anim.Current = ""; m.Anim.Play("Idle");
+        }
+
+        /// <summary>Close views (front and side, plain background, its own light) of a character's model in chosen poses,
+        /// for review by eye (Captures/Proving/&lt;folder&gt;): texture detail, grips, gear, the coat.</summary>
+        IEnumerator Closeups(Transform visual, Transform root, AnimationDriver anim, float height, string folderName, string name, (string clip, float at)[] poses)
+        {
+            string folder = Path.Combine(this.root, folderName); Directory.CreateDirectory(folder);
+            var keep = new List<(GameObject go, int layer)>();
+            foreach (var x in visual.GetComponentsInChildren<Transform>(true)) { keep.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; }
+            var go = new GameObject("Review camera"); var cam = go.AddComponent<Camera>();
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.24f, .24f, .26f, 1);
+            cam.orthographic = true; cam.orthographicSize = height * .62f;
+            var rt = new RenderTexture(560, 640, 24) { antiAliasing = 4 }; cam.targetTexture = rt;
+            var light = new GameObject("Review light").AddComponent<Light>(); light.type = LightType.Directional; light.cullingMask = 1 << Layers.Review; light.intensity = 1.1f;
+            Vector3 c = root.position + Vector3.up * height * .5f;
+            foreach (var (clip, at) in poses)
             {
-                var st = m.Anim.State(clip); if (st == null) continue;
-                foreach (AnimationState o in m.Anim.Anim) { o.enabled = false; o.weight = 0; }
-                st.enabled = true; st.weight = 1; st.time = st.length * at; m.Anim.Anim.Sample();
-                foreach (var (view, dir) in new[] { ("front", m.transform.forward), ("side", m.transform.right) })
+                var st = anim.State(clip); if (st == null) continue;
+                foreach (AnimationState o in anim.Anim) { o.enabled = false; o.weight = 0; }
+                st.enabled = true; st.weight = 1; st.time = st.length * at; anim.Anim.Sample();
+                foreach (var (view, dir) in new[] { ("front", root.forward), ("side", root.right) })
                 {
                     cam.transform.position = c + dir * 6; cam.transform.LookAt(c);
-                    light.transform.rotation = Quaternion.LookRotation(-dir + Vector3.down * .6f + m.transform.right * .3f);
-                    yield return Render(cam, rt, Path.Combine(folder, m.MonsterId + "_" + clip + "_" + (int)(at * 100) + "_" + view + ".png"));
+                    light.transform.rotation = Quaternion.LookRotation(-dir + Vector3.down * .6f + root.right * .3f);
+                    yield return Render(cam, rt, Path.Combine(folder, name + "_" + clip + "_" + (int)(at * 100) + "_" + view + ".png"));
                 }
             }
-            m.enabled = true;
             foreach (var (o, layer) in keep) if (o) o.layer = layer;
             cam.targetTexture = null; rt.Release(); Destroy(rt); Destroy(go); Destroy(light.gameObject);
-            m.Anim.Current = ""; m.Anim.Play("Idle");
         }
 
         static IEnumerator Render(Camera cam, RenderTexture rt, string path)
@@ -1714,6 +1727,10 @@ namespace FH.Game
             {
                 var coat = S.Hound.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Select(r => r.sharedMaterial ? r.sharedMaterial.shader.name : "-").FirstOrDefault();
                 Check("the Briarhound wears the repaired coat (fur over the smeared atlas)", CharacterFactory.BriarCoatOn && coat == "Folklore/BriarhoundFurRepair", "shader " + coat);
+                S.Hound.enabled = false;
+                yield return Closeups(S.Hound.Visual, S.Hound.transform, S.Hound.Anim, HoundCompanion.Height * 1.4f, "Closeups", "briarhound",
+                    new[] { ("Idle", 0f), ("Walk", .3f), ("Gallop", .4f), ("Bite", .45f), ("Spin", .5f) });
+                S.Hound.enabled = true; S.Hound.Anim.Current = ""; S.Hound.Anim.Play("Idle");
             }
             if (hound)
             {
