@@ -28,6 +28,8 @@ Findings come in the usual kinds: confirmed, likely, uncertain, not completed.
 | `worldforge sandbox\|set\|build\|test\|report` | procedural environments from a recipe (the game's `WorldForge/` package), built and tested in the sandbox: walk, navigation, collision, mesh, camera, feet, lights, frame times, a survey map and a walk video. Also a page in Studio (Tools > WorldForge): edit, Build & test, Play, last test |
 | `hands <model> [--grips json]` | a model's finger grips (from `build_slim --fingers`) on each held piece: finger skin inside the piece, fingers clear of it, fingers stopped at their limits, with pictures of every grip |
 | `motionlib add\|list\|show` | the motion library: clips kept from any character file (Tripo, Mixamo, mocap) with pictures, length, loop and travel speed; `build_slim.py --lib-clips "<pack>:<clip>=<Game_Clip>"` puts them on any slim body through the retarget pose solver |
+| `bodycheck <model> [--baseline <report>]` | the gate every built body passes before the game gets it: pieces at their slots, height, held pieces in the body (mesh3d), skin tearing; with a baseline only regressions fail |
+| skin relaxer (`skinfix_blender.py`, `build_slim.py --skin-relax`) | bone weights smoothed only where the clips tear the skin (two rings round the torn vertices), measured again after each round, the best round kept; for auto-skinned bodies (Tripo) |
 
 The game's side:
 
