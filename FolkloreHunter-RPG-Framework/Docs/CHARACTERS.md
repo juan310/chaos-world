@@ -35,6 +35,17 @@ unchanged from that project) on their own slim, human-proportioned skeleton, wit
   show the model's own armour and colours), and the profiles are projected onto only the side-facing surface each one
   sees, inside the profile's figure, baked into a copy of the texture (`build_slim.py --texture`). Done for the Grave
   Warden (`SourceArt/Repaired/GraveWarden_sides_texture.png`); the Codex originals are unchanged.
+- The 3D mesh check (`Tools/slim/mesh_check.py`, the SightForge mesh system's idea for 3D models): every clip of an
+  exported model is played and its skinned body measured against its rest shape: triangles stretched past 1.7x or
+  collapsed under 0.45x (by bone), held weapons inside the body (ray parity), the body under the floor. Thresholds are
+  calibrated on the calm clips (idle, walk: 0.4-0.8 % of the vertices stretch with the cloth). It found the jump dashes,
+  dodges, katana spins and leap slash sinking 8-27 cm into the ground: the clip baker now lifts any pose whose feet,
+  toes or knees would go under the floor (`choreo.grounded`). `build_slim.py --smooth` softens the auto-rig's sharp
+  weight hand-over at shoulders, hips and spine, measured with the same check.
+- Claude Eyes reviews of the live game (SightForge's AI joint finder on player pictures): `Tools/review_grips_sightforge.py`
+  (the hand on the grip below the guard, every held weapon, hunters and skeletons) and `Tools/review_bow_sightforge.py`
+  (the real draw and release: bow hand on the grip, bow upright, string inward, arrow on the string and across the bow,
+  draw hand at the nock, anchor at the face).
 - The hairstyles are the Codex prototype's strand builder (`HunterHair`), fitted to the slim head (`HairFit`).
 - Review renders: `Tools/slim/preview_slim.py` (clips before export), `Tools/slim/render_fbx.py` (the exported model).
 
