@@ -388,11 +388,20 @@ if PROPS:
         prop.name = OUT + '_' + pname
         lo, hi, ext = axes_of(prop)
         order = sorted(range(3), key=lambda k: -ext[k])
-        if kind == 'shield':
+        if kind == 'helm':
+            # a helm over the skull: as wide as `frac` times the head (the vertices weighted to the head bone)
+            hg = body.vertex_groups.get('head')
+            hv = [body.matrix_world @ v.co for v in body.data.vertices if hg and any(g.group == hg.index and g.weight > .5 for g in v.groups)]
+            if not hv: hv = [rig.matrix_world @ rig.data.bones['head'].head_local]
+            h_lo = Vector([min(p[i] for p in hv) for i in range(3)]); h_hi = Vector([max(p[i] for p in hv) for i in range(3)])
+            size = ext[0]                                   # the picture faces the viewer: its width runs along X
+            k = frac * max(.05, h_hi.x - h_lo.x) / size
+        elif kind == 'shield':
             size = max(ext[order[0]], ext[order[1]])
+            k = frac * (k_hi - k_lo) / size
         else:
             size = ext[order[0]]
-        k = frac * (k_hi - k_lo) / size
+            k = frac * (k_hi - k_lo) / size
         prop.data.transform(Matrix.Scale(k, 4))
         lo, hi, ext = axes_of(prop)
         centre = (lo + hi) / 2
@@ -400,7 +409,13 @@ if PROPS:
         slot = rig.matrix_world @ rig.data.bones[bone].matrix_local
         s3 = slot.to_3x3()
         E = [Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))]
-        if kind == 'shield':
+        if kind == 'helm':
+            # the helm's picture faces the viewer as the body does (-Y): no turn; centred over the head, its rim
+            # `gripf` of the head's height above the head's lowest point (the jaw stays out below it)
+            src = dst = Matrix.Identity(3)
+            anchor_src = Vector((centre.x, centre.y, lo.z))
+            anchor_dst = Vector(((h_lo.x + h_hi.x) / 2, (h_lo.y + h_hi.y) / 2, h_lo.z + gripf * (h_hi.z - h_lo.z)))
+        elif kind == 'shield':
             # the item picture faces the viewer: its face looks along -Y, its top is +Z
             src = basis(-E[1], E[2]); n = s3 @ Vector(R['normalDirLocal'])
             dst_c = slot @ Vector(R['centreLocal'])

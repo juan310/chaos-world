@@ -68,3 +68,23 @@ if ($Stage -in 'all', 'weapons') {
         "WEAPON $n $($fbx.Name) $($alb.Name)"
     }
 }
+
+# 0.9: the skeletons and the Grave Warden reconstructed for the Codex combat test (Forge rigs, weight-repaired where
+# Codex repaired them, the Warden's separate horned helm), copied read-only into a staging folder and built onto the
+# game's own monster skeleton and clips with our weapons, like the monsters stage above.
+if ($Stage -in 'codexmonsters') {
+    $cx = 'C:\Users\juana\Documents\FolkloreHunter-CombatTest-Codex\SourceArt'
+    $st = 'C:\AW\briarhound_work\codex_bodies'
+    foreach ($b in @(@('Boneguard', "$cx\Skeletons\Boneguard\Model"), @('IronRevenant', "$cx\Skeletons\IronRevenant\Model\WeightRepair"),
+                     @('GraveHexer', "$cx\Skeletons\GraveHexer\Model\WeightRepair"), @('GraveWardenBody', "$cx\GraveWarden\Body\Model\WeightRepair"),
+                     @('WardenHelmet', "$cx\GraveWarden\Helmet\Model"))) {
+        New-Item -ItemType Directory -Force "$st\$($b[0])" | Out-Null
+        foreach ($f in 'rigged.glb', 'model.glb') { if (Test-Path "$($b[1])\$f") { Copy-Item "$($b[1])\$f" "$st\$($b[0])\$f" -Force } }
+    }
+    $sw = Latest 'static_WarriorSword_*'; $ss = Latest 'static_WarriorShield_*'; $kg = Latest 'static_KnightGreatsword_*'
+    $ms = Latest 'static_MageStaff_*'; $wg = Latest 'static_WardenGreatsword_*'
+    Blend 'Gravebound.blend' @("$st\Boneguard", 'Gravebound_Warrior', '1', '--monster', '--prop', "$sw|handslot.r|blade|0.44|0.07|Sword", '--prop', "$ss|handslot.l|shield|0.34|0.5|Shield") 'Gravebound_Warrior'
+    Blend 'Gravebound.blend' @("$st\IronRevenant", 'Gravebound_Knight', '1', '--monster', '--prop', "$kg|handslot.r|blade|0.64|0.1|GreatSword") 'Gravebound_Knight'
+    Blend 'Gravebound.blend' @("$st\GraveHexer", 'Gravebound_Mage', '1', '--monster', '--prop', "$ms|handslot.r|staff|1.02|0.42|Staff") 'Gravebound_Mage'
+    Blend 'Gravebound.blend' @("$st\GraveWardenBody", 'GraveWarden', '1', '--monster', '--prop', "$wg|handslot.r|blade|0.6|0.08|GreatSword", '--prop', "$st\WardenHelmet|head|helm|1.35|0.35|Helmet") 'GraveWarden'
+}

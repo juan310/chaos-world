@@ -139,7 +139,7 @@
         { "id": "sweep", "anim": "1H_Melee_Attack_Slice_Diagonal", "telegraph": 0.7, "active": 0.26, "recovery": 1.1, "damage": 19, "range": 2.8, "radius": 1.4, "cooldown": 1.5, "animSpeed": 0.85, "damageType": "Slash" }
       ],
       "parts": [
-        { "id": "helmet", "name": "Warden's Helm", "bone": "head", "radius": 0.36, "damageMultiplier": 0.6, "breakHealth": 55, "breakMesh": "Skeleton_Warrior_Helmet", "breakLootTable": "lt_warden_helm" },
+        { "id": "helmet", "name": "Warden's Helm", "bone": "head", "radius": 0.36, "damageMultiplier": 0.6, "breakHealth": 55, "breakMesh": "Helmet", "breakLootTable": "lt_warden_helm" },
         { "id": "skull", "name": "Exposed Skull", "bone": "head", "radius": 0.36, "damageMultiplier": 1.9, "weakPoint": true, "requiresBrokenPart": "helmet" },
         { "id": "body", "name": "Ribcage", "bone": "chest", "radius": 0.42, "height": 1.1, "damageMultiplier": 1.0 },
         { "id": "legs", "name": "Legs", "bone": "hips", "radius": 0.36, "height": 1.0, "damageMultiplier": 0.8 }
