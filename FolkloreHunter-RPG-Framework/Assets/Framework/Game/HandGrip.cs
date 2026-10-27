@@ -79,8 +79,8 @@ namespace FH.Game
                         // rig has one, else the way the bone before it points)
                         var b = h.Bones[f, k];
                         var next = k < 2 ? h.Bones[f, k + 1] : (b.childCount > 0 ? b.GetChild(0) : null);
-                        var d = next ? (next.position - b.position).normalized : (b.position - h.Bones[f, k - 1].position).normalized;
-                        var axW = Vector3.Cross(d, nn).normalized;
+                        var dir = next ? (next.position - b.position).normalized : (b.position - h.Bones[f, k - 1].position).normalized;
+                        var axW = Vector3.Cross(dir, nn).normalized;
                         h.Axis[f, k] = Quaternion.Inverse(b.rotation) * axW;
                     }
                 }
