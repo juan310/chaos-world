@@ -364,7 +364,9 @@ namespace FH.Game
             }
             S.ProvingRig.SetWeapon("bow"); yield return Frames(3);
             m = Fresh(Target()); Face(m, 9f); yield return Frames(2);
-            yield return Tap(PadButton.Y, 2); yield return UntilNeutral();
+            yield return Tap(PadButton.Y, 2);
+            yield return Until(() => !F.Sheathed, 2f);   // the bow waits 70 ms to tell a tap from Y+B: let the draw happen first
+            yield return UntilNeutral();
             Face(m, 9f); yield return Frames(2);
             OpenWoundFixture(m);
             int bt0 = m.Wounds.Torn, planted0 = F.TracersPlanted, bursts0 = F.Tracer.Bursts;

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace FH.Game
 {
@@ -21,17 +22,22 @@ namespace FH.Game
 
         static Transform g;
         static Vector3 o;
+        static CryptLook look;
         static readonly Dictionary<string, Mesh> tiled = new Dictionary<string, Mesh>();
 
         public static void Build(Transform root, WorldRefs refs)
         {
             o = refs.CryptOrigin; tiled.Clear();
             g = new GameObject("Warden's Crypt - instanced dungeon").transform; g.SetParent(root); g.position = o;
+            look = g.gameObject.AddComponent<CryptLook>();
             Hallway();
             Door();
             Lair();
             Altar();
             Fog();
+            // The wet stone reflects the fires: one box-projected probe per room, drawn when the hunter first comes down.
+            Probe("Hallway reflections", new Vector3(0, HallFloor + 3.5f, (DoorZ + HallStart) / 2), new Vector3(HallHalfWidth * 2 + 1, 7.5f, DoorZ - HallStart + 1));
+            Probe("Lair reflections", LairCentre + new Vector3(0, 5f, 2.5f), new Vector3(WallRadius * 2, 11f, 34f));
         }
 
         // ---------------- materials ----------------
@@ -42,6 +48,9 @@ namespace FH.Game
             // a picture made from the concept art on this PC (Models/Lair/<name>_art, e.g. the banner) wins over the drawn one
             m.mainTexture = Resources.Load<Texture2D>("Models/Lair/" + tex + "_art") ?? Resources.Load<Texture2D>(Tex + tex);
             m.SetFloat("_Glossiness", gloss);
+            // relief: a normal map beside the texture (<tex>_n), when there is one
+            var bump = Resources.Load<Texture2D>("Models/Lair/" + tex + "_art_n") ?? Resources.Load<Texture2D>(Tex + tex + "_n");
+            if (bump) { m.SetTexture("_BumpMap", bump); m.SetFloat("_BumpScale", 1.1f); m.EnableKeyword("_NORMALMAP"); }
             if (cutout)
             {
                 m.SetFloat("_Mode", 1); m.SetFloat("_Cutoff", .5f); m.EnableKeyword("_ALPHATEST_ON");
@@ -52,7 +61,7 @@ namespace FH.Game
             return m;
         }
 
-        static Material Floor => Textured("Crypt cobbles", "cobble_floor", .55f);          // wet: the braziers glint in it
+        static Material Floor => Textured("Crypt cobbles", "cobble_floor", .8f);           // wet: the fires glint in it (with the probes)
         static Material Wall => Textured("Crypt wall stone", "wall_stone", .12f);
         static Material Stone => Textured("Crypt dressed stone", "wall_stone", .2f, false, new Color(.82f, .78f, .74f));
         static Material Iron => WorldKit.Mat("Crypt iron", new Color(.16f, .15f, .15f), .7f);
@@ -119,9 +128,12 @@ namespace FH.Game
         {
             var f = new GameObject("Brazier fire").transform; f.SetParent(parent ? parent : g, false); f.position = o + local;
             var ps = f.gameObject.AddComponent<ParticleSystem>();
-            var main = ps.main; main.startLifetime = .7f; main.startSpeed = .9f * size; main.startSize = .55f * size; main.maxParticles = 60;
+            // tongues of flame: many short-lived, stretched along their rise, licking about (noise)
+            var main = ps.main; main.startLifetime = new ParticleSystem.MinMaxCurve(.4f, .8f); main.startSpeed = new ParticleSystem.MinMaxCurve(1.0f * size, 1.9f * size);
+            main.startSize = new ParticleSystem.MinMaxCurve(.32f * size, .62f * size); main.maxParticles = 110;
             main.startColor = new Color(1f, .62f, .25f, .9f); main.simulationSpace = ParticleSystemSimulationSpace.World; main.gravityModifier = -.15f;
-            var em = ps.emission; em.rateOverTime = 34;
+            var em = ps.emission; em.rateOverTime = 70;
+            var nz = ps.noise; nz.enabled = true; nz.strength = .45f; nz.frequency = 1.6f; nz.scrollSpeed = 1.2f;
             var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = .22f * size; sh.rotation = new Vector3(-90, 0, 0);
             var col = ps.colorOverLifetime; col.enabled = true;
             var grad = new Gradient();
@@ -131,9 +143,39 @@ namespace FH.Game
             var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1, AnimationCurve.Linear(0, 1, 1, .3f));
             var r = f.GetComponent<ParticleSystemRenderer>();
             r.sharedMaterial = FireMat;
+            r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = .1f; r.lengthScale = 1.5f;
+            Embers(f, size);
             var l = new GameObject("Brazier light").AddComponent<Light>(); l.transform.SetParent(f, false); l.transform.localPosition = Vector3.up * .5f;
             l.type = LightType.Point; l.color = new Color(1f, .55f, .22f); l.range = 9 * light; l.intensity = 2.4f * light; l.shadows = LightShadows.None;
             f.gameObject.AddComponent<BrazierFlame>().Light = l;
+            if (look) look.Fires.Add(l);
+        }
+
+        /// <summary>Sparks rising from a fire, drifting and winking out.</summary>
+        static void Embers(Transform fire, float size)
+        {
+            var e = new GameObject("Embers").transform; e.SetParent(fire, false);
+            var ps = e.gameObject.AddComponent<ParticleSystem>();
+            var main = ps.main; main.startLifetime = new ParticleSystem.MinMaxCurve(1.4f, 2.8f); main.startSpeed = new ParticleSystem.MinMaxCurve(.5f, 1.3f);
+            main.startSize = new ParticleSystem.MinMaxCurve(.025f, .06f); main.maxParticles = 40; main.gravityModifier = -.04f;
+            main.startColor = new Color(1f, .55f, .18f, 1f); main.simulationSpace = ParticleSystemSimulationSpace.World;
+            var em = ps.emission; em.rateOverTime = 7 * size;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = .25f * size; sh.rotation = new Vector3(-90, 0, 0);
+            var nz = ps.noise; nz.enabled = true; nz.strength = .6f; nz.frequency = .8f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(new[] { new GradientColorKey(new Color(1, .8f, .4f), 0), new GradientColorKey(new Color(1, .35f, .08f), 1) },
+                         new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(.9f, .6f), new GradientAlphaKey(0, 1) });
+            col.color = grad;
+            e.GetComponent<ParticleSystemRenderer>().sharedMaterial = FireMat;
+        }
+
+        static void Probe(string name, Vector3 local, Vector3 size)
+        {
+            var p = new GameObject(name).AddComponent<ReflectionProbe>(); p.transform.SetParent(g, false); p.transform.position = o + local;
+            p.mode = ReflectionProbeMode.Realtime; p.refreshMode = ReflectionProbeRefreshMode.ViaScripting; p.timeSlicingMode = ReflectionProbeTimeSlicingMode.NoTimeSlicing;
+            p.size = size; p.boxProjection = true; p.resolution = 256; p.hdr = true; p.importance = 2; p.intensity = 1.1f;
+            if (look) look.Probes.Add(p);
         }
 
         static Material FireMat
@@ -162,7 +204,7 @@ namespace FH.Game
             Fire(local + Vector3.up * 1.48f, 1f, 1f);
         }
 
-        static void Candles(Vector3 local, int count, float spread)
+        static void Candles(Vector3 local, int count, float spread, bool lit = true)
         {
             var rng = new System.Random((int)(local.x * 31 + local.z * 7));
             for (int i = 0; i < count; i++)
@@ -172,6 +214,7 @@ namespace FH.Game
                 WorldKit.Cylinder("Candle", p + Vector3.up * h * .5f, .045f, h, Wax, g);
                 WorldKit.Orb("Candle flame", p + Vector3.up * (h + .05f), .035f, WorldKit.Glow(new Color(1f, .7f, .3f), 4), g);
             }
+            if (!lit) return;                                   // a small cluster: its flames, no light of its own
             var l = new GameObject("Candle light").AddComponent<Light>(); l.transform.SetParent(g, false); l.transform.position = o + local + Vector3.up * .5f;
             l.type = LightType.Point; l.color = new Color(1f, .65f, .3f); l.range = 3.5f; l.intensity = 1.2f;
         }
@@ -234,7 +277,8 @@ namespace FH.Game
                     {
                         Brazier(new Vector3(s * (HallHalfWidth - 1.1f), HallFloor, z + 2.3f), s > 0 ? -90 : 90);
                         Banner(new Vector3(s * (HallHalfWidth - .02f), HallFloor + 4.6f, z + 2.3f), s > 0 ? -90 : 90);
-                        Candles(new Vector3(s * (HallHalfWidth - .6f), HallFloor, z + 1.2f), 5, .25f);
+                        Candles(new Vector3(s * (HallHalfWidth - .6f), HallFloor, z + 1.2f), 7, .28f);
+                        Candles(new Vector3(s * (HallHalfWidth - .7f), HallFloor, z + 3.4f), 4, .2f, false);
                     }
                     if (i < 3) Chain(new Vector3(s * (HallHalfWidth - .2f), HallFloor + 6.6f, z), new Vector3(s * (HallHalfWidth - .2f), HallFloor + 6.6f, z + 4.6f), .9f);
                 }
@@ -364,8 +408,10 @@ namespace FH.Game
                 TiledBox("Altar sarcophagus", new Vector3(0, top + .55f, zd), new Vector3(2.8f, 1.1f, 1.5f), Stone, 1);
                 TiledBox("Sarcophagus lid", new Vector3(0, top + 1.18f, zd), new Vector3(3f, .16f, 1.7f), Stone, 1);
             }
-            Candles(new Vector3(-2.2f, top, zd - 1.2f), 7, .4f);
-            Candles(new Vector3(2.2f, top, zd - 1.2f), 7, .4f);
+            Candles(new Vector3(-2.2f, top, zd - 1.2f), 9, .4f);
+            Candles(new Vector3(2.2f, top, zd - 1.2f), 9, .4f);
+            for (int i = 0; i < 5; i += 2)                 // votives at the ends of the altar steps
+                foreach (int s in new[] { -1, 1 }) Candles(new Vector3(s * (3.5f - i * .2f), .3f * (i + 1), z0 + i * .7f), 4, .15f, false);
             foreach (int s in new[] { -1, 1 })
             {
                 KnightStatue(new Vector3(s * 4.1f, top, zd + .6f), 180, 6.2f);
@@ -377,7 +423,16 @@ namespace FH.Game
             TiledBox("Arch left", new Vector3(-1.9f, top + 3f, zd + 1.9f), new Vector3(.5f, 6f, .5f), Stone, 1.2f);
             TiledBox("Arch right", new Vector3(1.9f, top + 3f, zd + 1.9f), new Vector3(.5f, 6f, .5f), Stone, 1.2f);
             TiledBox("Arch top", new Vector3(0, top + 6.3f, zd + 1.9f), new Vector3(4.4f, .6f, .5f), Stone, 1.2f);
-            WorldKit.Box("Arch window", o + new Vector3(0, top + 3.6f, zd + 2.0f), new Vector3(3.2f, 5.2f, .05f), WorldKit.Glow(new Color(.35f, .4f, .55f), .6f), g);
+            // the window behind it: night sky through iron tracery, a cool rim light falling into the lair (the pictures' blue arches)
+            WorldKit.Box("Arch window", o + new Vector3(0, top + 3.6f, zd + 2.05f), new Vector3(3.2f, 5.2f, .05f), WorldKit.Glow(new Color(.2f, .26f, .4f), .45f), g);
+            WorldKit.Box("Window mullion", o + new Vector3(0, top + 3.6f, zd + 1.98f), new Vector3(.14f, 5.2f, .08f), Iron, g);
+            for (int i = 0; i < 3; i++) WorldKit.Box("Window transom", o + new Vector3(0, top + 2f + i * 1.6f, zd + 1.98f), new Vector3(3.2f, .12f, .08f), Iron, g);
+            foreach (int s in new[] { -1, 1 })
+                TiledBox("Window pointed head", new Vector3(s * .8f, top + 6.05f, zd + 1.97f), new Vector3(1.9f, .3f, .3f), Stone, 1, false, Quaternion.Euler(0, 0, s * -28));
+            var moon = new GameObject("Moonlight through the window").AddComponent<Light>(); moon.transform.SetParent(g, false);
+            moon.transform.position = o + new Vector3(0, top + 6f, zd + 3.5f); moon.transform.LookAt(o + LairCentre);
+            moon.type = LightType.Spot; moon.spotAngle = 75; moon.range = 32; moon.intensity = 1.4f; moon.color = new Color(.5f, .6f, .9f);
+            moon.shadows = LightShadows.Soft; moon.shadowStrength = .7f;
             foreach (int s in new[] { -1, 1 })
                 TiledBox("Altar side wall", new Vector3(s * 8f, 5.5f, zd + .15f), new Vector3(.8f, 11f, 4.5f), Wall, 2.5f);
         }

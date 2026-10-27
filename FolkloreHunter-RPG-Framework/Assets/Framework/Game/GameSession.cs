@@ -68,6 +68,7 @@ namespace FH.Game
             Core = new GameCore(Db, GameCore.NewGameState(Db, "title"));
             Hunter.Initialize(this);
             CameraRig.Follow = Hunter.transform;
+            if (CameraRig.Camera && !CameraRig.Camera.GetComponent<CameraGrade>()) CameraRig.Camera.gameObject.AddComponent<CameraGrade>();
             Ui.Initialize(this);
             EnterTitle();
             if (args.Contains("--verify-rpg")) gameObject.AddComponent<GameVerifier>();
@@ -441,9 +442,10 @@ namespace FH.Game
             if (below)
             {
                 // The Warden's crypt: dark stone lit by its braziers (warm, low ambient), as in the lair pictures.
-                RenderSettings.ambientSkyColor = new Color(.30f, .27f, .27f);
-                RenderSettings.ambientEquatorColor = new Color(.24f, .19f, .16f);
-                RenderSettings.ambientGroundColor = new Color(.12f, .09f, .07f);
+                // Dark enough that the fires make pools of light (the lair pictures), not so dark the floor disappears.
+                RenderSettings.ambientSkyColor = new Color(.16f, .15f, .19f);
+                RenderSettings.ambientEquatorColor = new Color(.15f, .11f, .09f);
+                RenderSettings.ambientGroundColor = new Color(.07f, .05f, .04f);
             }
             else
             {

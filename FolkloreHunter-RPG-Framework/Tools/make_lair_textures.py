@@ -172,4 +172,20 @@ for sx, sy in ((0, -1), (0, 1), (-1, 0), (1, 0)):          # flared arm ends
     else: d.polygon([(ex, ey), (ex - 40, ey + sy * 40), (ex + 40, ey + sy * 40)], fill=gold_c)
 d.ellipse((cx - 34, cy - 34, cx + 34, cy + 34), outline=gold_c, width=10)
 bimg.save(out / 'banner.png')
+
+
+# ---- normal maps for the stone (relief under the fire light): height from the picture's brightness, tiling gradients
+def normal_map(src, dst, strength=3.0, blur=1.4):
+    g = np.asarray(Image.open(src).convert('L').filter(ImageFilter.GaussianBlur(blur)), dtype=np.float32) / 255
+    dx = (np.roll(g, -1, 1) - np.roll(g, 1, 1)) * .5 * strength * 8
+    dy = (np.roll(g, -1, 0) - np.roll(g, 1, 0)) * .5 * strength * 8
+    n = np.dstack((-dx, dy, np.ones_like(g)))                 # +Y up in texture space (Unity's convention)
+    n /= np.linalg.norm(n, axis=2, keepdims=True)
+    Image.fromarray(((n * .5 + .5) * 255).astype(np.uint8)).save(dst)
+
+
+if __name__ == '__main__' or True:
+    normal_map(out / 'cobble_floor.png', out / 'cobble_floor_n.png', 3.2)
+    normal_map(out / 'wall_stone.png', out / 'wall_stone_n.png', 2.4)
+
 print('LAIR_EFFECTS', sorted(p.name for p in out.glob('*.png')))
