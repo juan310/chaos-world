@@ -13,13 +13,35 @@ namespace FH.WorldForge
     /// sees (sky: 1 in the open, about 0 deep in a cave; the shader darkens ambient light by it).</summary>
     public static class WFMesher
     {
+        /// <summary>One chunk's mesh data, made on a worker thread (Unity objects are made from it on the main thread).</summary>
+        public sealed class Chunk
+        {
+            public List<Vector3> V, N; public List<Vector4> T; public List<Color> C; public List<Vector2> UV, UV2; public List<int> Tri;
+        }
+
         public sealed class Result
         {
+            public readonly List<Chunk> Chunks = new List<Chunk>();
             public readonly List<Mesh> Meshes = new List<Mesh>();
             public readonly List<Bounds> ChunkBounds = new List<Bounds>();
             public int Vertices, Triangles, Samples;
             public float Seconds;
             public Bounds Domain;
+            public Sky Sky;
+
+            /// <summary>The chunks as Unity meshes (main thread only).</summary>
+            public void MakeMeshes()
+            {
+                Meshes.Clear(); ChunkBounds.Clear();
+                foreach (var c in Chunks)
+                {
+                    var m = new Mesh { name = "WorldForge chunk " + Meshes.Count };
+                    if (c.V.Count > 65000) m.indexFormat = IndexFormat.UInt32;
+                    m.SetVertices(c.V); m.SetNormals(c.N); m.SetTangents(c.T); m.SetColors(c.C); m.SetUVs(0, c.UV); m.SetUVs(1, c.UV2);
+                    m.SetTriangles(c.Tri, 0, true);
+                    Meshes.Add(m); ChunkBounds.Add(m.bounds);
+                }
+            }
         }
 
         public static Result Build(WFField field, Action<string> log = null)
@@ -148,14 +170,11 @@ namespace FH.WorldForge
                         }
                         mtri.Add(l);
                     }
-                var m = new Mesh { name = "WorldForge chunk " + res.Meshes.Count };
-                if (mv.Count > 65000) m.indexFormat = IndexFormat.UInt32;
-                m.SetVertices(mv); m.SetNormals(mnrm); m.SetTangents(mt); m.SetColors(mc); m.SetUVs(0, mu); m.SetUVs(1, mu2);
-                m.SetTriangles(mtri, 0, true);
-                res.Meshes.Add(m); res.ChunkBounds.Add(m.bounds);
+                res.Chunks.Add(new Chunk { V = mv, N = mnrm, T = mt, C = mc, UV = mu, UV2 = mu2, Tri = mtri });
             }
+            res.Sky = sky;
             res.Seconds = (float)(DateTime.Now - t0).TotalSeconds;
-            log?.Invoke($"{res.Meshes.Count} chunks in {res.Seconds:0.0} s");
+            log?.Invoke($"{res.Chunks.Count} chunks in {res.Seconds:0.0} s");
             return res;
         }
 

@@ -57,7 +57,7 @@ namespace FH.WorldForge
             WFEffects.Tex = WFTextures.Make(r.palette, r.seed);
             while (!task.IsCompleted) yield return null;
             if (err != null) { Debug.LogException(err); yield break; }
-            Result = res; Sky = WFMesher.SkyGrid(Field, r.min, r.max - r.min);
+            Result = res; Sky = res.Sky; Result.MakeMeshes();
             MakeTerrain();
             Physics.SyncTransforms();
             Atmosphere(r.atmosphere.time);
