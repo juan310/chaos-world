@@ -196,6 +196,7 @@ if '--fingers' in argv:
         (dest / (name + '_grips.json')).write_text(json.dumps(fd, indent=1))
         print('SLIM_GRIPS', dest / (name + '_grips.json'), flush=True)
     rig = choreo.Rig(arm)             # the bone lists again, fingers included
+    if '--fingers-only' in argv: sys.exit(0)        # trials of the finger detection: no clips, no export
 
 made = [] if villager else [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
 mb = opt('--mb'); soma = opt('--soma')

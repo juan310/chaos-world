@@ -39,11 +39,20 @@ def hand_vertices(body, side, thr=.3):
 
 
 def _adjacency(body, verts):
+    """mesh edges among the vertices, plus the seams welded: vertices at the same place (split along texture seams, so
+    the surface comes in many islands) are joined, which gives back the one surface the eye sees"""
     adj = {i: [] for i in verts}
     for e in body.data.edges:
         a, b = e.vertices
         if a in adj and b in adj:
             adj[a].append(b); adj[b].append(a)
+    same = {}
+    for i in verts:
+        c = body.data.vertices[i].co
+        same.setdefault((round(c.x * 1e4), round(c.y * 1e4), round(c.z * 1e4)), []).append(i)
+    for grp in same.values():
+        for j in grp[1:]:
+            adj[grp[0]].append(j); adj[j].append(grp[0])
     return adj
 
 
