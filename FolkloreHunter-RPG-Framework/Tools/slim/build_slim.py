@@ -36,16 +36,32 @@ body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name +
 smooth = int(opt('--smooth', '0'))
 if smooth:
     # the auto-rig's skin weights hand over too sharply at the shoulders, hips and spine: big swings tear the skin there
-    # (the 3D mesh check measured it). Smoothed between neighbouring vertices, normalised, at most 4 bones a vertex.
-    bpy.ops.object.select_all(action='DESELECT'); body.select_set(True); bpy.context.view_layer.objects.active = body
-    for g in ('upperarm.l', 'upperarm.r', 'shoulder.l', 'shoulder.r', 'upperleg.l', 'upperleg.r', 'hips', 'spine', 'chest'):
-        vg = body.vertex_groups.get(g)
-        if not vg: continue
-        body.vertex_groups.active_index = vg.index
-        bpy.ops.object.vertex_group_smooth(group_select_mode='ACTIVE', factor=.5, repeat=smooth, expand=.2)
-    bpy.ops.object.vertex_group_limit_total(group_select_mode='BONE_DEFORM', limit=4)
-    bpy.ops.object.vertex_group_normalize_all(group_select_mode='BONE_DEFORM', lock_active=False)
-    print('SLIM_SMOOTHED weights x%d' % smooth, flush=True)
+    # (the 3D mesh check measured it). Those bones' weights are averaged with the neighbouring vertices', then every
+    # vertex keeps its 4 strongest bones, normalised. (numpy: Blender's smoothing operator will not run in the background)
+    import numpy as np
+    me = body.data; V = len(me.vertices)
+    E = np.empty(len(me.edges) * 2, np.int64); me.edges.foreach_get('vertices', E); E = E.reshape(-1, 2)
+    deform = [g for g in body.vertex_groups if g.name in arm.data.bones]
+    col = {g.index: i for i, g in enumerate(deform)}
+    W = np.zeros((V, len(deform)))
+    for v in me.vertices:
+        for ge in v.groups:
+            if ge.group in col: W[v.index, col[ge.group]] = ge.weight
+    deg = np.bincount(E.ravel(), minlength=V).astype(float); deg[deg == 0] = 1
+    soft = [col[g.index] for g in deform if g.name in ('upperarm.l', 'upperarm.r', 'shoulder.l', 'shoulder.r', 'upperleg.l', 'upperleg.r', 'hips', 'spine', 'chest')]
+    for _ in range(smooth):
+        S = W[:, soft]
+        acc = np.zeros_like(S); np.add.at(acc, E[:, 0], S[E[:, 1]]); np.add.at(acc, E[:, 1], S[E[:, 0]])
+        W[:, soft] = S + .5 * (acc / deg[:, None] - S)
+    # 4 strongest, normalised
+    order = np.argsort(-W, axis=1); keep = np.zeros_like(W, bool); np.put_along_axis(keep, order[:, :4], True, axis=1)
+    W = np.where(keep, W, 0); tot = W.sum(1, keepdims=True); tot[tot == 0] = 1; W = W / tot
+    for g in deform:
+        j = col[g.index]
+        g.remove(list(range(V)))
+        nz = np.nonzero(W[:, j] > 1e-4)[0]
+        for i in nz: g.add([int(i)], float(W[i, j]), 'REPLACE')
+    print('SLIM_SMOOTHED weights x%d over %d bones' % (smooth, len(soft)), flush=True)
 rig = choreo.Rig(arm)
 k = rig.k
 
