@@ -76,6 +76,7 @@ namespace FH.Game
             if (args.Contains("--tour-rpg")) gameObject.AddComponent<GameTour>();
             if (args.Contains("--verify-creatures") || args.Contains("--show-hunts")) gameObject.AddComponent<CreatureReview>();
             if (args.Contains("--input-log")) gameObject.AddComponent<InputLogger>();
+            gameObject.AddComponent<DevCapture>();   // F9: the moment saved for SightForge; hit, frame and spring recorders
             if (Arg(args, "--eyes-track") is string track) gameObject.AddComponent<MotionTrack>().Path = Path.GetFullPath(track);
         }
 

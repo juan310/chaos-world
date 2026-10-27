@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using FH.Core;
 using UnityEngine;
@@ -16,6 +17,7 @@ namespace FH.Game
         HunterController H;
         AttackDef hit;
         ShotDef shot;
+        int traceId;
         Vector3 velocity;
         float life, waitUntil, gravity;
         readonly Dictionary<Hurtbox, float> struck = new Dictionary<Hurtbox, float>();
@@ -56,7 +58,7 @@ namespace FH.Game
             go.transform.rotation = Quaternion.LookRotation(a.velocity);
             go.SetActive(true);
             if (delay > 0) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.enabled = false;
-            Fired++;
+            Fired++; traceId = Fired;
             return a;
         }
 
@@ -80,6 +82,7 @@ namespace FH.Game
             life += dt;
             float radius = shot.pierce ? .45f : shot.arc ? .4f : .16f;
             int n = hit.damageMultiplier <= 0 ? 0 : Physics.OverlapCapsuleNonAlloc(from, transform.position, radius, found, Layers.HurtboxMask, QueryTriggerInteraction.Collide);
+            if (hit.damageMultiplier > 0) HitTrace.Sweep("arrow", HitTrace.MoveName(hit), traceId, from, transform.position, radius, found.Take(n));
             for (int i = 0; i < n; i++)
             {
                 var box = found[i].GetComponent<Hurtbox>();
@@ -126,6 +129,7 @@ namespace FH.Game
             if (hit is HuntMoveDef rd && rd.rend && m.Wounds) { var w0 = m.Wounds.WoundNear(transform.position, transform.position, 1.4f); if (w0) box = w0; }
             if (m.HuntRules && hit is HuntMoveDef hm) { m.PendingStun = hm.koDamage; m.PendingRend = hm.rend; }
             m.ReceiveHit(box, transform.position, (part, broken) => dealt = DamageMath.PlayerHit(w, hit, H.Stats, m.Def, part, broken, crit));
+            HitTrace.Landed("arrow", HitTrace.MoveName(hit), traceId, m, box, transform.position, dealt.Damage);
             H.ReportRangedHit(m, dealt);
             Landed++;
             if (H.HuntStyle && H.Hunt && H.Hunt.enabled)

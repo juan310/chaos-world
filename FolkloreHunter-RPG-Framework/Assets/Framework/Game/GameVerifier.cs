@@ -44,6 +44,7 @@ namespace FH.Game
             }
             InputRouter.UseVirtual = false;
             string file = continuePhase ? "verification-continue.txt" : "verification.txt";
+            if (DevCapture.I) DevCapture.I.Write(Path.Combine(root, "DevCapture" + (continuePhase ? "_continue" : "")), "rpg run");
             File.WriteAllText(Path.Combine(root, file), string.Join("\n", lines) + "\nFAILURES " + failures + "\nVersion " + Application.version + "  ·  " + DateTime.Now.ToString("u"));
             Debug.Log("FH_VERIFY " + (continuePhase ? "continue " : "") + lines.Count + " checks; failures " + failures);
             yield return Frames(2);

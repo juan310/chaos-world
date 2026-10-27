@@ -40,6 +40,16 @@ namespace FH.Game
                 if (Time.realtimeSinceStartup - started > 600) { Check("verification finished in time", false, "timed out"); break; }
             }
             GamePad.Inject(null);
+            // Spring bones (follow-through on the hound's tail and ears): they moved, stayed sane, and were not held at
+            // their limit most of the time. The recorders go to SightForge (hits, perf, springs reports).
+            var springs = SpringBone.All.Where(x => x && x.Frames > 0).ToList();
+            if (springs.Count > 0)
+            {
+                Check("spring bones follow through (tail and ears trail on turns and stops) and settle",
+                      springs.Any(x => x.MaxLagSeen > 3) && springs.All(x => !x.Broke && x.PinnedFrames < x.Frames * .25f),
+                      string.Join("; ", springs.Select(x => x.Label + " max " + x.MaxLagSeen.ToString("0") + "/" + x.MaxAngle.ToString("0") + " deg, at the limit " + (100f * x.PinnedFrames / x.Frames).ToString("0") + " %" + (x.Broke ? " BROKE" : ""))));
+            }
+            if (DevCapture.I) { DevCapture.I.Write(Path.Combine(root, "DevCapture"), "proving run"); Note("hit tests, frame times and spring lag written to Captures/Proving/DevCapture for SightForge (hits, perf, springs)"); }
             File.WriteAllText(Path.Combine(root, "verification.txt"), string.Join("\n", lines) + "\nFAILURES " + failures + "\nVersion " + Application.version + "  ·  " + DateTime.Now.ToString("u"));
             Debug.Log("FH_PROVING " + lines.Count(l => !l.StartsWith("NOTE")) + " checks; failures " + failures);
             yield return Frames(2);
@@ -1255,7 +1265,7 @@ namespace FH.Game
             yield return Until(() => !H.Dodging, .8f);
             float step = Vector3.Distance(Flat(s0), Flat(H.transform.position));
             Check("the sidestep keeps the archer facing the target", Vector3.Angle(sf, H.transform.forward) < 10, Vector3.Angle(sf, H.transform.forward).ToString("0") + " degrees turned");
-            Check("A with the bow drawn: charging sidestep (+1 level, about 2.4 m)", F.LastEvent.StartsWith("charging sidestep") && F.BowLevel == 2 && step > 1.5f && step < 3.2f, F.LastEvent + ", level " + F.BowLevel + ", " + step.ToString("0.00") + " m");
+            Check("A with the bow drawn: drawing step (+1 level, about 2.4 m)", F.LastEvent.StartsWith("drawing step") && F.BowLevel == 2 && step > 1.5f && step < 3.2f, F.LastEvent + ", level " + F.BowLevel + ", " + step.ToString("0.00") + " m");
             int f2 = ArrowShot.Fired;
             yield return Tap(PadButton.Y, 2);
             yield return Until(() => ArrowShot.Fired > f2, 1f);

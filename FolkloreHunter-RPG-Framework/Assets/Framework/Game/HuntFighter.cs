@@ -418,7 +418,7 @@ namespace FH.Game
             {
                 int level = bow.Stepped(now);
                 if (keepDraw) bow.BeginDraw(now);   // the draw carries on from the raised level
-                LastEvent = "charging sidestep (level " + level + ")";
+                LastEvent = "drawing step (level " + level + ")";
                 Pip(level);
             }
             else LastEvent = last ? "long hop" : "hop " + dodges.Count;
@@ -451,7 +451,7 @@ namespace FH.Game
                     Execute(Set.Move(Set.foresightCounter), Vector3.zero);
                     LastEvent = "foresight counter";
                 }
-                else { Execute(Set.Move(Set.foresightSlash), Vector3.zero); LastEvent = "foresight slash"; }
+                else { Execute(Set.Move(Set.foresightSlash), Vector3.zero); LastEvent = "shadowstep"; }
             }
         }
 
@@ -1191,7 +1191,7 @@ namespace FH.Game
             S.CameraRig.Shake(.35f);
             GamePad.Rumble(.8f, 1f, .25f);
             S.Hud?.Flash("STANDOFF! Mash Y  0/" + Clash.Target);
-            LastEvent = "power clash";
+            LastEvent = "standoff";
         }
 
         void UpdateClash(float now)

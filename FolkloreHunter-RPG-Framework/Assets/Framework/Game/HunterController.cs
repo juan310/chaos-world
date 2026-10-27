@@ -536,6 +536,7 @@ namespace FH.Game
                 for (int i = 0; i < n; i++) found.Add(overlap[i]);
             }
             prevTip = BladeTip; prevTipValid = true;
+            HitTrace.Sweep("hunter", HitTrace.MoveName(Attack.Def), Attack.SwingId, BladeBase, BladeTip, r, found);
             // Closest hurtbox per monster wins, so a swing through helm and ribs strikes once.
             foreach (var group in found.Select(c => c.GetComponent<Hurtbox>()).Where(h => h && h.Owner && h.Owner.Alive).GroupBy(h => h.Owner))
             {
@@ -552,6 +553,7 @@ namespace FH.Game
                 var w = CurrentWeapon;
                 monster.ReceiveHit(box, point, (part, broken) => dealt = DamageMath.PlayerHit(w, atk, Stats, monster.Def, part, broken, crit));
                 BladeHit?.Invoke(monster, dealt);
+                HitTrace.Landed("hunter", HitTrace.MoveName(atk), Attack.SwingId, monster, box, point, dealt.Damage);
                 SwingsLanded++;
                 HitLog.Add((Attack.SwingId, monster.InstanceKey));
                 if (HitLog.Count > 200) HitLog.RemoveAt(0);

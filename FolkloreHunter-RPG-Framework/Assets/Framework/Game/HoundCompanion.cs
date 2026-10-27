@@ -61,6 +61,7 @@ namespace FH.Game
             foreach (var r in Visual.GetComponentsInChildren<Renderer>(true).Where(r => r.name.Contains("Eye_")))
                 r.sharedMaterial = WorldKit.Glow(new Color(.55f, 1f, .72f), 3);
             Anim = new AnimationDriver(Visual, Model);
+            SpringBone.Rig(Visual, "hound");     // tail and ears trail behind on turns and stops
             Saddle = WorldKit.Find(Visual, "saddle");
             pawL = WorldKit.Find(Visual, "fore_paw.l"); pawR = WorldKit.Find(Visual, "fore_paw.r");
             float walkNatural = Anim.NaturalSpeed("Walk", pawL, pawR, transform, true);

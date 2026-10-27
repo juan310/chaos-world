@@ -1,3 +1,4 @@
+using System.Linq;
 using FH.Core;
 using UnityEngine;
 
@@ -33,6 +34,7 @@ namespace FH.Game
             transform.position += velocity * dt;
             life += dt;
             int n = Physics.OverlapCapsuleNonAlloc(from, transform.position, .22f, hits, Layers.HurtboxMask, QueryTriggerInteraction.Collide);
+            HitTrace.Sweep("spell", spell.name ?? spell.id, GetInstanceID(), from, transform.position, .22f, hits.Take(n));
             for (int i = 0; i < n; i++)
             {
                 var box = hits[i].GetComponent<Hurtbox>();

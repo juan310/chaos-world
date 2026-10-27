@@ -88,6 +88,7 @@ namespace FH.Game
             patrolTarget = Home;
             AttachWeapon();
             BuildHurtboxes();
+            SpringBone.Rig(Visual, def.id);           // tails, capes and banners trail behind
             walkNatural = Mathf.Max(.3f, Anim.NaturalSpeed("Walking_A", WorldKit.Find(Visual, "foot.l"), WorldKit.Find(Visual, "foot.r"), transform));
             foreach (var p in Parts.Broken) HidePartMesh(Def.parts.FirstOrDefault(x => x.id == p), false);
             ring = WorldKit.Cylinder("Attack warning", transform.position, .5f, .02f, WorldKit.Transparent("Telegraph ring", new Color(.95f, .18f, .08f, .35f)));
@@ -358,9 +359,10 @@ namespace FH.Game
                             Brain.HitDelivered = true;
                             MonsterVenom.Fire(session, Brain.CurrentAttack, AttackCenter, transform.forward, Parts.Broken.Count(x => x.StartsWith("gland_")) == 1 ? .6f : 1f);
                         }
-                    } else if (!Brain.HitDelivered && (IsCreature ? CreatureTouches(hero) : hero.Overlaps(AttackCenter, Brain.CurrentAttack.radius))) {
-                        Brain.HitDelivered = true;
-                        hero.ReceiveHit(Brain.CurrentAttack, transform.position);
+                    } else if (!Brain.HitDelivered) {
+                        bool touches = IsCreature ? CreatureTouches(hero) : hero.Overlaps(AttackCenter, Brain.CurrentAttack.radius);
+                        HitTrace.MonsterStrike(this, Brain.CurrentAttack.id, AttackCenter, Brain.CurrentAttack.radius, hero, touches);
+                        if (touches) { Brain.HitDelivered = true; hero.ReceiveHit(Brain.CurrentAttack, transform.position); }
                     }
                     previousAttackCenter = AttackCenter;
                     if (Brain.CurrentAttack.lungeSpeed > 0) { move = transform.forward; speed = Brain.CurrentAttack.lungeSpeed; }

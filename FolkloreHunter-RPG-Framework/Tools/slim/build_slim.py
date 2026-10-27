@@ -3,7 +3,8 @@
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
-#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>]
+#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock]
+# --footlock holds the planted feet of walks, jogs and runs still on the ground (Tools/sightforge/eyeslib/footslide_blender.py).
 # --texture uses another picture as the body's texture (the flank-repaired copy from paint_sides.py).
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
 # mesh (named "Helmet", so the helm part breaks it off) on the head. --villager makes a townsperson: no weapons, only the
@@ -197,6 +198,12 @@ if m2m:
     src.remove()
     made = list(bpy.data.actions)                 # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
+if '--footlock' in argv:
+    # walks, jogs and runs with their planted feet held on the travelling ground (SightForge's foot-slide fixer)
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'sightforge' / 'eyeslib'))
+    import footslide_blender
+    footslide_blender.run(arm, fix=True, fps=choreo.FPS, log=lambda m: print('SLIM_' + m, flush=True))
+    arm.animation_data.action = None
 assert all('.' not in a.name for a in made) and len(bpy.data.actions) == len(made), 'stray clips: ' + ', '.join(a.name for a in bpy.data.actions)
 arm.animation_data.action = None
 print('SLIM_CLIPS', len(made), ' '.join(a.name for a in made), flush=True)
