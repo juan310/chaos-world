@@ -5,6 +5,27 @@ hunter), the female and male hairstyle sheets (ten each), the skeleton upgrades 
 Warden upgrade, the Warden's hallway and the Warden's lair. The older models are kept: the KayKit knight is still offered
 as the "Classic knight", and every new monster falls back to the older KayKit skeleton if its new model is missing.
 
+## Current characters: one slim body design, no chibi (owner's rule, 2026-10-27)
+The Forge-made bodies on the KayKit skeleton (below) were rejected, and so was the chibi KayKit knight in any role. The
+player, the skeletons and the Warden are now the Codex combat prototype's models (`Assets/Resources/Models/Codex/`, copied
+unchanged from that project) on their own slim, human-proportioned skeleton, with every clip authored on that skeleton:
+- `Tools/slim/build_slim.py` (Blender) makes `Models/Hunter_Male_Slim`, `Hunter_Female_Slim`, `Skel_Boneguard`,
+  `Skel_IronRevenant`, `Skel_GraveHexer` and `Skel_GraveWarden` (with its separate horned helmet): the bones get the
+  game's names, hand slots are added (a fist's grip: the blade on the thumb side, the edge along the knuckles), the
+  weapons are seated in them at a 1.8 m hunter's size, and the clips are baked in.
+- The everyday moves (idle, walk, jog, sprint, strafes, roll, back-step, hits, death, getting up, drinking, gathering,
+  sitting, casting), the basic sword cuts, the leaping spin, the shield guard and bash and the bow draw are CC0 motion
+  capture from the **Mesh2Motion** human animation library (github.com/scottpetrovic/mesh2motion-app, art under CC0
+  1.0), retargeted by `Tools/slim/retarget.py`: torso and feet turns, hips and ankles scaled by leg length, wrists by
+  arm length, the grip from the finger bones.
+- The game's own moves (Thorn Rush I and II, Leap Slash, Shield Crash, the Rends, Standoff, the stab, the katana, lance
+  and bow sets, the jump dash, the dive, riding) are keyposed on the slim skeleton itself (`Tools/slim/moves.py`,
+  solved with two-bone IK by `Tools/slim/choreo.py`).
+- The hairstyles are the Codex prototype's strand builder (`HunterHair`), fitted to the slim head (`HairFit`).
+- Review renders: `Tools/slim/preview_slim.py` (clips before export), `Tools/slim/render_fbx.py` (the exported model).
+
+The sections below record the earlier 0.9 work; those models are kept on the side as fallbacks.
+
 ## How the models were made (all local, no paid service)
 SightForge Forge on this PC (`%LOCALAPPDATA%\ClaudeEyesStudio`, TripoSG shape model and FLUX.2 klein editing model on
 the RTX 5080), driven by scripts in `Tools/`:
