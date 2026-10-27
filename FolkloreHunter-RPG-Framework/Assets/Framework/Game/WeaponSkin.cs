@@ -25,10 +25,11 @@ namespace FH.Game
         public static readonly List<string> Applied = new List<string>();
 
         /// <summary>Swaps every piece that has a new model, on a freshly made hunter visual (before the weapon layer works
-        /// out its grips and back positions). <paramref name="hand"/> is the right hand slot.</summary>
-        public static void Apply(Transform visual, Transform hand)
+        /// out its grips and back positions), or on a slim skeleton's own sword, shield or lance (<paramref name="record"/>
+        /// false: the hunter's list of swapped pieces is left alone). <paramref name="hand"/> is the right hand slot.</summary>
+        public static void Apply(Transform visual, Transform hand, bool record = true)
         {
-            Applied.Clear();
+            if (record) Applied.Clear();
             foreach (var (piece, model, kind) in Set)
             {
                 var t = WorldKit.Find(visual, piece);
@@ -47,7 +48,7 @@ namespace FH.Game
                     m.SetFloat("_Metallic", kind == Kind.Blade ? .35f : .05f);
                     r.sharedMaterials = Enumerable.Repeat(m, 1).ToArray();
                 }
-                Applied.Add(piece);
+                if (record) Applied.Add(piece);
             }
         }
 

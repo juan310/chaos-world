@@ -491,6 +491,8 @@ namespace FH.Game
             var actor = go.AddComponent<MonsterActor>();
             actor.SpawnId = sp.id; actor.AreaId = sp.areaId; actor.PatrolRadius = sp.patrolRadius;
             actor.Visual = CharacterFactory.Create(CharacterFactory.MonsterModel(def), go.transform, def.height);
+            // the slim skeletons hold the hunt pieces; they wear the starting weapon set's models, like the hunter
+            if (CharacterFactory.MonsterModel(def).StartsWith("Skel_")) WeaponSkin.Apply(actor.Visual, WorldKit.Find(actor.Visual, "handslot.r"), false);
             var st = Core.State.world.spawns.FirstOrDefault(x => x.spawnId == sp.id);
             actor.Initialize(this, def, st?.brokenParts);
             return actor;
