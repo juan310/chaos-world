@@ -168,12 +168,14 @@ namespace FH.Game
                     float lowest = float.PositiveInfinity;
                     for (int i = 0; i < 16; i++)
                     {
-                        st.time = st.length * (from + (1 - from) * i / 16f); anim.Anim.Sample();
+                        st.time = st.length * (from + (1 - from) * i / 16f); st.speed = 0; anim.Anim.Sample();
                         F.KeepBladeOffGround();                          // as LateUpdate does in play
                         lowest = Mathf.Min(lowest, F.BladeTipClearance);
+                        yield return null;                               // the body is re-skinned once a frame: shot after it
+                        F.KeepBladeOffGround();
                         yield return Render(cam, rt, Path.Combine(folder, prefix + "_" + label + "_E_" + i.ToString("00") + ".png")); written++;
                     }
-                    st.enabled = false;
+                    st.enabled = false; st.speed = 1;
                     if (label == "katana_overhead")
                         Check("katana overhead: the blade tip stays out of the ground (Claude Eyes found it 0.27 m under the soles)", lowest > -.03f, "lowest tip " + lowest.ToString("0.00") + " m over the ground, lifted " + F.BladeLifts + " times");
                 }
@@ -514,6 +516,51 @@ namespace FH.Game
                 new[] { ("Idle", 0f), ("Walking_A", .25f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Chop", .55f), ("Spellcast_Shoot", .5f) });
             m.enabled = true;
             m.Anim.Current = ""; m.Anim.Play("Idle");
+        }
+
+        /// <summary>The hunter with the bow as the game shows it this moment (live: drawing, releasing), time held still for
+        /// the shot: front, side and three-quarter views on a plain background, and the bow's and arrow's own points in each
+        /// picture (Captures/Proving/Bow/*.json) for the Claude Eyes bow review (Tools/review_bow_sightforge.py).</summary>
+        IEnumerator BowShots(string moment)
+        {
+            string folder = Path.Combine(root, "Bow"); Directory.CreateDirectory(folder);
+            float ts = Time.timeScale; Time.timeScale = 0;
+            yield return null; yield return null;                // re-skinned in the held pose
+            var visual = H.Visual;
+            var keep = new List<(GameObject go, int layer)>();
+            foreach (var x in visual.GetComponentsInChildren<Transform>(true)) { keep.Add((x.gameObject, x.gameObject.layer)); x.gameObject.layer = Layers.Review; }
+            var go = new GameObject("Bow review camera"); var cam = go.AddComponent<Camera>();
+            cam.enabled = false; cam.cullingMask = 1 << Layers.Review; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.24f, .24f, .26f, 1);
+            cam.orthographic = true; cam.orthographicSize = HunterController.LookHeight * .62f;
+            var rt = new RenderTexture(560, 640, 24) { antiAliasing = 4 }; cam.targetTexture = rt;
+            var light = new GameObject("Review light").AddComponent<Light>(); light.type = LightType.Directional; light.cullingMask = 1 << Layers.Review; light.intensity = 1.1f;
+            var rootT = H.transform; Vector3 c = rootT.position + Vector3.up * HunterController.LookHeight * .5f;
+            var bow = WorldKit.Find(visual, "Hunt_Bow"); var arrow = WorldKit.Find(visual, "Hunt_NockedArrow");
+            var handL = WorldKit.Find(visual, "handslot.l"); var handR = WorldKit.Find(visual, "handslot.r"); var head = WorldKit.Find(visual, "head"); var chest = WorldKit.Find(visual, "chest");
+            var arrowR = arrow ? arrow.GetComponent<Renderer>() : null;
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            foreach (var (view, dir) in new[] { ("front", rootT.forward), ("side", -rootT.right), ("threequarter", (rootT.forward - rootT.right).normalized) })
+            {
+                cam.transform.position = c + dir * 6; cam.transform.LookAt(c);
+                light.transform.rotation = Quaternion.LookRotation(-dir + Vector3.down * .6f + rootT.right * .3f);
+                string shot = Path.Combine(folder, H.Look.Replace("Hunter_", "").Replace("_Slim", "").ToLower() + "_" + moment + "_" + view);
+                yield return Render(cam, rt, shot + ".png");
+                string Px(Vector3 w) { var sp = cam.WorldToScreenPoint(w); return "[" + sp.x.ToString("0.0", ci) + ", " + (rt.height - sp.y).ToString("0.0", ci) + "]"; }
+                var json = new List<string> { "\"moment\": \"" + moment + "\"", "\"view\": \"" + view + "\"", "\"clip\": \"" + H.Anim.Current + "\"",
+                                              "\"pixelsPerMetre\": " + (rt.height / (2 * cam.orthographicSize)).ToString("0.###", ci) };
+                if (WeaponSkin.BowPoints(bow, out var ta, out var tb, out var gp, out var sm))
+                    json.Add("\"bowTipA\": " + Px(ta) + ", \"bowTipB\": " + Px(tb) + ", \"bowGrip\": " + Px(gp) + ", \"stringMid\": " + Px(sm) + ", \"bowParent\": \"" + (bow.parent ? bow.parent.name : "-") + "\"");
+                if (arrowR && arrowR.enabled && WeaponSkin.ArrowPoints(arrow, handR, out var nk, out var tp))
+                    json.Add("\"arrowNock\": " + Px(nk) + ", \"arrowTip\": " + Px(tp));
+                if (handL) json.Add("\"handSlotL\": " + Px(handL.position));
+                if (handR) json.Add("\"handSlotR\": " + Px(handR.position));
+                if (head) json.Add("\"head\": " + Px(head.position));
+                if (chest) json.Add("\"chest\": " + Px(chest.position));
+                File.WriteAllText(shot + ".json", "{" + string.Join(", ", json) + "}");
+            }
+            foreach (var (o, layer) in keep) if (o) o.layer = layer;
+            cam.targetTexture = null; rt.Release(); Destroy(rt); Destroy(go); Destroy(light.gameObject);
+            Time.timeScale = ts;
         }
 
         static readonly string[] HeldWeapons = { "1H_Sword", "Hunt_Katana", "Hunt_Lance" };
@@ -1421,13 +1468,17 @@ namespace FH.Game
             yield return Wait(1.3f);
             Hold(PadButton.Y);
             yield return Until(() => F.Drawing, .5f);
-            yield return Wait(.5f);
+            yield return Wait(.12f);
+            yield return BowShots("draw_start");
+            yield return Wait(.38f);
             var nockR = R("Hunt_NockedArrow");
             Check("drawing: the bow in the left hand, the Bow_Draw clip, an arrow nocked", F.Drawing && bowT.parent.name.Contains(".l") && H.Anim.Current.Contains("Bow_Draw") && nockR && nockR.enabled,
                   bowT.parent.name + ", " + H.Anim.Current + ", nocked " + (nockR && nockR.enabled));
             yield return Snap("r04-bow-draw-range");
+            yield return BowShots("draw_full");
             Release();
             yield return Until(() => F.Current != null, .5f);
+            yield return BowShots("release");
             Check("the release plays the bow's shot clip", H.Anim.Current.Contains("Bow_Shoot"), H.Anim.Current);
             yield return Wait(1.2f);
             Pad(PadButton.A, new Vector2(1, 0)); yield return Frames(2);

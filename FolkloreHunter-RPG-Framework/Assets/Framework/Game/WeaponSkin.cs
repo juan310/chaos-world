@@ -189,6 +189,37 @@ namespace FH.Game
             return true;
         }
 
+        /// <summary>For review pictures: a bow's two tips, the middle of its grip and the middle of its string (the string
+        /// lies on the side of the bow's depth away from the wood's mass), in world space.</summary>
+        public static bool BowPoints(Transform bow, out Vector3 tipA, out Vector3 tipB, out Vector3 grip, out Vector3 stringMid)
+        {
+            tipA = tipB = grip = stringMid = Vector3.zero;
+            var mf = bow ? bow.GetComponent<MeshFilter>() : null;
+            if (!mf || !mf.sharedMesh) return false;
+            var v = mf.sharedMesh.vertices; var b = mf.sharedMesh.bounds; var ax = AxesBySize(b.size);
+            int L = ax[0], D = ax[1];
+            Vector3 a = b.center, c = b.center; a[L] = b.min[L]; c[L] = b.max[L];
+            float mean = v.Average(p => p[D]) - b.center[D];
+            var g = b.center; var s = b.center; s[D] = mean > 0 ? b.min[D] : b.max[D];      // the string: away from the wood
+            g[D] = b.center[D] + mean;
+            tipA = bow.TransformPoint(a); tipB = bow.TransformPoint(c); grip = bow.TransformPoint(g); stringMid = bow.TransformPoint(s);
+            return true;
+        }
+
+        /// <summary>For review pictures: an arrow's nock (the end nearer <paramref name="hand"/>) and tip, in world space.</summary>
+        public static bool ArrowPoints(Transform arrow, Transform hand, out Vector3 nock, out Vector3 tip)
+        {
+            nock = tip = Vector3.zero;
+            var mf = arrow ? arrow.GetComponent<MeshFilter>() : null;
+            if (!mf || !mf.sharedMesh) return false;
+            var b = mf.sharedMesh.bounds; int L = AxesBySize(b.size)[0];
+            Vector3 a = b.center, c = b.center; a[L] = b.min[L]; c[L] = b.max[L];
+            Vector3 wa = arrow.TransformPoint(a), wc = arrow.TransformPoint(c);
+            bool aNear = !hand || Vector3.Distance(wa, hand.position) < Vector3.Distance(wc, hand.position);
+            nock = aNear ? wa : wc; tip = aNear ? wc : wa;
+            return true;
+        }
+
         static Mesh Fit(Mesh src, Mesh old, Transform piece, Transform grip, Kind kind)
         {
             var nv = src.vertices; var nb = src.bounds; var ob = old.bounds; var ov = old.vertices;
