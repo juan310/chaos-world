@@ -2,6 +2,7 @@
 # the game's names, hand slots, the hunter's weapons gripped in them (the hunt pieces from SourceArt/Hunter.blend,
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
+#       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>]
 # --pieces keeps only those weapons (a monster's own), --size changes a weapon's length, --helmet puts a separate helmet
 # mesh (named "Helmet", so the helm part breaks it off) on the head.
 import bpy, sys, shutil, math
@@ -137,6 +138,15 @@ if helmet:
         print('SLIM_HELMET scale %.3f' % s, flush=True)
 
 made = [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+m2m = opt('--m2m')
+if m2m:
+    # the everyday moves from CC0 motion capture (Mesh2Motion), replacing the keyposed versions of the same name
+    import retarget
+    src = retarget.Source(m2m)
+    caps = retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP)
+    src.remove()
+    made = [a for a in made if a.name in bpy.data.actions and a not in caps] + caps
+    rig.arm.animation_data.action = None
 assert all('.' not in a.name for a in made) and len(bpy.data.actions) == len(made), 'stray clips: ' + ', '.join(a.name for a in bpy.data.actions)
 arm.animation_data.action = None
 print('SLIM_CLIPS', len(made), ' '.join(a.name for a in made), flush=True)

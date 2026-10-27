@@ -124,7 +124,18 @@ MOCAP = [
     ('Hit_A', 'Hit_Chest', False, {'pin': True}), ('Hit_B', 'Hit_Head', False, {'pin': True}), ('Death_A', 'Death_A', False, {}),
     ('Lie_StandUp', 'LayToIdle', False, {}), ('Use_Item', 'Consume', False, {}), ('Interact', 'Interact', False, {}),
     ('Spellcast_Shoot', 'Spell_Simple_Shoot', False, {}), ('Sit_Chair_Idle', 'Sitting_Idle', True, {}),
+    # sword and shield: the basic cuts, the leaping spin, the guard and the bash
+    ('1H_Melee_Attack_Chop', 'Sword_Regular_B', False, {'then': 'Sword_Regular_B_Rec', 'pin': True}),
+    ('1H_Melee_Attack_Slice_Diagonal', 'Sword_Regular_A', False, {'then': 'Sword_Regular_A_Rec', 'pin': True}),
+    ('1H_Melee_Attack_Slice_Horizontal', 'Sword_Attack', False, {'pin': True}),
+    ('SnS_Rush_3', 'Sword_Regular_C', False, {'pin': True}),
+    ('Blocking', 'Idle_Shield', True, {}), ('Block', 'Idle_Shield', True, {}), ('Block_Attack', 'Shield_OneShot', False, {'pin': True}),
+    # bow: the draw (held at its end) and the release
+    ('Bow_Draw', 'Bow Pull Hold', True, {}), ('Bow_Shoot', 'Bow Release', False, {}),
 ]
+
+# the skeletons: the same, but an undead shamble for their walk
+MONSTER_MOCAP = [t for t in MOCAP if t[0] not in ('Walking_A',)] + [('Walking_A', 'Zombie_Walk', True, {})]
 
 
 def apply(rig, src, table=MOCAP, only=None):
