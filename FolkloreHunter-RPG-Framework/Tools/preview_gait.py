@@ -1,4 +1,4 @@
-# Preview of the gait cycles (Hunt_Walk, Hunt_Jog, Hunt_Sprint) without touching any game file: opens Hunter.blend,
+# Preview of the gait cycles (Gait_Walk, Gait_Jog, Gait_Sprint) without touching any game file: opens Hunter.blend,
 # builds the cycles with hunter_weapons.gait_clip / locomotion_clips, renders eight side-view frames of each and a strip,
 # and quits without saving.   blender -b SourceArt/Hunter.blend --python Tools/preview_gait.py
 import bpy, math, sys
@@ -9,10 +9,10 @@ import hunter_weapons
 r = Path.home() / 'Documents/FolkloreHunter-RPG-Framework'
 out = r / 'Captures/GaitPreview'; out.mkdir(parents=True, exist_ok=True)
 rig = bpy.data.objects['Rig']
-for n in ('Hunt_Walk', 'Hunt_Jog', 'Hunt_Sprint'):
+for n in ('Gait_Walk', 'Gait_Jog', 'Gait_Sprint'):
     old = bpy.data.actions.get(n)
     if old: bpy.data.actions.remove(old)
-clips = hunter_weapons.locomotion_clips(rig)
+clips = [c for c in hunter_weapons.locomotion_clips(rig) if c.name.startswith('Gait_')]
 scene = bpy.context.scene
 scene.render.engine = 'BLENDER_WORKBENCH'
 scene.display.shading.light = 'STUDIO'; scene.display.shading.color_type = 'TEXTURE'

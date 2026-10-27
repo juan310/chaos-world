@@ -377,7 +377,7 @@ namespace FH.Game
             Check("the tracer arrow tears the wound and stays in the monster", F.TracersPlanted > planted0 && m.Wounds.Torn > bt0 && F.Tracer.Active(Time.time), "planted " + F.TracersPlanted + ", torn " + m.Wounds.Torn);
             yield return Snap("w08-tracer");
             float hpb = m.Brain.Health;
-            for (int i = 0; i < 14 && F.Tracer.Bursts == bursts0; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.5f); }
+            for (int i = 0; i < 30 && F.Tracer.Bursts == bursts0 && F.Tracer.Active(Time.time); i++) { Face(m, 9f); yield return Tap(PadButton.Y, 2); yield return Wait(.45f); }   // facing it each time: a shot that turned away does not count
             Check("the tracer's arrows follow it and the eighth bursts it", F.Tracer.Bursts > bursts0, "hits " + F.Tracer.Hits + ", bursts " + F.Tracer.Bursts);
             yield return UntilNeutral();
             S.ProvingRig.ClearMonsters();

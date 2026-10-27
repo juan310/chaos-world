@@ -534,13 +534,17 @@ def gait_clip(rig, name, period, duty, sweep, lift, kick, drop, bob, lean, twist
 
 
 def locomotion_clips(rig):
-    """Hunt_Walk (light stick), Hunt_Jog (full stick) and Hunt_Sprint (RT) as real gait cycles after the 0.9 walk/run
+    """Gait_Walk (light stick), Gait_Jog (full stick) and Gait_Sprint (RT) as real gait cycles after the 0.9 walk/run
     reference: upright walk with a heel strike and relaxed arm swing; a leaning jog and sprint with a flight phase, knee
     drive, heel kick and pumping arms at right angles. (0.8's Hunt_Jog / Hunt_Sprint stretched KayKit's chibi run:
     stride_clip above, kept for reference.)"""
-    return [gait_clip(rig, 'Hunt_Walk', 1.05, .62, .8, .16, .05, .06, .025, 3, 8, .32, .25, 18),
-            gait_clip(rig, 'Hunt_Jog', .72, .4, .95, .28, .3, .12, .045, 9, 12, .38, .85, 28, .15),
-            gait_clip(rig, 'Hunt_Sprint', .6, .33, 1.05, .36, .45, .14, .055, 15, 16, .5, 1.0, 34, .3)]
+    # The classic chibi knight keeps 0.8's stride clips (its legs are too short for a real gait: the stance foot
+    # cannot reach the ground at a hunter's stride); the new hunters run the gait cycles (Gait_*).
+    return [stride_clip(rig, 'Hunt_Jog', 'Running_A', 1.8, 1.5, 10),
+            stride_clip(rig, 'Hunt_Sprint', 'Running_A', 2.1, 1.8, 17),
+            gait_clip(rig, 'Gait_Walk', 1.05, .62, .8, .16, .05, .06, .025, 3, 8, .32, .25, 18),
+            gait_clip(rig, 'Gait_Jog', .72, .4, .95, .28, .3, .12, .045, 9, 12, .38, .85, 28, .15),
+            gait_clip(rig, 'Gait_Sprint', .6, .33, 1.05, .36, .45, .14, .055, 15, 16, .5, 1.0, 34, .3)]
 
 
 # ---------------- 0.9 battle clips (after Monster Hunter Wilds' sword and shield, lance, bow and long sword) ----------------

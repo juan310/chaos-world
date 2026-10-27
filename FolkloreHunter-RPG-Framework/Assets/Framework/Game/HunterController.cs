@@ -70,6 +70,7 @@ namespace FH.Game
         /// <summary>Hunt combat (Monster Hunter pace): full stick jogs, RT sprints; light stick walks.</summary>
         public const float JogSpeed = 3.6f, SprintSpeed = 5.2f;
         float huntWalkNatural, jogNatural, sprintNatural;
+        string walkClip = "Walking_A", jogClip = "Hunt_Jog", sprintClip = "Hunt_Sprint";
         public const float RunCost = 9;
 
         public void Initialize(GameSession s)
@@ -139,9 +140,15 @@ namespace FH.Game
             if (walkNatural > .3f) WalkSpeed = Mathf.Clamp(walkNatural * 1.3f, 1.6f, 3.2f);
             if (runNatural > .6f) RunSpeed = Mathf.Clamp(runNatural * 1.3f, WalkSpeed * 1.5f, 6f);
             // Measured from the planted foot's sweep (the whole-swing estimate overstates a run's ground speed about threefold).
-            jogNatural = Anim.Has("Hunt_Jog") ? Anim.NaturalSpeed("Hunt_Jog", footL, footR, transform, true) : runNatural;
-            sprintNatural = Anim.Has("Hunt_Sprint") ? Anim.NaturalSpeed("Hunt_Sprint", footL, footR, transform, true) : runNatural;
-            huntWalkNatural = Anim.Has("Hunt_Walk") ? Anim.NaturalSpeed("Hunt_Walk", footL, footR, transform, true) : walkNatural;
+            // The new hunters run real gait cycles (Gait_*, after the walk/run reference); the classic knight keeps the
+            // stride clips made for its short legs.
+            bool gait = Look != "Hunter" && Anim.Has("Gait_Jog");
+            walkClip = gait && Anim.Has("Gait_Walk") ? "Gait_Walk" : "Walking_A";
+            jogClip = gait ? "Gait_Jog" : "Hunt_Jog";
+            sprintClip = gait && Anim.Has("Gait_Sprint") ? "Gait_Sprint" : "Hunt_Sprint";
+            jogNatural = Anim.Has(jogClip) ? Anim.NaturalSpeed(jogClip, footL, footR, transform, true) : runNatural;
+            sprintNatural = Anim.Has(sprintClip) ? Anim.NaturalSpeed(sprintClip, footL, footR, transform, true) : runNatural;
+            huntWalkNatural = walkClip != "Walking_A" ? Anim.NaturalSpeed(walkClip, footL, footR, transform, true) : walkNatural;
             Debug.Log("FH_LOCO hunt jog " + JogSpeed + " m/s (Hunt_Jog natural " + jogNatural.ToString("0.00") + "), sprint " + SprintSpeed + " m/s (Hunt_Sprint natural " + sprintNatural.ToString("0.00") + ")");
             Debug.Log("FH_LOCO walk speed " + WalkSpeed.ToString("0.00") + ", run speed " + RunSpeed.ToString("0.00") + ",  walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
         }
@@ -190,7 +197,7 @@ namespace FH.Game
         {
             if (!Ready) return;
             // A fade or a window that does not pause time (dialogue, shop) holds the world: stand, don't run in place.
-            if (!session.Simulating) { if (Anim.Current.EndsWith("Walking_A") || Anim.Current.EndsWith("Running_A") || Anim.Current.Contains("Hunt_Walk") || Anim.Current.Contains("Hunt_Jog") || Anim.Current.Contains("Hunt_Sprint")) Anim.Play("Idle"); return; }
+            if (!session.Simulating) { if (Anim.Current.EndsWith("Walking_A") || Anim.Current.EndsWith("Running_A") || Anim.Current.Contains("Gait_") || Anim.Current.Contains("Hunt_Jog") || Anim.Current.Contains("Hunt_Sprint")) Anim.Play("Idle"); return; }
             if (Riding) { if (!Anim.Current.EndsWith("Ride_Idle")) Anim.Play("Ride_Idle"); Stamina.Tick(Time.deltaTime); return; }
             var mv = InputRouter.Move();
             var cam = session.CameraRig.Camera.transform;
@@ -278,8 +285,8 @@ namespace FH.Game
                 else if (Hunt.LocomotionClip(dir, canRun, out var clip, out var natural2)) { Anim.Play(clip, true, natural2 > .1f ? Mathf.Clamp(speed / natural2, .5f, 2.5f) : 1); }
                 else
                 {
-                    string gait = canRun ? "Hunt_Sprint" : jog ? "Hunt_Jog" : Anim.Has("Hunt_Walk") ? "Hunt_Walk" : "Walking_A";
-                    float natural = canRun ? sprintNatural : jog ? jogNatural : gait == "Hunt_Walk" ? huntWalkNatural : walkNatural;
+                    string gait = canRun ? sprintClip : jog ? jogClip : walkClip;
+                    float natural = canRun ? sprintNatural : jog ? jogNatural : gait != "Walking_A" ? huntWalkNatural : walkNatural;
                     if (!Anim.Has(gait)) { gait = jog || canRun ? "Running_A" : "Walking_A"; natural = jog || canRun ? runNatural : walkNatural; }
                     Anim.Play(gait, true, natural > .1f ? Mathf.Clamp(speed / natural, .5f, 3.6f) : 1, false, .08f);
                     stepClock -= dt;
