@@ -19,7 +19,9 @@ namespace FH.Game
         public static bool Exists(string resource) => !string.IsNullOrEmpty(resource) && Resources.Load<GameObject>("Models/" + resource) != null;
 
         /// <summary>The model a monster is shown with: its own, or the older one it replaced when the new one is not in the build.</summary>
-        public static string MonsterModel(MonsterDef d) => Exists(d.model) || string.IsNullOrEmpty(d.fallbackModel) ? d.model : d.fallbackModel;
+        public static string MonsterModel(MonsterDef d)
+            => BodyDouble.Exists(d.body) && Exists(d.fallbackModel) ? d.fallbackModel        // the KayKit skeleton, under the Codex body
+             : Exists(d.model) || string.IsNullOrEmpty(d.fallbackModel) ? d.model : d.fallbackModel;
 
         public static Transform Create(string resource, Transform parent, float targetHeight, Color? tint = null)
         {

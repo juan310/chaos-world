@@ -65,6 +65,8 @@ namespace FH.Game
         static int serial;
         public string InstanceKey { get; private set; }
         public string DisplayName => Def?.name ?? name;
+        /// <summary>The Codex prototype's body worn over the KayKit skeleton (<see cref="MonsterDef.body"/>), or null.</summary>
+        public BodyDouble Double { get; private set; }
         public bool Alive => Ready && Brain.Alive;
         public Transform AimPoint => chest ? chest : transform;
         public Vector3 HeadPosition => head ? head.position : transform.position + Vector3.up * Def.height;
@@ -79,9 +81,11 @@ namespace FH.Game
             cc = GetComponent<CharacterController>();
             Model = CharacterFactory.MonsterModel(def);
             Anim = new AnimationDriver(Visual, Model);
+            Double = Model != def.model ? BodyDouble.Wear(Visual, transform, def.body, def.height, Anim) : null;
+            if (Double && def.id == "grave_warden") Double.Helmet("Skeletons/GraveWardenHelmet");
             hand = WorldKit.Find(Visual, "handslot.r");
-            chest = WorldKit.Find(Visual, "chest");
-            head = WorldKit.Find(Visual, "head");
+            chest = Double ? Double.Chest : WorldKit.Find(Visual, "chest");
+            head = Double ? Double.Head : WorldKit.Find(Visual, "head");
             eyes = Visual.GetComponentsInChildren<Renderer>().FirstOrDefault(r => r.name.Contains("Eyes"));
             if (eyes) eyesBase = calmEyes = eyes.sharedMaterial;
             Home = transform.position;
@@ -122,7 +126,7 @@ namespace FH.Game
             float scale = Def.height / 1.8f;
             foreach (var group in Def.parts.GroupBy(p => p.bone))
             {
-                var bone = WorldKit.Find(Visual, group.Key);
+                var bone = (Double ? Double.Bone(group.Key) : null) ?? WorldKit.Find(Visual, group.Key);
                 if (!bone) { Debug.LogWarning("Monster " + Def.id + " missing bone " + group.Key); continue; }
                 var go = new GameObject("Hurtbox " + string.Join("+", group.Select(p => p.id)));
                 go.layer = Layers.Hurtbox;
@@ -500,7 +504,7 @@ namespace FH.Game
         void HidePartMesh(MonsterPartDef part, bool detach)
         {
             if (part == null || string.IsNullOrEmpty(part.breakMesh)) return;
-            var renderer = Visual.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == part.breakMesh || r.name.EndsWith(part.breakMesh));
+            var renderer = PartMesh(part);
             if (!renderer || !renderer.enabled) return;
             if (detach)
             {
@@ -528,8 +532,15 @@ namespace FH.Game
         public Renderer PartRenderer(string partId)
         {
             var part = Def.parts.FirstOrDefault(p => p.id == partId);
+            return PartMesh(part);
+        }
+
+        /// <summary>The renderer a part breaks off: the exact name first (a worn body's "Helmet"), then one ending with it.</summary>
+        Renderer PartMesh(MonsterPartDef part)
+        {
             if (part == null || string.IsNullOrEmpty(part.breakMesh)) return null;
-            return Visual.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == part.breakMesh || r.name.EndsWith(part.breakMesh));
+            var all = Visual.GetComponentsInChildren<Renderer>(true);
+            return all.FirstOrDefault(r => r.name == part.breakMesh) ?? all.FirstOrDefault(r => r.name.EndsWith(part.breakMesh) && !r.forceRenderingOff);
         }
 
         bool killHandled;

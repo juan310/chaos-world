@@ -87,6 +87,9 @@ namespace FH.Game
         /// <summary>The model in use: "Hunter" (the classic KayKit knight) or a Hunter_&lt;look&gt; body made from the
         /// main character sheet (same skeleton and clips, see Tools/build_hunter_variant.py).</summary>
         public string Look { get; private set; } = "Hunter";
+        string lookKey = "";
+        /// <summary>The Codex hunter body worn over <see cref="Look"/> (which then only animates, hidden), or null.</summary>
+        public BodyDouble Double { get; private set; }
         public const float LookHeight = 1.85f;
 
         /// <summary>Puts on the look chosen at a new game: the first of <paramref name="models"/> that exists (the
@@ -94,7 +97,9 @@ namespace FH.Game
         public bool ApplyLook(string[] models)
         {
             string pick = models.FirstOrDefault(CharacterFactory.Exists) ?? "Hunter";
-            if (pick == Look && Visual) return false;
+            string key = models.Length > 0 ? models[0] : pick;
+            if (pick == Look && key == lookKey && Visual) return false;
+            lookKey = key;
             var old = Visual;
             float height = pick.StartsWith("Hunter_Female") ? LookHeight * .95f : LookHeight;
             Visual = CharacterFactory.Create(pick, transform, height);
@@ -111,6 +116,7 @@ namespace FH.Game
         void BindVisual()
         {
             Anim = new AnimationDriver(Visual, Look);
+            WearBody();
             rideHipsHeight = 0;                 // the seat height is measured again on this body
             // Stand in the idle pose at once, even with the world paused (character creation over the title).
             var idle = Anim.State("Idle");
@@ -151,6 +157,19 @@ namespace FH.Game
             huntWalkNatural = walkClip != "Walking_A" ? Anim.NaturalSpeed(walkClip, footL, footR, transform, true) : walkNatural;
             Debug.Log("FH_LOCO hunt jog " + JogSpeed + " m/s (Hunt_Jog natural " + jogNatural.ToString("0.00") + "), sprint " + SprintSpeed + " m/s (Hunt_Sprint natural " + sprintNatural.ToString("0.00") + ")");
             Debug.Log("FH_LOCO walk speed " + WalkSpeed.ToString("0.00") + ", run speed " + RunSpeed.ToString("0.00") + ",  walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
+        }
+
+        /// <summary>The Codex prototype's hunter (male or female, with the chosen hairstyle from the look's name,
+        /// Hunter_&lt;Body&gt;_NN) worn over the rig, which still plays every clip. Visual is fresh, in its bind pose.</summary>
+        void WearBody()
+        {
+            bool female = Look.StartsWith("Hunter_Female") || lookKey.StartsWith("Hunter_Female");
+            if (!(Look == "Hunter" || Look.StartsWith("Hunter_Male") || Look.StartsWith("Hunter_Female"))) { Double = null; return; }
+            Double = BodyDouble.Wear(Visual, transform, female ? "Hunters/FemaleHunter" : "Hunters/MaleHunter", female ? LookHeight * .95f : LookHeight, Anim);
+            if (!Double) return;
+            int hair = 1, us = lookKey.LastIndexOf('_');
+            if (us > 0) int.TryParse(lookKey.Substring(us + 1), out hair);
+            Double.Hair(female, Appearance.ClampHair(hair) - 1);
         }
 
         /// <summary>Recomputes derived stats (equipment, skills, attributes) keeping current health/stamina ratios.</summary>

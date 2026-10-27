@@ -22,6 +22,7 @@ public class FHModelImport : AssetPostprocessor
     {
         var t = (TextureImporter)assetImporter;
         t.textureType = TextureImporterType.Default; t.mipmapEnabled = true; t.filterMode = FilterMode.Bilinear; t.maxTextureSize = 1024;
+        if (assetPath.Contains("/Models/Codex/")) t.maxTextureSize = 4096;      // the Codex characters' 2K-4K atlases
         if (assetPath.Contains("/Monsters/")) {
             t.maxTextureSize = 4096;
             if (assetPath.Contains("_normal")) t.textureType = TextureImporterType.NormalMap;

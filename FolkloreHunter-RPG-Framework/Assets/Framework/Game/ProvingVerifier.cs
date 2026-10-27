@@ -399,7 +399,9 @@ namespace FH.Game
                 S.ProvingRig.SetWeapon("sword_shield");
                 F.SetSheathed(true);
                 yield return Frames(4);
-                var rends = H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>();
+                Check(body + " hunter: the Codex prototype's hunter is worn over the animated rig", H.Double && H.Double.Body.EndsWith(body == Appearance.Female ? "FemaleHunter" : "MaleHunter"),
+                      H.Double ? H.Double.Body + ", hides " + H.Double.Hidden.Length + " rig meshes" : "no body worn");
+                var rends = H.Double ? H.Double.Model.GetComponentsInChildren<SkinnedMeshRenderer>() : H.Visual.GetComponentsInChildren<SkinnedMeshRenderer>();
                 var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
                 float ground = S.GroundHeight(H.transform.position);
                 var headBone = WorldKit.Find(H.Visual, "head");
@@ -447,7 +449,16 @@ namespace FH.Game
                 Face(m, id == "grave_warden" ? 6 : 4.5f); yield return Frames(4);
                 var props = m.Visual.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith(m.Model + "_") && !r.name.EndsWith("_Body")).Select(r => r.name.Substring(m.Model.Length + 1)).ToList();
                 bool fresh = m.Model == m.Def.model;
-                if (fresh) Check(m.Def.name + ": the model from the skeleton sheet, holding its own weapons", props.Count > 0, m.Model + "; weapons " + string.Join("/", props));
+                if (m.Double)
+                {
+                    var bb = m.Double.Model.GetComponentsInChildren<SkinnedMeshRenderer>().Select(r => r.bounds).Aggregate((a, c) => { a.Encapsulate(c); return a; });
+                    float ground = S.GroundHeight(m.transform.position);
+                    Check(m.Def.name + ": the Codex prototype's " + m.Double.Body.Substring(m.Double.Body.IndexOf('/') + 1) + " is worn, standing on the ground at its height",
+                          Mathf.Abs(bb.min.y - ground) < .2f && Mathf.Abs(bb.size.y - m.Def.height) < .35f && m.Double.Hidden.Length > 0,
+                          "height " + bb.size.y.ToString("0.00") + " m (def " + m.Def.height + "), lowest " + (bb.min.y - ground).ToString("0.00") + " m, hides " + m.Double.Hidden.Length);
+                    if (id == "grave_warden") Check("Grave Warden: the horned helmet sits on its head", m.PartRenderer("helmet") && m.PartRenderer("helmet").name == "Helmet" && m.PartRenderer("helmet").enabled);
+                }
+                else if (fresh) Check(m.Def.name + ": the model from the skeleton sheet, holding its own weapons", props.Count > 0, m.Model + "; weapons " + string.Join("/", props));
                 else Note(m.Def.name + ": its new model is not in this build (art paused); shown with the older " + m.Model + " model and its sword");
                 Check(m.Def.name + " spawns and stands ready with its model and clips", m.Alive && m.Anim.Has("Idle") && m.Anim.Has("1H_Melee_Attack_Chop"), m.Model);
                 yield return Snap("s01-" + id);
