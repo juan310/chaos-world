@@ -54,8 +54,8 @@ if smooth:
         acc = np.zeros_like(S); np.add.at(acc, E[:, 0], S[E[:, 1]]); np.add.at(acc, E[:, 1], S[E[:, 0]])
         W[:, soft] = S + .5 * (acc / deg[:, None] - S)
     # 4 strongest, normalised
-    order = np.argsort(-W, axis=1); keep = np.zeros_like(W, bool); np.put_along_axis(keep, order[:, :4], True, axis=1)
-    W = np.where(keep, W, 0); tot = W.sum(1, keepdims=True); tot[tot == 0] = 1; W = W / tot
+    order = np.argsort(-W, axis=1); top4 = np.zeros_like(W, bool); np.put_along_axis(top4, order[:, :4], True, axis=1)
+    W = np.where(top4, W, 0); tot = W.sum(1, keepdims=True); tot[tot == 0] = 1; W = W / tot
     for g in deform:
         j = col[g.index]
         g.remove(list(range(V)))
