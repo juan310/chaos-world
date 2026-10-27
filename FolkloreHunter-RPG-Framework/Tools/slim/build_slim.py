@@ -46,7 +46,9 @@ bpy.ops.import_scene.fbx(filepath=str(fbx))
 src_fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
 KEEP = {}
 for _a in list(bpy.data.actions):
-    if opt('--keep-clips'):
+    LOOPED = {'Idle', 'Idle_Combat', 'Idle_B', 'Walking_A', 'Gait_Walk', 'Gait_Jog', 'Gait_Sprint', 'Running_A', 'Hunt_Jog', 'Hunt_Sprint',
+          'Walking_Backwards', 'Running_Strafe_Left', 'Running_Strafe_Right', 'Blocking', '2H_Melee_Idle', 'Run_Upstairs'}
+if opt('--keep-clips'):
         _a.use_fake_user = True; KEEP['KEEP__' + _a.name.split('|')[-1].split('.')[0]] = _a; _a.name = 'KEEP__' + _a.name.split('|')[-1].split('.')[0]
 bpy.context.scene.render.fps = 30; bpy.context.scene.render.fps_base = 1
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); arm.name = 'Rig'
@@ -254,6 +256,19 @@ if opt('--keep-clips'):
             sc.frame_set(int(t), subframe=t - int(t))
             samples.append({pb.name: pb.matrix_basis.decompose()[:2] for pb in arm.pose.bones})
         travel = samples[-1]['hips'][0] - samples[0]['hips'][0] if 'hips' in samples[0] else None
+        # a clip the game loops whose last pose is not its first (Tripo's run ends 31 degrees off): its last quarter
+        # eases into the first pose, so the loop has no jump
+        loops_in_game = any(t.strip() in LOOPED for t in targets.split('+'))
+        seam = max(math.degrees(samples[0][b][1].rotation_difference(samples[-1][b][1]).angle) for b in samples[0])
+        if loops_in_game and seam > 5:
+            k0 = int(n * .75)
+            for i in range(k0, n):
+                w = (i - k0) / max(1, n - 1 - k0); w = w * w * (3 - 2 * w)
+                for b in samples[i]:
+                    l0, q0 = samples[0][b]; li, qi = samples[i][b]
+                    if b == 'hips' and travel is not None: l0 = l0 + travel * (i / (n - 1))     # the travel comes out below
+                    samples[i][b] = (li.lerp(l0, w), qi.slerp(q0, w))
+            print('SLIM_KEEP %s: loop seam of %.0f degrees eased over its last quarter' % (src.name[6:], seam), flush=True)
         for tgt in targets.split('+'):
             tgt = tgt.strip()
             old_a = bpy.data.actions.get(tgt)

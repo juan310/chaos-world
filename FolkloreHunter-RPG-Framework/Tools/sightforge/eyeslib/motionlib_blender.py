@@ -121,7 +121,7 @@ def catalog(path, out):
             fn = '%s_%d.png' % (re.sub(r'[^A-Za-z0-9]+', '_', clean(a.name)), k)
             sc.render.filepath = str(out / 'previews' / fn); bpy.ops.render.render(write_still=True); pics.append(fn)
         clips.append({'name': clean(a.name), 'source': a.name, 'frames': [f0, f1], 'fps': fps, 'seconds': round(secs, 3),
-                      'loops': turn < 12, 'endTurn': round(turn, 1), 'bonesMoving': moving,
+                      'loops': turn < 12 or travel.length / leg / max(secs, 1e-3) > .3, 'closes': turn < 12, 'endTurn': round(turn, 1), 'bonesMoving': moving,
                       'travel': round(travel.length, 3), 'speedLegs': round(travel.length / leg / secs, 3) if secs > 0 else 0,
                       'direction': [round(x, 3) for x in (travel.normalized() if travel.length > 1e-4 else travel)], 'previews': pics})
     rep = {'rig': {'bones': len(arm.data.bones), 'names': names, 'legLength': round(leg, 4), 'height': round(height, 4),

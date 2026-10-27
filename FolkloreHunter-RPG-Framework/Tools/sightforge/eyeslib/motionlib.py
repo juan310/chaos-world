@@ -31,6 +31,7 @@ LIB = os.path.join(HOME, "motionlib")
 def packs():
     out = []
     for m in sorted(glob.glob(os.path.join(LIB, "*", "manifest.json"))):
+        if "_before_" in os.path.basename(os.path.dirname(m)): continue          # earlier copies of a pack added again
         try: out.append(json.load(open(m, encoding="utf-8")))
         except ValueError: pass
     return out
