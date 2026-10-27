@@ -313,6 +313,26 @@ def sample(keys, t, loop=False, length=None):
     return out
 
 
+# Clips that lie, sit or ride on purpose: the ground clamp leaves them alone.
+UNGROUNDED = ('Lie_', 'Death', 'Sit_', 'Ride_', 'Dodge_Forward')
+
+
+def grounded(rig, W, name):
+    """Lifts the whole pose when a foot, toe or knee would go under the floor (the 3D mesh check found jump dashes,
+    spins and the leap slash sinking 10-27 cm into the ground): ankles and toes no lower than at rest, less 1.5 cm;
+    a knee no lower than the toes' rest height plus 3 cm (kneeling, not through the floor)."""
+    if name.startswith(UNGROUNDED): return W
+    need = 0.0
+    for s in ('l', 'r'):
+        for b, floor in (('foot.' + s, rig.h0.get('foot.' + s)), ('toes.' + s, rig.h0.get('toes.' + s))):
+            if b in W and floor is not None: need = max(need, floor.z - .015 - W[b].translation.z)
+        kb, tb = 'lowerleg.' + s, rig.h0.get('toes.' + s)
+        if kb in W and tb is not None: need = max(need, tb.z + .03 - W[kb].translation.z)
+    if need <= 1e-4: return W
+    lift = Matrix.Translation((0, 0, need))
+    return {b: lift @ m for b, m in W.items()}
+
+
 def bake(rig, name, keys, base, loop=False, length=None, post=None):
     """keys: [(seconds, pose dict)], each pose filled forward from base. post(pose, t) may adjust a sampled pose."""
     act = bpy.data.actions.new(name); act.use_fake_user = True
@@ -325,11 +345,11 @@ def bake(rig, name, keys, base, loop=False, length=None, post=None):
         t = i / FPS
         P = sample(keys, t, loop, L)
         if post: P = post(P, t)
-        rig.key(rig.solve(P), 1 + i)
+        rig.key(grounded(rig, rig.solve(P), name), 1 + i)
     if loop:      # the first pose again one frame after the last: a seamless loop
         P = sample(keys, 0, loop, L)
         if post: P = post(P, 0)
-        rig.key(rig.solve(P), 1 + frames)
+        rig.key(grounded(rig, rig.solve(P), name), 1 + frames)
     return act
 
 
@@ -341,5 +361,5 @@ def bake_fn(rig, name, fn, length, loop=True):
     frames = max(2, int(round(length * FPS)))
     for i in range(frames + 1):
         t = (i / frames) * length
-        rig.key(rig.solve(fn(t % length if loop else t)), 1 + i)
+        rig.key(grounded(rig, rig.solve(fn(t % length if loop else t)), name), 1 + i)
     return act

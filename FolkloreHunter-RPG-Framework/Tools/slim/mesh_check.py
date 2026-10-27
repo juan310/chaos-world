@@ -55,6 +55,22 @@ def main_bone(vi):
     return groups.get(max(gs, key=lambda g: g.weight).group, '?') if len(gs) else '?'
 
 report = {'model': name, 'clips': {}}
+def crossings(bvh, p, d):
+    """surface crossings along a ray (the body's faces may face either way: counting is safer than normals)"""
+    n, q = 0, p.copy()
+    for _ in range(24):
+        hit = bvh.ray_cast(q, d, 5.0)
+        if hit[0] is None: break
+        n += 1; q = hit[0] + d * 1e-4
+    return n
+
+
+def inside(bvh, p):
+    """inside a closed surface when rays both ways along two axes cross it an odd number of times (three of four)"""
+    votes = sum(crossings(bvh, p, d) % 2 for d in (Vector((1, 0, 0)), Vector((-1, 0, 0)), Vector((0, 1, 0)), Vector((0, -1, 0))))
+    return votes >= 3
+
+
 def clean(n): return n.split('|')[-1]
 acts = [a for a in bpy.data.actions if not only or clean(a.name) in only]
 for act in acts:
@@ -84,10 +100,8 @@ for act in acts:
             for v in list(eo.data.vertices)[::3]:
                 p = eo.matrix_world @ v.co
                 hit = bvh.find_nearest(p)
-                if hit[0] is None: continue
-                loc, nrm, idx, d = hit
-                if (p - loc).dot(nrm) < -.012 and d > .012:      # behind the surface: inside the body
-                    intr.append((p.copy(), d))
+                if hit[0] is None or hit[3] < .012 or hit[3] > .3: continue     # touching the skin, or far outside
+                if inside(bvh, p): intr.append((p.copy(), hit[3]))
         low = cn[:, 2].min() - sole
         ground = -low if low < -.04 and not cname.startswith(LYING) else 0.0
         score = len(bad) / max(1, len(co)) * 100 + len(intr) * .5 + float(ground) * 100
@@ -100,7 +114,8 @@ for act in acts:
         if worst is None or score > worst[0]: worst = (score, f, bad, intr)
         ev.to_mesh_clear()
     clip['where'] = dict(sorted(clip['where'].items(), key=lambda kv: -kv[1])[:4])
-    found = clip['stretch'] > .5 or clip['clipping'] > 3 or clip['ground'] > 0
+    # calibrated on the calm clips (idle, walk, hits: 0.4-0.8 % of the vertices stretch with the cloth)
+    found = clip['stretch'] > 2.5 or clip['clipping'] > 10 or clip['ground'] > 5
     clip['verdict'] = 'check' if found else 'ok'
     report['clips'][cname] = clip
     print('MESH_CHECK', name, cname, clip['verdict'].upper(), json.dumps({k: v for k, v in clip.items() if k != 'verdict'}), flush=True)
