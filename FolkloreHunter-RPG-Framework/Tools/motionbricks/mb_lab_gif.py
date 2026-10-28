@@ -25,4 +25,11 @@ for name, r in rep.items():
     sheet = Image.new('RGB', (pick[0].width, pick[0].height * len(pick)))
     for i, f in enumerate(pick): sheet.paste(f, (0, i * f.height))
     sheet.save(root / (name + '_sheet.jpg'), quality=85)
+    # one cycle at a glance: 8 moments, two to a row (a gait is filmed twice round: its first round)
+    one = n // 2 if any(v is not None for v in r.get('footlock', {}).values()) else n
+    pick = [out[round(j * (one - 1) / 7)] for j in range(8)]
+    w, h = pick[0].size
+    sheet = Image.new('RGB', (w * 2, h * 4))
+    for j, f in enumerate(pick): sheet.paste(f, ((j % 2) * w, (j // 2) * h))
+    sheet.save(root / (name + '_cycle.jpg'), quality=85)
     print('GIF', name, len(out), 'frames', cols, flush=True)
