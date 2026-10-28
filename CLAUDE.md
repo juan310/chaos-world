@@ -18,6 +18,12 @@ The hunt combat is inspired by Monster Hunter's style of play, but everything a 
   chibi KayKit characters must not be used for them in any way: not as a visible model, not as a hidden rig driving
   them, and not as the source of their animations. Every animation they play is authored on the slim skeleton itself.
 
+## Main characters: the Tripo hunters (the owner's rule, 2026-10-28)
+- The player's hunters are the owner's Tripo characters (`SourceArt/Tripo/MaleHunter_Tripo_Animated.fbx` and
+  `FemaleHunter_Tripo_Animated.fbx` on the PC, built by `slimall.ps1` into `Hunter_Male_Slim` / `Hunter_Female_Slim`). Use
+  them from now on for every hunter: in the game, in new clips and fixes, in renders, previews and Proving close-ups.
+  The earlier Codex hunter bodies stay on the side only as fallbacks (`models_before_tripo_20261027`).
+
 ## Development tools (the owner's permission)
 - Claude may build its own tools when they help develop this game now or later, including new modules for SightForge /
   Claude Eyes Studio on the owner's PC (the 3D mesh system, Studio 0.16, is the first). Back up the app first the way
