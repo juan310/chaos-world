@@ -187,12 +187,12 @@ def sneak(rig, name='Sneak_Walk'):
 def crouch_walk(rig, name='Crouch_Walk'):
     """low to the ground: deep knees, short steps, the hips sat back and the trunk tipped well forward over the knees (about 37 degrees)"""
     return gait(rig, name, period=1.15, duty=.66, stride=.46, lift=.08, kick=.02, drop=.34, bob=.01, lean=60, hip_yaw=3,
-                arm=.05, elbow_up=.6, knees_out=.18, hips_back=.14, hands_at=(.3, .6))
+                arm=.05, elbow_up=.6, knees_out=.18, hips_back=.14, hands_at=(.22, .62))
 
 
 CROUCH = merge(RELAX, {'hips': (0, .14, -.34), 'hipsR': (18, 0, 0), 'spine': (30, 0, 0), 'chest': (18, 0, 0), 'head': (-54, 0, 0),
                        'footL': (.06, -.04, 0, 0, 10), 'footR': (-.06, .08, 0, 0, -10), 'kneeL': (.2, -1, 0), 'kneeR': (-.2, -1, 0),
-                       'handL': (.21, -.3, .6), 'elbowL': (.4, .5, -.6), 'handR': (-.21, -.3, .6), 'elbowR': (-.4, .5, -.6),
+                       'handL': (.21, -.22, .62), 'elbowL': (.4, .5, -.6), 'handR': (-.21, -.22, .62), 'elbowR': (-.4, .5, -.6),
                        'worldL': True, 'worldR': True})      # hands in the body's space, ahead of the knees
 SNEAK = merge(CROUCH, {'hips': (0, .09, -.2), 'hipsR': (13, 0, 0), 'spine': (22, 0, 0), 'chest': (13, 0, 0), 'head': (-40, 0, 0),
                        'handL': (.21, -.2, .74), 'handR': (-.21, -.2, .74), 'kneeL': (.14, -1, 0), 'kneeR': (-.14, -1, 0)})

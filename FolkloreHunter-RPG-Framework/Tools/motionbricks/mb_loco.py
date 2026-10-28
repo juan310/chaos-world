@@ -25,6 +25,7 @@ VARIANTS = {
     'loco_auto': dict(poses=4, tokens='auto'),
     'loco4_arms': dict(poses=4, tokens='fit', upper='arms'),      # the bow drawn while walking, the lance held level
     'loco2_arms': dict(poses=2, tokens='fit', upper='arms'),
+    'loco2_torso': dict(poses=2, tokens='fit', upper='torso'),    # our hunch kept (the sneak, the crouch walk)
     'loco4_raw': dict(poses=4, tokens='fit', correct=False),       # without its spreading of the end correction
     'loco4_ground': dict(poses=4, tokens='fit', ground=True),      # every frame lifted back onto the floor
 }
