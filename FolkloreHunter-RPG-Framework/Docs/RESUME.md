@@ -38,7 +38,13 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
     the standing jump and the running leap (its landing bug fixed, baked on the spot).
   - In the game: Z / L3 crouch (a light push creeps, a full push sneaks), V jump (on the move a running leap). The jump
     has no pad button yet. The Proving Grounds check them through the controls.
-  - 2026-10-28: `mbrun` regenerated all 45 clips with the picks; the hunters were rebuilt through the gate.
+  - 2026-10-28: the rebuilt hunters failed the gate on attacks (Katana_Iai 3 -> 7 cm, SnS_Rush_2 skin, the huntress's
+    2H and bow skin), changes since their 27 Oct build, not the new movement. The installed hunters stay (all their
+    Tripo animations). The owner asked for a test dummy: `Hunter_Test_Slim`, the Tripo male with movement only
+    (`build_slim --only-clips`), passed the gate and is in the game. The Proving ledger's "Test body" toggle wears it.
+    Proving run (235 checks, the same 9 older failures): crouch 0.71 m/s and sneak 0.89 m/s with the planted foot held,
+    standing jump 0.73 m, running leap 0.67 m high and 4.8 m long, sprint stands up, back in the hunter after.
+  - Next: fix the attack regressions so the hunters can take the new movement; a pad button for jumping.
 
 ## Done
 - SightForge / Studio **0.19** (installed; backup `ClaudeEyesStudio\backups\app_0_18_before_0_19_20261027`):
