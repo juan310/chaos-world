@@ -2,6 +2,36 @@
 
 Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `Tools\sync.ps1` first.
 
+
+## The Barrow Troll built from math (2026-10-28, evening)
+- `Tools/slim/troll_math.py` (Blender) makes the troll with no generated mesh. The body is an implicit surface:
+  Blender metaballs, 142 balls, capsules and ellipsoids laid along its own skeleton. It is rebuilt as an even 2 cm
+  skin (voxel remesh: the field's own grid slivers read as torn skin) and skinned by the same fields that made it.
+  The loincloth, rope belt, wrist wraps, tusks, eyes and hair are made by math too. The colours are painted by noise
+  (mottled grey-green skin, pink nose and ears, dark nails, patched leather) and baked to one texture.
+- It is built into `SourceArt\Troll\math` and goes through `slimall` (job `Monster_Troll`, `--moves troll_moves`)
+  like any body. On the PC: `C:\AW\briarhound_work\math_troll.ps1 [game]`.
+- Gate: PASS, judged without a baseline (`slimall ... nobaseline`, a new model replacing a different one). Worst
+  moves: Troll_Smash 5.6 % (watch), Troll_Swipe 4.7, Death_A 4.4; folds 1.3 % or less. Proving: all 6 troll checks
+  pass (225 checks, 10 failures, all the known hunter ones). Close-ups reviewed: it faces its way, walks forward, bends
+  forward into the pound, no holes.
+- The Forge troll it replaces had its skeleton in backwards (toe bones in its heels, left bones on its right).
+  SightForge now checks the facing of every build (`skinfix_blender.facing`, logged as SLIM_FACING; `--face-fix`
+  turns the body round). It is kept as job `Monster_TrollForge` and in
+  `C:\AW\briarhound_work\models_before_math_troll_20261028`.
+- Body gate: "skin folded inside out" is reported as a watch item. The weight writer now removes cleared weights.
+  `--untangle` frees hands grown into thighs.
+- To do: the face and fingers are softened by the 2 cm skin (a finer skin or sharper features); a small light patch
+  on the loincloth in the backhand.
+
+## Two-view capture (option A, local and free) and the MotionBricks lab
+- `Tools/capture2v/`: anymove's local parts are vendored (Apache-2.0, see its README). The tool covers prep, film
+  (Wan 2.2 on this PC, the VAE untiled), dataset, train, read and solve (`capture.ps1`), and `to_clip.py` turns a
+  capture into a clip on our skeleton. Not run end to end yet: the first film crashed in the VAE tiling, now fixed and
+  not yet re-run. Next: prep on the math troll, film a roar, check that the two views stay in step.
+- MotionBricks lab, rounds 1-3: `Docs/MOTIONBRICKS_PLAYBOOK.md`. The pipeline's default is now `adaptive`, which takes
+  effect at the next `mbrun` regeneration of the hunters (not run yet).
+
 ## Done
 - SightForge / Studio **0.19** (installed; backup `ClaudeEyesStudio\backups\app_0_18_before_0_19_20261027`):
   - **WorldForge page** under Tools: recipes edited as values (with a line of help per value) or as JSON, Save (old version
