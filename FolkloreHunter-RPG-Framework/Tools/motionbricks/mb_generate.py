@@ -42,6 +42,10 @@ def retime(gen, count):
 # clips the lab films showed better under another setting (Docs/MOTIONBRICKS_PLAYBOOK.md, round 5): the dive arcs
 # instead of flying as a plank, the standing jump keeps our arm swing over its calmer body
 PICK = {'Jump_Full_Short': 'settle', 'Jump_Up': 'settle_arms'}
+# Attacks the body gate held back under adaptive (2026-10-28): with their short gaps kept as our in-betweens, the sword
+# hilt swings into the thigh (SnS_Rush_1 1 -> 9 cm, SnS_Leap_Slash 5 -> 8, Katana_Iai 3 -> 7) and the skin folds more
+# (SnS_Rush_2, SnS_Shield_Crash). They keep the generation that passed until their in-betweens are re-keyed clear of the legs.
+PICK.update({n: 'base' for n in ('SnS_Rush_1', 'SnS_Rush_2', 'SnS_Leap_Slash', 'SnS_Shield_Crash', 'Katana_Iai')})
 
 
 def main(src, dst, policy='adaptive'):
