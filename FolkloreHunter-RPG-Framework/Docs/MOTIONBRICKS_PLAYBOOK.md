@@ -130,6 +130,56 @@ What it showed:
 - **`adaptive` is the game pipeline's setting from now on** (`mb_generate.py`, default). `base` stays available.
   It takes effect at the next regeneration, through the body gate and the Proving Grounds like any build.
 
+### Round 4 (2026-10-28): locomotion, nine gaits
+How (`mb_loco.py`, following its own docs): each gait is exported as four travelling cycles (the hips carried at the
+speed the planted foot slides back). From the context one cycle in, MotionBricks generates to our pose one cycle on,
+then on to the next (chained). The second generation becomes the clip: it starts and ends on our pose, so with the
+travel taken off it loops without a seam. Measured travelling; filmed on the Tripo hunter after the build's foot lock
+(`mb_lab_view.py`, `mb_lab_gif.py`: the settings side by side over a striped floor).
+
+| setting | smooth | pops | keys cm | slide (low) | floor cm |
+|---|---|---|---|---|---|
+| loco4 (4 target poses) | 32.9 | 0.22 | 0 | 23.2 | 3.7 |
+| loco2 (2 target poses) | 34.5 | 0.22 | 0 | 21.4 | 3.2 |
+| loco_auto (its own cadence) | 34.6 | 0.22 | 0 | 18.9 | 3.2 |
+| loco4_raw (no end correction) | 36.8 | 0.44 | **6.5** | 16.1 | 2.0 |
+| loco4_ground (lifted onto the floor) | 33.1 | 0.22 | 0 | 23.1 | **2.1** |
+| *our own cycles* | 33.9 | 1.78 | 0 | 10.0 | 0.7 |
+
+Foot slide left after the build's foot lock (the share of planted time a foot still moves):
+
+| gait | ours | loco4 | loco2 | loco4_ground |
+|---|---|---|---|---|
+| walk | 0% | 0% | 0% | 0% |
+| jog | 1% | 6% | **3%** | 6% |
+| sprint | 1% | 7% | 9% | **5%** |
+| sneak (first version) | 0% | 0% | 0% | 0% |
+| crouch walk (first version) | 0% | 64% (can't lock) | **0%** | 63% |
+
+What the films show:
+- **Jog and sprint are clearly better through MotionBricks.** Ours tucks the legs under the body like a shuffle. Its
+  runs open into a full stride with a real airborne phase and the knee driving through, the way a person runs.
+- The walk comes out almost the same as ours, with a slightly fuller heel lift at push-off.
+- It stays close to the poses it is given. Our first sneak and crouch walk were nearly upright with the knees spread
+  (a frog squat), and it kept them that way. The fix belongs in our poses (`moves.gait`):
+  - The hips sit back behind the feet (`hips_back`) and the knees point nearer forward.
+  - The trunk tips forward about 25° for the sneak and 37° for the crouch. A gait `lean` is shared by the hips, spine
+    and chest, so the trunk (hips to neck) tips only about 0.6 of it: lean 44 and 60.
+  - The hands are placed in the body's own space (`hands_at`). In the chest's frame they swing back behind the hips
+    once the trunk tips forward.
+  - Measured on the hunter, the trunk angle is the same through MotionBricks and back (25.4° / 25.4°): the round trip
+    loses nothing.
+- It takes shorter strides than ours in the crouch (0.41 against 0.58 m/s with four target poses). The planted foot
+  then cannot match the body's travel, and the lock cannot hold it. With two target poses it keeps our stride.
+- Without its end correction (loco4_raw) it misses our poses by 6.5 cm. Keep the correction on.
+
+**Settings chosen** (`mb_loco.PICK`, `mb_generate` uses them):
+- `loco2` for every gait.
+- `loco4_ground` for the sprint.
+- `loco2_arms` for the bow aim walk and the lance charge (our arms held over its legs).
+
+The Tripo hunter's own walk and jog clips (`--keep-clips`) still take the place of `Gait_Walk` / `Gait_Jog` on the male.
+
 ## Rules (what the lab has shown so far)
 1. Fit the length to the gap (`allowed_token_counts=(round((gap + 6) / 4),)`, 6-16). Never the model's default range.
 2. Give it room. Under ~13 frames between our keys, our own in-betweens are better: keep them.
@@ -138,6 +188,8 @@ What it showed:
 5. It always lands exactly on the target pose (`correct_generated_diff`), so our strike timing is safe.
 6. Its foot contacts (columns: left heel, left toe, right heel, right toe) are the signal for foot locking after
    retargeting. Its feet still slide.
+7. Locomotion: chain two generations of one cycle each from travelling cycles and keep the second; two target poses
+   (four for a sprint). It keeps the poses it's given, so a gait that looks wrong is fixed in our poses first.
 
 ## Next experiments
 - Moves that aren't attacks, where the middle key matters less (getting up, lying down, the jump): MotionBricks
