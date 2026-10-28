@@ -143,7 +143,14 @@ if idle:
         if idle.slots: arm.animation_data.action_slot = idle.slots[0]
     except AttributeError: pass
     bpy.context.scene.frame_set(int(idle.frame_range[0]))
+    # only the bones' pose: a clip from the game's FBX also keys the model object itself (the export's turn), which
+    # would turn the creature away from the layout's cameras
+    pose = {pb.name: pb.matrix_basis.copy() for pb in arm.pose.bones}
+    arm.animation_data.action = None
+    arm.location, arm.rotation_euler, arm.scale = (0, 0, 0), (0, 0, 0), (1, 1, 1)
+    for pb in arm.pose.bones: pb.matrix_basis = pose[pb.name]
+    bpy.context.view_layer.update()
 paths = common.render_views(run / 'ref', 'ref', scale=1.0)
-if arm.animation_data: arm.animation_data.action = None
+for pb in arm.pose.bones: pb.matrix_basis = Matrix()
 bpy.ops.wm.save_as_mainfile(filepath=str(run / 'rigged.blend'))
 print('CAPTURE_PREP_DONE', paths, flush=True)
