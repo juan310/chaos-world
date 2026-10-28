@@ -3,7 +3,7 @@
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
-#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock] [--untangle] [--skirt] [--skin-relax]
+#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock] [--face-fix] [--untangle] [--skirt] [--skin-relax]
 #       [--fingers] [--out <folder>] [--keep-clips "<source clip>=<Game_Clip>+<Game_Clip>,..."]
 # --keep-clips keeps clips that came in the source file (a Tripo export's walk, run, idle...): each is sampled at 30
 # frames a second, held in place (the game moves the body; the hips' travel over the clip is taken out) and stored under
@@ -19,6 +19,7 @@
 # (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
 # --out writes the model somewhere else than the game's Models folder (trials).
 # --moves <module> plays only that module's CLIPS (a body with its own moves: troll_moves), no motion capture.
+# --face-fix turns a body skinned to a backwards skeleton round to face the skeleton's way (skinfix_blender.turn_around).
 # --untangle frees the thighs' skin from the hands that hung against them when the body was skinned (skinfix_blender.untangle).
 # --skirt weights cloth hanging from the hips as cloth (Tools/sightforge/eyeslib/skinfix_blender.py skirt).
 # --skin-relax smooths the bone weights where the clips tear the skin (Tools/sightforge/eyeslib/skinfix_blender.py).
@@ -89,6 +90,15 @@ for _pb in arm.pose.bones: _pb.matrix_basis = Matrix()
 bpy.context.view_layer.update()
 choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 body = next(o for o in bpy.data.objects if o.type == 'MESH'); body.name = name + '_Body'
+# an auto-rig can put the skeleton in backwards (the local Forge's troll): every move then plays reversed against the
+# body's face. Always measured; turned to match only with --face-fix (SightForge skinfix_blender.facing / turn_around)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'sightforge' / 'eyeslib'))
+import skinfix_blender
+if '--face-fix' in argv: skinfix_blender.turn_around(body, arm, log=lambda m: print('SLIM_' + m, flush=True))
+else:
+    _sk, _bd = skinfix_blender.facing(body, arm)
+    print('SLIM_FACING %s' % ('skeleton and body face the same way' if _sk == _bd else 'no feet to judge by' if _sk is None
+          else 'the body faces the OTHER way from its skeleton (toe bones %+d, feet %+d along y): build with --face-fix' % (_sk, _bd)), flush=True)
 smooth = int(opt('--smooth', '0'))
 if smooth:
     # the auto-rig's skin weights hand over too sharply at the shoulders, hips and spine: big swings tear the skin there

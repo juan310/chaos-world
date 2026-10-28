@@ -237,3 +237,75 @@ def untangle(body, arm, log=print):
         log('UNTANGLE cut %d faces joining the hands to the legs, %d cap faces close the openings' % (len(bridge), len(capped)))
     bm.free()
     return done
+
+
+def facing(body, arm):
+    """(skeleton forward, body forward) along y, each +1 or -1. The skeleton's forward is where its toe bones point
+    from the ankles; the body's is where its feet reach furthest from the ankles (toes are longer than heels). An
+    auto-rig that put the skeleton in backwards has the two opposite: every move then plays reversed against the face
+    (the troll's ground pound bent it backwards)."""
+    B = arm.data.bones; AW = arm.matrix_world
+    if not all(n in B for n in ('foot.l', 'foot.r', 'toes.l', 'toes.r')): return None, None
+    ank = {s: AW @ B['foot.' + s].head_local for s in 'lr'}
+    tip = {s: AW @ B['toes.' + s].tail_local for s in 'lr'}
+    sk = 1 if sum((tip[s] - ank[s]).y for s in 'lr') > 0 else -1
+    me = body.data; gi = {g.name: g.index for g in body.vertex_groups}
+    Mw = np.array(body.matrix_world)
+    co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co); co = co.reshape(-1, 3) @ Mw[:3, :3].T + Mw[:3, 3]
+    front = back = 0.0
+    for s in 'lr':
+        ids = {gi.get('foot.' + s), gi.get('toes.' + s)} - {None}
+        on = np.array([any(g.group in ids and g.weight > .3 for g in v.groups) for v in me.vertices])
+        low = on & (co[:, 2] < ank[s].z + .03)
+        if low.sum() < 10: continue
+        dy = co[low, 1] - ank[s].y
+        front += dy.max(); back += -dy.min()
+    return sk, (1 if front > back else -1)
+
+
+def turn_around(body, arm, log=print):
+    """a body skinned to a skeleton that faces the other way is turned to face the skeleton's way: the mesh is turned
+    half round about the hips, its left and right groups swap (they now lie on the other side), and each foot's
+    weights are shared out again between the ankle and the toes along the toe bone (the heel had been the toes').
+    -> True if it was turned"""
+    sk, bd = facing(body, arm)
+    if sk is None or sk == bd:
+        log('FACING the body faces its skeleton\'s way' if sk else 'FACING no feet to judge by'); return False
+    from mathutils import Matrix, Vector
+    B = arm.data.bones; AW = arm.matrix_world
+    piv = AW @ B['hips'].head_local
+    T = Matrix.Translation(Vector((piv.x, piv.y, 0)))
+    turn = body.matrix_world.inverted() @ T @ Matrix.Rotation(np.pi, 4, 'Z') @ T.inverted() @ body.matrix_world
+    body.data.transform(turn); body.data.update()
+    # left and right swap places
+    def other(n):
+        for a, b in (('.l', '.r'), ('_l', '_r'), ('.L', '.R'), ('_L', '_R')):
+            if n.endswith(a): return n[:-len(a)] + b
+            if n.endswith(b): return n[:-len(b)] + a
+        for a, b in (('Left', 'Right'), ('left', 'right')):
+            if n.startswith(a): return b + n[len(a):]
+            if n.startswith(b): return a + n[len(b):]
+        return None
+    pairs = [(g, other(g.name)) for g in body.vertex_groups if other(g.name)]
+    for g, _ in pairs: g.name = '__swap__' + g.name
+    for g, o in pairs: g.name = o
+    # each foot: the ankle's share and the toes' share along the toe bone
+    me = body.data; gi = {g.name: g.index for g in body.vertex_groups}
+    Mw = body.matrix_world
+    for s in 'lr':
+        F, Tg = gi.get('foot.' + s), gi.get('toes.' + s)
+        if F is None or Tg is None: continue
+        h = AW @ B['toes.' + s].head_local; d = (AW @ B['toes.' + s].tail_local - h).normalized()
+        fl, tl = body.vertex_groups[F], body.vertex_groups[Tg]
+        n = 0
+        for v in me.vertices:
+            w = {g.group: g.weight for g in v.groups}
+            tot = w.get(F, 0) + w.get(Tg, 0)
+            if tot <= 1e-4: continue
+            u = (Mw @ v.co - h).dot(d)
+            share = min(1.0, max(0.0, (u + .04) / .06))
+            fl.add([v.index], tot * (1 - share), 'REPLACE'); tl.add([v.index], tot * share, 'REPLACE'); n += 1
+        log('FACING %s foot: %d vertices shared between ankle and toes again' % ({'l': 'left', 'r': 'right'}[s], n))
+    log('FACING the body faced the other way from its skeleton (toes bones %+d, feet %+d along y): turned to match, %d left/right groups swapped'
+        % (sk, bd, len(pairs) // 2))
+    return True
