@@ -58,13 +58,14 @@ bpy.data.objects.remove(sarm)
 # the stage: the hunter walking over a grid, filmed from its side, one setting after another (joined into columns after)
 sc.render.engine = 'BLENDER_WORKBENCH'
 sc.display.shading.light = 'STUDIO'; sc.display.shading.color_type = 'MATERIAL'
-bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
-floor = bpy.context.object
-m = bpy.data.materials.new('grid'); m.use_nodes = True
-nt = m.node_tree; chk = nt.nodes.new('ShaderNodeTexChecker'); chk.inputs['Scale'].default_value = 400
-nt.links.new(chk.outputs['Color'], nt.nodes['Principled BSDF'].inputs['Base Color'])
-m.diffuse_color = (.5, .5, .5, 1); floor.data.materials.append(m)
-sc.display.shading.color_type = 'TEXTURE'
+skin = bpy.data.materials.new('skin'); skin.diffuse_color = (.78, .66, .58, 1)
+body.data.materials.clear(); body.data.materials.append(skin)
+bpy.ops.mesh.primitive_plane_add(size=400, location=(0, 0, -.002))
+pl = bpy.data.materials.new('floor'); pl.diffuse_color = (.55, .56, .58, 1); bpy.context.object.data.materials.append(pl)
+bar = bpy.data.materials.new('bar'); bar.diffuse_color = (.12, .12, .14, 1)
+for k in range(-20, 400):                                  # a dark stripe across the floor every half metre
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -k * .5, 0)); o = bpy.context.object
+    o.scale = (3, .025, .002); o.data.materials.append(bar)
 cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam); sc.camera = cam
 cam.data.type = 'ORTHO'
 report = {}
