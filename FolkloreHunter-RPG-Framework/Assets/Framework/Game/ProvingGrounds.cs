@@ -42,7 +42,7 @@ namespace FH.Game
         }
 
         public static readonly (string id, string label)[] Monsters =
-            { ("gravebound", "Gravebound"), ("gravebound_knight", "Gravebound Knight"), ("gravebound_mage", "Gravebound Mage"), ("grave_warden", "Grave Warden"), ("thornback", "Thornback"), ("mirejaw", "Mirejaw") };
+            { ("gravebound", "Gravebound"), ("gravebound_knight", "Gravebound Knight"), ("gravebound_mage", "Gravebound Mage"), ("grave_warden", "Grave Warden"), ("thornback", "Thornback"), ("mirejaw", "Mirejaw"), ("barrow_troll", "Barrow Troll") };
 
         /// <summary>A monster can be spawned when its data and its 3D model are both present in this build.</summary>
         public static bool Available(GameSession s, string id) => s.Db.Monsters.TryGetValue(id, out var def) && CharacterFactory.Exists(CharacterFactory.MonsterModel(def));

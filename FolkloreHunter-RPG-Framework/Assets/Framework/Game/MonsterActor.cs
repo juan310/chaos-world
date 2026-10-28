@@ -54,6 +54,7 @@ namespace FH.Game
         CharacterController cc;
         Transform hand, chest, head;
         Renderer eyes;
+        SpriteActor sprite;                   // a drawn monster's card (the troll), lit up when struck
         Material eyesBase, calmEyes;
         GameObject ring;
         Vector3 patrolTarget;
@@ -83,6 +84,7 @@ namespace FH.Game
             chest = WorldKit.Find(Visual, "chest");
             head = WorldKit.Find(Visual, "head");
             eyes = Visual.GetComponentsInChildren<Renderer>().FirstOrDefault(r => r.name.Contains("Eyes"));
+            sprite = Visual.GetComponent<SpriteActor>();
             if (eyes) eyesBase = calmEyes = eyes.sharedMaterial;
             Home = transform.position;
             patrolTarget = Home;
@@ -445,6 +447,7 @@ namespace FH.Game
             if (Unkillable && Brain.Health - hit.Damage <= 1) Brain.Health = Def.maxHealth;
             bool killed = Brain.TakeHit(hit);
             hurtFlash = .12f;
+            if (sprite) sprite.Flash();
             // Hunt rules: soft hitzones (weak points, or parts taking 1.3x and more) show orange numbers, as in Monster Hunter.
             float zone = part == null ? 1 : (partBroken && part.brokenDamageMultiplier > 0 ? part.brokenDamageMultiplier : part.damageMultiplier);
             bool soft = hit.WeakPoint || (HuntRules && zone >= 1.3f);

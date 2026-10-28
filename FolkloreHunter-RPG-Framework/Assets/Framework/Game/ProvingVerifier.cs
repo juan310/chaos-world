@@ -514,13 +514,86 @@ namespace FH.Game
             S.ProvingRig.ClearMonsters();
         }
 
+        /// <summary>The Barrow Troll, a monster drawn as a sprite (SpriteActor, from the owner's troll sheet): it stands on the
+        /// ground at its height with its card turned to the camera, walks, strikes the hunter, takes the hunter's blows (Y, the
+        /// real controls), flashes when struck and falls. Pictures from the game camera (s10-s13) and close views (Monsters).</summary>
+        IEnumerator TrollChecks()
+        {
+            S.ProvingRig.ClearMonsters();
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            yield return Frames(2);
+            var m = S.ProvingRig.Spawn("barrow_troll", true);
+            if (!m) { Check("the Barrow Troll can be spawned", false); yield break; }
+            var sa = m.Visual.GetComponent<SpriteActor>();
+            m.Passive = true;
+            Face(m, 5f); yield return Frames(8);
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            if (!sa || !sa.Card) { Check("Barrow Troll: drawn as a sprite card", false, m.Model); S.ProvingRig.ClearMonsters(); yield break; }
+            float ground = S.GroundHeight(m.transform.position);
+            var b = sa.Card.bounds;
+            var head = WorldKit.Find(m.Visual, "head"); var chest = WorldKit.Find(m.Visual, "chest"); var hips = WorldKit.Find(m.Visual, "hips");
+            Check("Barrow Troll: a drawn monster (its sprite card, frame " + sa.Frame + ") standing on the ground, as tall as its data",
+                  sa.Card.enabled && Mathf.Abs(b.min.y - ground) < .45f && head && head.position.y - ground > m.Def.height * .7f,
+                  "card " + (b.min.y - ground).ToString("0.00", ci) + ".." + (b.max.y - ground).ToString("0.00", ci) + " m, head " + (head ? (head.position.y - ground).ToString("0.00", ci) : "-") + " m (height " + m.Def.height + ")");
+            var toCard = Flat(sa.Card.transform.position - Camera.main.transform.position);
+            float facing = Vector3.Angle(Flat(sa.Card.transform.forward), toCard);
+            Check("Barrow Troll: the card faces the camera", facing < 8, facing.ToString("0", ci) + " deg off");
+            Check("Barrow Troll: its moves are clips like any monster's (idle, walk, pound, backhand, flinch, fall) with its bones in order",
+                  new[] { "Idle", "Walking_A", "Troll_Smash", "Troll_Swipe", "Hit_A", "Death_A" }.All(m.Anim.Has) && head && chest && hips && head.position.y > chest.position.y && chest.position.y > hips.position.y);
+            yield return Snap("s10-troll-standing");
+            // walking: the card steps through the walk's frames
+            m.enabled = false;                                           // its brain would ask for the idle every frame
+            m.Anim.Play("Walking_A", true, 1, true);
+            var frames = new HashSet<string>();
+            for (float t = 0; t < 1.2f; t += Time.unscaledDeltaTime) { frames.Add(sa.Frame); yield return null; }
+            m.enabled = true;
+            Check("Barrow Troll: the walk plays its drawn frames", frames.Count(f => f.StartsWith("Walking_A/")) >= 8, frames.Count(f => f.StartsWith("Walking_A/")) + " frames");
+            m.Anim.Current = ""; m.Anim.Play("Idle");
+            yield return Portraits(m);
+            // it attacks the hunter standing in front of it
+            S.ProvingRig.Invulnerable = true;
+            m.Passive = false; Face(m, 2.2f); yield return Frames(2);
+            int started = m.AttacksStarted; bool hurt = false, struck = false; float hp = H.Health;
+            var seen = new HashSet<string>();
+            for (float t = 0; t < 9 && !(struck && hurt); t += Time.unscaledDeltaTime)
+            {
+                seen.Add(sa.Frame.Split('/')[0]);
+                if (m.AttacksStarted > started && !struck && (sa.Frame.StartsWith("Troll_Smash/0") || sa.Frame.StartsWith("Troll_Swipe/0"))) { struck = true; }
+                if (H.Hurt || H.Health < hp - .5f) hurt = true;
+                if (struck && sa.Frame.EndsWith("/09")) yield return Snap("s11-troll-strike");
+                yield return null;
+            }
+            Check("Barrow Troll: winds up and strikes the hunter with its drawn pound or backhand", m.AttacksStarted > started && hurt,
+                  "attacks " + (m.AttacksStarted - started) + ", hunter hurt " + hurt + ", clips " + string.Join("/", seen));
+            S.ProvingRig.Invulnerable = false;
+            // the hunter's blows land on it (the real Y presses) and the card flashes
+            m.Passive = true; yield return UntilNeutral(); m.Brain.Health = m.Def.maxHealth;
+            Face(m, 1.9f); yield return Frames(3);
+            float before = m.Brain.Health; int flashes = sa.Flashes;
+            for (int i = 0; i < 4; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.35f); }
+            yield return UntilNeutral();
+            Check("Barrow Troll: the hunter's blows land on it (its hurtboxes ride the drawn body) and it flashes when struck",
+                  m.Brain.Health < before && sa.Flashes > flashes, "damage " + (before - m.Brain.Health).ToString("0", ci) + ", flashes " + (sa.Flashes - flashes));
+            yield return Snap("s12-troll-struck");
+            // and it falls
+            m.Brain.Health = 4;
+            for (int i = 0; i < 6 && m.Alive; i++) { Face(m, 1.9f); yield return Tap(PadButton.Y, 2); yield return Wait(.45f); }
+            yield return Wait(1.4f);
+            Check("Barrow Troll: struck down, it falls with its drawn death", !m.Alive && sa.Frame.StartsWith("Death_A/"), sa.Frame);
+            yield return Snap("s13-troll-fallen");
+            yield return UntilNeutral();
+            S.ProvingRig.ClearMonsters();
+        }
+
         /// <summary>Close views of a monster for review by eye (Captures/Proving/Monsters): front and side, standing, walking,
         /// winding up and striking, at the moment's pose (sampled, the worn body refreshed).</summary>
         IEnumerator Portraits(MonsterActor m)
         {
             m.enabled = false;
-            yield return Closeups(m.Visual, m.transform, m.Anim, m.Def.height, "Monsters", m.MonsterId,
-                new[] { ("Idle", 0f), ("Walking_A", .25f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Chop", .55f), ("Spellcast_Shoot", .5f) });
+            var poses = m.Anim.Has("Troll_Smash")
+                ? new[] { ("Idle", 0f), ("Walking_A", .25f), ("Troll_Smash", .4f), ("Troll_Smash", .62f), ("Troll_Swipe", .62f), ("Hit_A", .3f) }
+                : new[] { ("Idle", 0f), ("Walking_A", .25f), ("1H_Melee_Attack_Chop", .3f), ("1H_Melee_Attack_Chop", .55f), ("Spellcast_Shoot", .5f) };
+            yield return Closeups(m.Visual, m.transform, m.Anim, m.Def.height, "Monsters", m.MonsterId, poses);
             m.enabled = true;
             m.Anim.Current = ""; m.Anim.Play("Idle");
         }
@@ -612,6 +685,7 @@ namespace FH.Game
                 foreach (var (view, dir) in new[] { ("front", root.forward), ("side", root.right) })
                 {
                     cam.transform.position = c + dir * 6; cam.transform.LookAt(c);
+                    foreach (var card in visual.GetComponentsInChildren<SpriteActor>()) card.FaceNow(cam);   // a drawn monster turns to this camera
                     light.transform.rotation = Quaternion.LookRotation(-dir + Vector3.down * .6f + root.right * .3f);
                     string shot = Path.Combine(folder, name + "_" + clip + "_" + (int)(at * 100) + "_" + view);
                     yield return Render(cam, rt, shot + ".png");
@@ -1946,6 +2020,7 @@ namespace FH.Game
             yield return BattleChecks();
             yield return NewLookChecks();
             yield return SkeletonUpgradeChecks();
+            yield return TrollChecks();
 
             // Menus on the pad: Menu opens pause, B backs out.
             yield return Tap(PadButton.Start);

@@ -17,13 +17,14 @@ namespace FH.Game
             return mat;
         }
 
-        public static bool Exists(string resource) => !string.IsNullOrEmpty(resource) && Resources.Load<GameObject>("Models/" + resource) != null;
+        public static bool Exists(string resource) => !string.IsNullOrEmpty(resource) && (Resources.Load<GameObject>("Models/" + resource) != null || SpriteActor.Exists(resource));
 
         /// <summary>The model a monster is shown with: its own, or the older one it replaced when the new one is not in the build.</summary>
         public static string MonsterModel(MonsterDef d) => Exists(d.model) || string.IsNullOrEmpty(d.fallbackModel) ? d.model : d.fallbackModel;
 
         public static Transform Create(string resource, Transform parent, float targetHeight, Color? tint = null)
         {
+            if (resource.StartsWith(SpriteActor.Prefix)) return SpriteActor.Create(resource, parent, targetHeight);   // a drawn monster (the troll)
             var prefab = Resources.Load<GameObject>("Models/" + resource);
             if (!prefab) throw new Exception("Missing character model " + resource);
             if(Resources.Load<Material>("Monsters/"+resource))return CreateCreature(resource,prefab,parent,targetHeight);

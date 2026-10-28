@@ -4,6 +4,7 @@ the lower foot held on the ground, breathing idle with hair sway, an eased overh
 The art stays the sheet's own; hidden surface a moving part uncovers is filled from its surroundings.
 
   python Tools/sprites/troll_puppet.py <out folder> [sprite height px, default 256]
+  python Tools/sprites/troll_puppet.py game Assets/Resources/Sprites/Troll      the game's frames and sprite.json
 
 Writes per animation: a sheet (PNG, transparent), a GIF on a dark backdrop, and the frames."""
 import math
@@ -28,8 +29,8 @@ OFFSETS = [(0, 95), (0, 120), (25, 95), (-25, 100), (0, -95), (0, 150), (40, 140
 POLY = {
     'upperarm': [(200, 160), (240, 140), (300, 145), (325, 175), (320, 240), (305, 300), (305, 380), (300, 432), (285, 455),
                  (222, 455), (200, 420), (198, 300), (195, 240), (185, 200)],
-    'forearm': [(198, 420), (302, 425), (291, 470), (283, 520), (273, 560), (251, 600), (243, 650), (236, 690), (200, 706),
-                (140, 697), (113, 662), (110, 600), (128, 560), (158, 530), (168, 480), (188, 444)],
+    'forearm': [(198, 420), (302, 425), (291, 470), (283, 520), (273, 560), (251, 600), (245, 650), (240, 698), (200, 717),
+                (140, 710), (110, 672), (106, 600), (128, 560), (158, 530), (168, 480), (188, 444)],
     'cloth': [(40, 445), (110, 424), (200, 434), (300, 424), (366, 440), (392, 520), (394, 640), (390, 785), (330, 790),
               (310, 722), (300, 692), (286, 662), (250, 652), (205, 657), (186, 702), (182, 802), (108, 803), (68, 788),
               (36, 700), (34, 560), (31, 470)],
@@ -148,7 +149,7 @@ def pose_frame(L, p, phase=0.0, dust=()):
     """p: dy (body drop), lean (deg, + forward), breathe, sh, el (arm, deg), cloth (deg), hair, and per leg n/f: th (thigh,
     deg, + forward), kn (knee bend, deg), ft (foot, deg)"""
     canvas = Image.new('RGBA', (CW, CH), (0, 0, 0, 0))
-    root = T(p.get('dx', 0), p.get('dy', 0))
+    root = T(p.get('dx', 0), p.get('dy', 0)) @ R(p.get('fall', 0), HEEL)   # fall: the whole body tips over its heel
     torso = root @ R(p['lean'], PELVIS) @ S(1 + p.get('breathe', 0) * .006, PELVIS)
     def leg(side):
         off = T(*FAR) if side == 'f' else np.eye(3)
@@ -174,10 +175,12 @@ def pose_frame(L, p, phase=0.0, dust=()):
         for (x, y), col, r in dust:
             X, Y = x + OX, y + OY
             d.ellipse((X - r, Y - r, X + r, Y + r), fill=col)
-    return canvas, (n_ft, f_ft, fa)
+    return canvas, dict(root=root, torso=torso, n_ft=n_ft, f_ft=f_ft, fa=fa)
 
 
 SOLE = [(60, 975), (150, 996), (250, 998), (340, 990)]
+HEEL = (335, 992)
+KNEECAP = [(205, 700), (230, 735), (260, 745)]
 
 
 def ground(L, p, phase=0.0):
@@ -186,13 +189,14 @@ def ground(L, p, phase=0.0):
     low = -1e9
     for side in ('n', 'f'):
         off = T(*FAR) if side == 'f' else np.eye(3)
-        ft = root @ off @ R(-p[side + 'th'], HIP) @ R(p[side + 'kn'], KNEE) @ R(p.get(side + 'ft', 0), ANKLE)
-        low = max(low, max(apply(ft, s)[1] for s in SOLE))
+        sh = root @ off @ R(-p[side + 'th'], HIP) @ R(p[side + 'kn'], KNEE)
+        ft = sh @ R(p.get(side + 'ft', 0), ANKLE)
+        low = max(low, max(apply(ft, s)[1] for s in SOLE), max(apply(sh, s)[1] for s in KNEECAP))   # a kneel rests on its knees
     p['dy'] = GROUND - low
     return p
 
 
-REST = dict(lean=0.0, sh=0.0, el=0.0, cloth=0.0, hair=0.0, breathe=0.0, nth=0.0, nkn=0.0, nft=0.0, fth=0.0, fkn=0.0, fft=0.0)
+REST = dict(fall=0.0, dx=0.0, lean=0.0, sh=0.0, el=0.0, cloth=0.0, hair=0.0, breathe=0.0, nth=0.0, nkn=0.0, nft=0.0, fth=0.0, fkn=0.0, fft=0.0)
 
 
 def idle(L, n=10):
@@ -201,7 +205,7 @@ def idle(L, n=10):
         ph = 2 * math.pi * i / n; b = math.sin(ph)
         p = dict(REST, breathe=b, lean=.8 * b, sh=1.5 * math.sin(ph - .8), el=1.2 * math.sin(ph - 1.2), cloth=.6 * math.sin(ph - .5),
                  hair=2.0, nkn=1.0 + .8 * b, fkn=1.0 + .8 * b, nth=.4 * b, fth=.4 * b)
-        out.append(pose_frame(L, ground(L, p), ph * 1.0)[0])
+        out.append(pose_frame(L, ground(L, p), ph * 1.0))
     return out
 
 
@@ -219,7 +223,7 @@ def walk(L, n=14):
         p = dict(REST, nth=nth, nkn=nkn, nft=nft, fth=fth, fkn=fkn, fft=fft,
                  lean=3 + 1.5 * math.sin(2 * ph), sh=-11 * math.sin(ph), el=4 + 4 * math.sin(ph - .6), cloth=-2.5 * math.sin(ph),
                  hair=4.0)
-        out.append(pose_frame(L, ground(L, p), ph * 2)[0])
+        out.append(pose_frame(L, ground(L, p), ph * 2))
     return out
 
 
@@ -247,7 +251,7 @@ def smash(L, n=16):
         p = ground(L, p)
         dust = []
         if .56 <= t <= .9:
-            _, _, fa = pose_frame(L, p, 0)[1]
+            fa = pose_frame(L, p, 0)[1]['fa']
             fist = apply(fa, (170, 690))
             rnd = random.Random(i); burst = (t - .56) / .34
             for _ in range(140):                                              # grit thrown out low along the ground
@@ -255,11 +259,87 @@ def smash(L, n=16):
                 dust.append(((fist[0] + math.cos(ang) * r, GROUND - 4 + math.sin(ang) * r * .35),
                              rnd.choice([(150, 138, 112, 230), (122, 110, 88, 220), (186, 176, 150, 200)]), rnd.uniform(3, 10) * (1.3 - burst * .6)))
             if t < .66: p['dx'] = (6 if i % 2 else -6)                    # the ground shakes with the blow
-        out.append(pose_frame(L, p, 0, dust)[0])
+        out.append(pose_frame(L, p, 0, dust))
     return out
 
 
+def keyed(L, keys, n, fast=None, grounded=True, extra=None):
+    """frames between key poses: eased, or accelerating into the key after segment `fast`"""
+    out = []
+    for i in range(n):
+        t = i / (n - 1)
+        k = max(j for j in range(len(keys) - 1) if keys[j][0] <= t)
+        (t0, a), (t1, b) = keys[k], keys[k + 1]
+        s_ = (t - t0) / (t1 - t0)
+        s_ = s_ ** 2.2 if k == fast else ease(s_)
+        A, B = dict(REST, **a), dict(REST, **b)
+        p = {q: A[q] + (B[q] - A[q]) * s_ for q in A}
+        p['nft'] = p['nth'] - p['nkn']; p['fft'] = p['fth'] - p['fkn']
+        if grounded: p = ground(L, p)
+        else: p['dy'] = ground(L, dict(p, fall=0.0))['dy']
+        if extra: extra(p, t, i)
+        out.append(pose_frame(L, p, t * 6))
+    return out
+
+
+def swipe(L, n=12):
+    """a backhand: the arm drawn back across the body, then swept forward at chest height"""
+    return keyed(L, [(0, dict()), (.38, dict(lean=-6, sh=-32, el=42, nth=-4, fth=6, hair=3, cloth=2)),
+                     (.62, dict(lean=14, sh=96, el=6, nth=10, nkn=14, fth=-6, fkn=6, hair=6, cloth=-4)),
+                     (1.0, dict())], n, fast=1)
+
+
+def hit(L, n=8):
+    """struck: rocks back, the arm thrown up, then settles"""
+    return keyed(L, [(0, dict()), (.3, dict(lean=-11, sh=28, el=30, dx=14, nkn=12, fkn=10, hair=6, cloth=3)), (1.0, dict())], n)
+
+
+def death(L, n=18):
+    """staggers back, drops to its knees and slumps forward over them"""
+    return keyed(L, [(0, dict()), (.22, dict(lean=-12, sh=30, el=40, dx=10, nkn=20, fkn=14, hair=5)),
+                     (.7, dict(lean=58, sh=40, el=10, nth=62, nkn=128, fth=58, fkn=124, hair=8, cloth=-6)),
+                     (.82, dict(lean=70, sh=52, el=4, nth=64, nkn=132, fth=60, fkn=128, hair=4, cloth=-4)),
+                     (1.0, dict(lean=74, sh=56, el=2, nth=64, nkn=132, fth=60, fkn=128, hair=1, cloth=-3))], n, fast=1)
+
+
+# ------------------------------------------------------------------------------------------- the game's sprite
+GAME_CLIPS = [('Idle', idle, 9, True), ('Walking_A', walk, 14, True), ('Troll_Smash', smash, 14, False),
+              ('Troll_Swipe', swipe, 15, False), ('Hit_A', hit, 16, False), ('Death_A', death, 14, False)]
+JOINTS = {'hips': ('root', PELVIS), 'chest': ('torso', (205, 300)), 'head': ('torso', (85, 120)), 'hand.r': ('fa', (170, 650)),
+          'foot.l': ('n_ft', (200, 960)), 'foot.r': ('f_ft', (200, 960))}
+STAND_TOP = 22                                   # the top of the head standing, in the side view's pixels
+
+
+def export_game(L, out, height_px=512):
+    """frames for the game (Assets/Resources/Sprites/<name>/<clip>/NN.png, all in one frame box so the feet stay put) and
+    sprite.json: frame size, the pivot (the ground under the hips), the standing height, and each clip's joints per frame
+    in frame pixels (the game's hit zones and strike timing ride on them)"""
+    import json
+    clips = [(nm, fn(L), fps, loop) for nm, fn, fps, loop in GAME_CLIPS]
+    bb = None
+    for _, frames, _, _ in clips:
+        for f, _ in frames:
+            b = f.getbbox()
+            bb = b if bb is None else (min(bb[0], b[0]), min(bb[1], b[1]), max(bb[2], b[2]), max(bb[3], b[3]))
+    box = (bb[0] - 8, bb[1] - 8, bb[2] + 8, OY + GROUND + 10)
+    k = height_px / float(GROUND - STAND_TOP)
+    w, h = round((box[2] - box[0]) * k), round((box[3] - box[1]) * k)
+    def px(p): return [round((p[0] + OX - box[0]) * k, 1), round((p[1] + OY - box[1]) * k, 1)]
+    meta = {'frame': [w, h], 'pivot': px((HIP[0], GROUND)), 'standingHeight': height_px, 'facing': 'left', 'clips': {}}
+    for nm, frames, fps, loop in clips:
+        d = out / nm; d.mkdir(parents=True, exist_ok=True)
+        joints = {j: [] for j in JOINTS}
+        for i, (f, mats) in enumerate(frames):
+            f.crop(box).resize((w, h), Image.LANCZOS).save(d / ('%02d.png' % i))
+            for j, (m, pt) in JOINTS.items(): joints[j].append(px(apply(mats[m], pt)))
+        meta['clips'][nm] = {'fps': fps, 'frames': len(frames), 'loop': loop, 'joints': joints}
+        print('TROLL_GAME', nm, len(frames), flush=True)
+    (out / 'sprite.json').write_text(json.dumps(meta, indent=1))
+    return meta
+
+
 def save(frames, out, name, height, ms):
+    frames = [f[0] if isinstance(f, tuple) else f for f in frames]
     bb = None
     for f in frames:
         b = f.getbbox()
@@ -282,6 +362,10 @@ def save(frames, out, name, height, ms):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == 'game':                    # troll_puppet.py game <Assets/Resources/Sprites/Troll>
+        out = Path(sys.argv[2]); out.mkdir(parents=True, exist_ok=True)
+        export_game(layers(), out)
+        return
     out = Path(sys.argv[1] if len(sys.argv) > 1 else 'troll_puppet'); out.mkdir(parents=True, exist_ok=True)
     height = int(sys.argv[2]) if len(sys.argv) > 2 else 256
     L = layers()

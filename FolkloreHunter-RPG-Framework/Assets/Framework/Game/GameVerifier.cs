@@ -213,7 +213,7 @@ namespace FH.Game
             Check("sword is parented to the real right-hand slot bone", sword && hand && sword.IsChildOf(hand));
             var monsters = S.Monsters.Where(m => m && m.Alive).ToList();
             Check("rigged Gravebound spawned from data", monsters.Count(m => m.MonsterId == "gravebound") >= 4, monsters.Count.ToString());
-            Check("monsters use skinned meshes with authored clips", monsters.All(m => m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && m.Anim.Has("Walking_A") && m.Def.attacks.All(a => m.Anim.Has(a.anim))));
+            Check("monsters use skinned meshes with authored clips", monsters.All(m => (m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 || m.Visual.GetComponent<SpriteActor>()) && m.Anim.Has("Walking_A") && m.Def.attacks.All(a => m.Anim.Has(a.anim))));
             // the slim skeletons hold their own sword (1H_Sword); the older model is given a copy (1H_Sword (held))
             var msword = monsters.Select(m => WorldKit.Find(m.Visual, "1H_Sword (held)") ?? WorldKit.Find(m.Visual, "1H_Sword")).FirstOrDefault(t => t);
             Check("monster sword is attached to its hand slot bone", msword && msword.parent && msword.parent.name.Contains("handslot.r"));
