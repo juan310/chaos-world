@@ -114,7 +114,7 @@ def hb(x, y, z, sx, sy, sz, paint='skin', rot=Quaternion(), neg=False, st=SHARP)
     blob(hp(x, y, z), (sx * HS, sy * HS, sz * HS), {'head': 1}, paint, rot, neg, st)
 hb(0, .0, .13, .16, .17, .17, st=STIFF)                                                            # cranium
 hb(0, -.08, .17, .15, .12, .10, st=4.0)                                                            # forehead
-hb(0, -.19, .125, .165, .065, .06)                                                                 # brow ridge, jutting
+hb(0, -.21, .13, .18, .08, .07)                                                                    # brow ridge, jutting over the eyes
 hb(0, -.10, -.01, .17, .15, .11, st=4.0)                                                           # jaw, wide
 hb(0, -.20, -.045, .135, .065, .06)                                                                # underbite: the lower lip pushed out
 hb(0, -.15, -.10, .10, .08, .06, st=4.0)                                                           # chin under it
@@ -124,9 +124,10 @@ for s, x in (('l', 1), ('r', -1)):
     hb(x * .045, -.29, .005, .028, .028, .024, 'nose')                                             # nostril wings
     hb(x * .072, -.205, .085, .032, .03, .028, neg=True)                                           # eye socket under the brow
     hb(x * .12, -.16, .03, .065, .055, .05, st=4.0)                                                # cheek
-    ear = Quaternion((0, 0, 1), x * math.radians(-28)) @ Quaternion((0, 1, 0), x * math.radians(-10))
-    hb(x * .20, .0, .12, .11, .022, .055, 'ear', ear)                                              # ear, out to the side and back
-    hb(x * .29, .05, .145, .06, .016, .032, 'ear', ear)                                            # its long point
+    ear = Quaternion((0, 0, 1), x * math.radians(-22)) @ Quaternion((0, 1, 0), x * math.radians(-14))
+    hb(x * .19, .0, .11, .07, .02, .06, 'ear', ear)                                                # ear: a flat leaf out to the side
+    hb(x * .27, .03, .13, .08, .014, .045, 'ear', ear)
+    hb(x * .36, .06, .155, .06, .01, .025, 'ear', ear)                                             # tapering to its point
 # arms: thick, long, a heavy forearm, a big hand with thick fingers
 for s, x in (('l', 1), ('r', -1)):
     ua, la, hd, tip = 'upperarm.' + s, 'lowerarm.' + s, 'hand.' + s, 'handtip.' + s
@@ -358,10 +359,14 @@ col = col * (1 - .4 * belly[:, None]) + SKIN_LIGHT * .4 * belly[:, None]
 crowd = (Fb > .05).sum(1)
 col = col * (1 - .05 * np.clip(crowd - 2, 0, 4))[:, None]
 share = Fb / np.maximum(Fb.sum(1, keepdims=True), 1e-9)
-for tag, c in (('nose', PINK), ('ear', PINK), ('nail', NAIL)):
+for tag, c, most in (('nose', PINK, .85), ('ear', PINK, .45), ('nail', NAIL, 1.0)):
     w = share[:, kinds == tag].sum(1)
-    w = np.clip((w - .25) / .5, 0, 1)
+    w = np.clip((w - .25) / .5, 0, 1) * most
     col = col * (1 - w[:, None]) + c * w[:, None]
+# the eyes sit in shadow under the brow
+for x in (1, -1):
+    d = np.linalg.norm(P - np.array(list(hp(x * .072, -.21, .08))), axis=1)
+    col = col * (1 - .45 * np.exp(-(d / .045) ** 2))[:, None]
 paint(body, col)
 for o, tag in parts:
     Q = coords(o)
