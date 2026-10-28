@@ -4,6 +4,8 @@
   python Tools/forge_queue.py static <name> <picture.png> "<description>" [height_m]
   python Tools/forge_queue.py edit <name> <picture.png> "<change 1>" ["<change 2>" ...]
   python Tools/forge_queue.py items <name> <reference.png> "<item 1>" ["<item 2>" ...]
+  python Tools/forge_queue.py sprite <name> <picture.png> <walk|run|idle|attack|hurt> <side|front> "<what it does>"
+  python Tools/forge_queue.py sprites <name> <model job id> [height px] [directions 4|8] [clips Idle,Walk,...]
 
 Prints the job id; the job runs in the background (one at a time on the graphics card) and writes its results to
 %LOCALAPPDATA%\\ClaudeEyesStudio\\Forge\\<job id>."""
@@ -22,7 +24,8 @@ def upload(path):
 
 
 def main(argv):
-    tool, name, picture = argv[0], argv[1], os.path.abspath(argv[2])
+    tool, name = argv[0], argv[1]
+    picture = os.path.abspath(argv[2]) if tool != "sprites" else None
     if tool == "model":
         b = {"tool": "model", "name": name, "front": upload(picture), "paintBack": True, "cloth": True,
              "describe": argv[3] if len(argv) > 3 else ""}
@@ -37,8 +40,14 @@ def main(argv):
         b = {"tool": "edit", "name": name, "picture": upload(picture), "edits": argv[3:], "colours": "free"}
     elif tool == "items":
         b = {"tool": "items", "name": name, "picture": upload(picture), "items": argv[3:], "colours": "auto"}
+    elif tool == "sprite":         # Animate Sprite: the picture itself animated by the local video model, cut out, checked
+        b = {"tool": "sprite", "name": name, "picture": upload(picture), "action": argv[3], "view": argv[4],
+             "prompt": argv[5] if len(argv) > 5 else "", "quality": "normal"}
+    elif tool == "sprites":        # pixel sprite sheets filmed from a finished 3D model job (argv[2] is the job id)
+        b = {"tool": "sprites", "name": name, "source": argv[2], "height": int(argv[3]) if len(argv) > 3 else 96,
+             "directions": int(argv[4]) if len(argv) > 4 else 4, "clips": argv[5].split(",") if len(argv) > 5 else ["Idle", "Walk", "Run"]}
     else:
-        raise SystemExit("tool: model | static | edit | items")
+        raise SystemExit("tool: model | static | edit | items | sprite | sprites")
     print("FORGE_QUEUED", forge.start(None, b)["id"], flush=True)
 
 
