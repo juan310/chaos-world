@@ -103,8 +103,11 @@ def measure(sk, idx, clip, frames, contacts=None, order=None, floor=None):
 
 
 def draw(sk, idx, rows, path, every=3, w=150, h=190):
-    """one row per variant (the source first), every `every`-th frame drawn as a stick figure from the side"""
+    """one row per variant (the source first), every `every`-th frame drawn as a stick figure, seen from the side the
+    source travels across (a dodge to the left is drawn from the front, a lunge forward from the side)"""
     labels = list(rows)
+    P0 = rows[labels[0]][:, idx['Hips']]
+    ax = 0 if np.ptp(P0[:, 0]) > np.ptp(P0[:, 2]) else 2
     n = max(len(P) for P in rows.values())
     cols = list(range(0, n, every))
     allp = np.concatenate([P for P in rows.values()])
@@ -118,8 +121,8 @@ def draw(sk, idx, rows, path, every=3, w=150, h=190):
         for c, f in enumerate(cols):
             if f >= len(P): continue
             ox = 90 + c * w + w // 2; oy = r * h + h - 12
-            hz = P[f, idx['Hips'], 2]
-            pt = lambda j: (ox + (P[f, idx[j], 2] - hz) * scale, oy - (P[f, idx[j], 1] - lo) * scale)
+            hz = P[f, idx['Hips'], ax]
+            pt = lambda j: (ox + (P[f, idx[j], ax] - hz) * scale, oy - (P[f, idx[j], 1] - lo) * scale)
             d.line([(90 + c * w, oy), (90 + (c + 1) * w - 4, oy)], fill=(70, 70, 80))
             for a, b in BONES:
                 if a in idx and b in idx:
