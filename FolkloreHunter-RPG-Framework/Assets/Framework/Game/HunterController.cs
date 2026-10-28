@@ -74,6 +74,15 @@ namespace FH.Game
         /// <summary>The stride clips this body jogs and sprints with (its own gait cycles, or the classic hunter's).</summary>
         public string JogClip => jogClip;
         public string SprintClip => sprintClip;
+        /// <summary>Crouched (Z / L3): a light push creeps low (Crouch_Walk), a full one sneaks (Sneak_Walk); sprinting,
+        /// attacking, evading or drawing the weapon stands the hunter up.</summary>
+        public bool Crouched { get; private set; }
+        /// <summary>A jump (V): from standing straight up (Jump_Up), on the move a running leap (Jump_Forward) carried at the
+        /// hunter's own speed. The body leaves the ground when the clip pushes off and comes down as it lands.</summary>
+        public bool Jumping => jumpEnd > 0;
+        float sneakNatural, crouchNatural, jumpEnd = -1, jumpLaunchAt = -1, jumpUp;
+        Vector3 jumpCarry;
+        const float GravityAccel = 24;
         public const float RunCost = 9;
 
         public void Initialize(GameSession s)
@@ -161,6 +170,8 @@ namespace FH.Game
             jogNatural = Anim.Has(jogClip) ? Anim.NaturalSpeed(jogClip, footL, footR, transform, true) : runNatural;
             sprintNatural = Anim.Has(sprintClip) ? Anim.NaturalSpeed(sprintClip, footL, footR, transform, true) : runNatural;
             huntWalkNatural = walkClip != "Walking_A" ? Anim.NaturalSpeed(walkClip, footL, footR, transform, true) : walkNatural;
+            sneakNatural = Anim.Has("Sneak_Walk") ? Anim.NaturalSpeed("Sneak_Walk", footL, footR, transform, true) : 0;
+            crouchNatural = Anim.Has("Crouch_Walk") ? Anim.NaturalSpeed("Crouch_Walk", footL, footR, transform, true) : 0;
             Debug.Log("FH_LOCO hunt jog " + JogSpeed + " m/s (Hunt_Jog natural " + jogNatural.ToString("0.00") + "), sprint " + SprintSpeed + " m/s (Hunt_Sprint natural " + sprintNatural.ToString("0.00") + ")");
             Debug.Log("FH_LOCO walk speed " + WalkSpeed.ToString("0.00") + ", run speed " + RunSpeed.ToString("0.00") + ",  walk natural " + walkNatural.ToString("0.00") + " m/s, run natural " + runNatural.ToString("0.00") + " m/s, feet " + (footL ? footL.name : "missing") + "/" + (footR ? footR.name : "missing"));
         }
@@ -225,12 +236,14 @@ namespace FH.Game
         {
             if (!Ready) return;
             // A fade or a window that does not pause time (dialogue, shop) holds the world: stand, don't run in place.
-            if (!session.Simulating) { if (Anim.Current.EndsWith("Walking_A") || Anim.Current.EndsWith("Running_A") || Anim.Current.Contains("Gait_") || Anim.Current.Contains("Hunt_Jog") || Anim.Current.Contains("Hunt_Sprint")) Anim.Play("Idle"); return; }
-            if (Riding) { if (!Anim.Current.EndsWith("Ride_Idle")) Anim.Play("Ride_Idle"); Stamina.Tick(Time.deltaTime); return; }
+            if (!session.Simulating) { if (Anim.Current.EndsWith("Walking_A") || Anim.Current.EndsWith("Running_A") || Anim.Current.Contains("Gait_") || Anim.Current.Contains("Hunt_Jog") || Anim.Current.Contains("Hunt_Sprint") || Anim.Current.Contains("Sneak_Walk") || Anim.Current.Contains("Crouch_Walk")) Anim.Play(Crouched ? "Crouch_Idle" : "Idle"); return; }
+            if (Riding) { Crouched = false; if (!Anim.Current.EndsWith("Ride_Idle")) Anim.Play("Ride_Idle"); Stamina.Tick(Time.deltaTime); return; }
             var mv = InputRouter.Move();
             var cam = session.CameraRig.Camera.transform;
             Vector3 fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized, right = Vector3.Cross(Vector3.up, fwd);
             Vector3 dir = Vector3.ClampMagnitude(fwd * mv.y + right * mv.x, 1);
+            if (InputRouter.Down(GameAction.Crouch)) ToggleCrouch();
+            if (InputRouter.Down(GameAction.Jump)) TryJump(dir);
             if (HuntStyle) { Hunt.HandleInput(dir); Tick(dir, Hunt.Sprinting, Time.deltaTime); return; }
             if (InputRouter.Down(GameAction.Attack)) TryAttack();
             if (InputRouter.Down(GameAction.Dodge)) TryDodge(dir);
@@ -296,9 +309,32 @@ namespace FH.Game
             if (castAt > 0 && Time.time >= castAt) { castAt = -1; Launch(); }
 
             bool locked = Time.time < lockUntil || Time.time < hurtUntil || Attack.Committed || (HuntStyle && Hunt.Locked);
+            if (Crouched && (run || Attack.Running || Dodging || locked || (HuntStyle && !Hunt.Sheathed))) Crouched = false;
+            if (jumpLaunchAt > 0 && Time.time >= jumpLaunchAt) { jumpLaunchAt = -1; vertical = jumpUp; }
+            if (Jumping && (Time.time >= jumpEnd || Attack.Running || Dodging || Time.time < hurtUntil)) { jumpEnd = -1; jumpLaunchAt = -1; }
             float speed = 0;
             Vector3 moveDir = Vector3.zero;
-            if (Dodging) { moveDir = dodgeDir; speed = dodgeSpeed; }
+            if (Jumping)
+            {
+                // the leap keeps its run-up's speed; the stick steers it a little
+                if (dir.sqrMagnitude > .01f && jumpCarry.sqrMagnitude > .01f)
+                    jumpCarry = Vector3.RotateTowards(jumpCarry, dir.normalized * jumpCarry.magnitude, dt * 1.5f, 0);
+                moveDir = jumpCarry.sqrMagnitude > 1e-4f ? jumpCarry.normalized : Vector3.zero; speed = jumpCarry.magnitude;
+            }
+            else if (Dodging) { moveDir = dodgeDir; speed = dodgeSpeed; }
+            else if (!locked && Crouched && dir.sqrMagnitude > .01f)
+            {
+                // creeping: a light push stays low, a full one sneaks; the stride's own speed, played a little brisker
+                bool sneak = dir.magnitude >= .55f;
+                string clip = sneak ? "Sneak_Walk" : "Crouch_Walk";
+                float natural = sneak ? sneakNatural : crouchNatural;
+                speed = (natural > .1f ? Mathf.Clamp(natural * 1.4f, .6f, 1.5f) : sneak ? 1.1f : .8f) * Stats[Stat.MoveSpeed];
+                moveDir = dir.normalized;
+                blockedFor = actualSpeed < speed * .25f ? blockedFor + dt : 0;
+                Anim.Play(blockedFor > .15f ? "Crouch_Idle" : clip, true, natural > .1f && blockedFor <= .15f ? Mathf.Clamp(speed / natural, .5f, 2f) : 1, false, .15f);
+                stepClock -= dt;
+                if (stepClock <= 0) { stepClock = sneak ? .5f : .6f; WorldKit.Sound(transform.position, "step", .03f); }
+            }
             else if (Attack.Running && Attack.Phase == AttackPhase.Recovery) { moveDir = dir; speed = WalkSpeed * .3f; }
             else if (!locked && dir.sqrMagnitude > .01f && HuntStyle)
             {
@@ -340,7 +376,8 @@ namespace FH.Game
                     if (stepClock <= 0) { stepClock = canRun ? .24f : .36f; WorldKit.Sound(transform.position, "step", .08f); }
                 }
             }
-            else if (!locked && !Attack.Running && !Dodging && castAt < 0 && !(HuntStyle && Hunt.OwnsIdlePose)) Anim.Play(Anim.Current.Contains("Hit") && Time.time < hurtUntil + .2f ? Anim.Current : "Idle");
+            else if (!locked && !Attack.Running && !Dodging && castAt < 0 && !(HuntStyle && Hunt.OwnsIdlePose))
+                Anim.Play(Anim.Current.Contains("Hit") && Time.time < hurtUntil + .2f ? Anim.Current : Crouched ? "Crouch_Idle" : "Idle", true, 1, false, Crouched ? .2f : .12f);
 
             if (HuntStyle && Hunt.FacesTarget(out var faceDir))
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceDir), 1 - Mathf.Exp(-dt * 12));
@@ -370,8 +407,35 @@ namespace FH.Game
 
         void Gravity(float dt)
         {
-            vertical = Body.isGrounded ? -2 : Mathf.Max(-20, vertical - dt * 24);
+            vertical = Body.isGrounded && vertical <= 0 ? -2 : Mathf.Max(-20, vertical - dt * GravityAccel);     // rising: not grounded yet
             Body.Move(Vector3.up * vertical * dt);
+        }
+
+        void ToggleCrouch()
+        {
+            if (Crouched) { Crouched = false; return; }
+            if (!Anim.Has("Crouch_Idle") || !Anim.Has("Sneak_Walk") || !Anim.Has("Crouch_Walk") || Dead || Riding || Jumping || Dodging
+                || Attack.Running || Time.time < lockUntil || Time.time < hurtUntil || (HuntStyle && (!Hunt.Sheathed || Hunt.Locked))) return;
+            Crouched = true;
+        }
+
+        void TryJump(Vector3 dir)
+        {
+            if (Jumping || Dead || Riding || Dodging || Attack.Running || !Body.isGrounded || Time.time < lockUntil || Time.time < hurtUntil
+                || (HuntStyle && Hunt.Locked)) return;
+            bool leap = dir.sqrMagnitude > .25f && actualSpeed > 1.2f;
+            string clip = leap ? "Jump_Forward" : "Jump_Up";
+            if (!Anim.Has(clip) || !Stamina.TrySpend(8)) return;
+            Crouched = false;
+            // the clip's push-off and its time in the air (Tools/slim/moves.py): the body leaves the ground with it
+            float takeoff = leap ? .3f : .44f, air = leap ? .48f : .5f;
+            jumpUp = GravityAccel * air / 2;
+            Vector3 flat = Vector3.ProjectOnPlane(Velocity, Vector3.up);
+            jumpCarry = leap ? (dir.sqrMagnitude > .01f ? dir.normalized : transform.forward) * Mathf.Max(flat.magnitude, actualSpeed) : flat * .3f;
+            jumpLaunchAt = Time.time + takeoff;
+            jumpEnd = Time.time + Anim.Length(clip);
+            Anim.Play(clip, false, 1, true, .06f);
+            WorldKit.Sound(transform.position, "step", .12f);
         }
 
         // Hit knockback: speed decays linearly to zero over KnockTime, covering KnockSpeed * KnockTime / 2 = 0.25 m.

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace FH.Game
 {
     public enum GameAction { Attack, Spell, Dodge, Interact, LockOn, Run, Hotbar1, Hotbar2, Hotbar3, Hotbar4, Pause, Inventory, Journal, Character, Map, CycleSpell, Inspect,
-        HeavyAttack, Guard, Sheathe, Whistle, UseItem, ItemPrev, ItemNext, Sight }
+        HeavyAttack, Guard, Sheathe, Whistle, UseItem, ItemPrev, ItemNext, Sight, Crouch, Jump }
 
     /// <summary>One place that turns devices into game actions. Menus set GameplayBlocked so no key or click
     /// leaks into combat; automated verification injects actions through the same path the keyboard uses.
@@ -12,7 +12,7 @@ namespace FH.Game
     /// Y light, B heavy (hold to charge), A roll, RB guard, RT sprint, X interact / sheathe, R3 lock on,
     /// LB use item, D-pad left/right choose item, D-pad up whistle, D-pad down change spell, LT spell (hunt combat,
     /// weapon drawn: tap LT for the spell, hold it for Hunter's Sight; Left Alt is Sight on the keyboard),
-    /// Start pause, View map.</summary>
+    /// Start pause, View map, L3 crouch (Z on the keyboard; V jumps).</summary>
     public static class InputRouter
     {
         public static bool GameplayBlocked;
@@ -74,6 +74,8 @@ namespace FH.Game
                 case GameAction.Map: return Input.GetKeyDown(KeyCode.M);
                 case GameAction.CycleSpell: return Input.GetKeyDown(KeyCode.F);
                 case GameAction.Inspect: return Input.GetKeyDown(KeyCode.F2);
+                case GameAction.Crouch: return Input.GetKeyDown(KeyCode.Z);
+                case GameAction.Jump: return Input.GetKeyDown(KeyCode.V);
                 default: return false;
             }
         }
@@ -97,6 +99,7 @@ namespace FH.Game
                 case GameAction.Spell: return PadButton.LT;
                 case GameAction.Pause: return PadButton.Start;
                 case GameAction.Map: return PadButton.Back;
+                case GameAction.Crouch: return PadButton.LeftStick;
                 default: return PadButton.None;
             }
         }
@@ -114,6 +117,7 @@ namespace FH.Game
             switch (b)
             {
                 case PadButton.RightStick: return "R3";
+                case PadButton.LeftStick: return "L3";
                 case PadButton.DPadUp: return "D-pad Up";
                 case PadButton.DPadDown: return "D-pad Down";
                 case PadButton.DPadLeft: return "D-pad Left";
