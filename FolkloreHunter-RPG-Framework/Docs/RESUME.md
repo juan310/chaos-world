@@ -49,6 +49,16 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
   `--skin-relax` (SightForge `skinfix_blender.py`) only took the mean from 5.15 to 4.86 %; the sash needs real
   reweighting (next).
 
+## Troll (2026-10-28)
+- The owner's troll sheet (`Docs/Concepts/Troll`): front and back crops through the local Forge (job
+  `model_Troll_20261027_212910`, 4 min) -> textured, rigged mesh (`SourceArt/Troll/Troll_rigged.*` on the PC); flanks
+  repainted from the sheet's side view and its mirror (`SourceArt/Repaired/Troll_sides_texture.png`).
+- Built as `Monster_Troll` (slimall job: `--monster --pieces none --height 2.4 --skirt --skin-relax`), staged in
+  `C:\AW\briarhound_work\staging\Monster_Troll`, **not installed**: the gate fails on skin. The loincloth tied to the thighs
+  tore 7-29 % of the body; `--skirt` (new, SightForge) plus the relaxer brought the mean from 12.1 to 4.4 % (idle 3.4,
+  walk 3.0, jog 5.5), but the hunter's attacks, dodges and bow moves still tear 6-25 % and look wrong on its short heavy
+  legs (lunges stretch them). It needs its own moveset (heavy swings, slams, a club or bare fists), then the gate again.
+
 ## Next
 1. Fingers: solve against the skin, not a centre-line cylinder (fingers stop at the piece's surface); check the index and
    ring order on the right hand; then build all bodies with `--fingers`, run `hands`, and check the grips in the game
