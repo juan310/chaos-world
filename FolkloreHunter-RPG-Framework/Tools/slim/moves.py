@@ -678,7 +678,7 @@ def jump_up(rig, name='Jump_Up'):
 
 def jump_forward(rig, name='Jump_Forward'):
     """a running leap: the push off the back foot, the front knee driven up, a long flight, landing on the front foot and
-    running on (it starts and ends in the jog's stride)"""
+    running on (it starts and ends in the jog's stride). Keyed as it travels (a metre), baked on the spot."""
     push = {'hips': (0, -.12, -.1), 'spine': (14, 0, 0), 'footL': (.03, -.3, 0, 0, 4), 'footR': (-.03, .36, .04, 40, -4),
             'kneeL': (.1, -1, .2), 'handL': (.24, .18, 1.1), 'handR': (-.24, -.3, 1.36)}
     # the feet are placed over the ground in every key: a key placing them from the hips (feetHips) passes that on to
@@ -690,7 +690,15 @@ def jump_forward(rig, name='Jump_Forward'):
             'handL': (.28, -.24, 1.05), 'handR': (-.28, -.1, 1.15)}          # hands in the chest's frame: out for balance
     run_on = {'hips': (0, -1.0, -.06), 'footL': (.02, -1.0, 0, 0, 4), 'footR': (-.02, -1.0, 0, 0, -4), 'toesL': 0, 'toesR': 0,
               'handL': (.22, .04, 1.12), 'handR': (-.22, -.14, 1.2)}
-    return choreo.bake(rig, name, [(0, {}), (.18, push), (.5, fly), (.78, land), (1.1, run_on)], RELAX)
+    # on the spot like every clip (the game carries the leap at the hunter's own speed): the steady travel comes off
+    def spot(t, k):
+        d = 1.0 * t / 1.1
+        k = dict(k)
+        k['hips'] = (k['hips'][0], k['hips'][1] + d, k['hips'][2])
+        for f in ('footL', 'footR'):
+            if f in k: k[f] = (k[f][0], k[f][1] + d) + tuple(k[f][2:])
+        return t, k
+    return choreo.bake(rig, name, [(0, {})] + [spot(t, k) for t, k in ((.18, push), (.5, fly), (.78, land), (1.1, run_on))], RELAX)
 
 
 def hit(rig, name, side=0.0):
