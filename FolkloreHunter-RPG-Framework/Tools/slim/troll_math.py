@@ -125,9 +125,9 @@ for s, x in (('l', 1), ('r', -1)):
     hb(x * .072, -.205, .085, .032, .03, .028, neg=True)                                           # eye socket under the brow
     hb(x * .12, -.16, .03, .065, .055, .05, st=4.0)                                                # cheek
     ear = Quaternion((0, 0, 1), x * math.radians(-22)) @ Quaternion((0, 1, 0), x * math.radians(-14))
-    hb(x * .19, .0, .11, .07, .02, .06, 'ear', ear)                                                # ear: a flat leaf out to the side
-    hb(x * .27, .03, .13, .08, .014, .045, 'ear', ear)
-    hb(x * .36, .06, .155, .06, .01, .025, 'ear', ear)                                             # tapering to its point
+    hb(x * .20, .0, .115, .09, .022, .06, 'ear', ear, st=3.5)                                      # ear: a flat leaf out to the side
+    hb(x * .27, .03, .13, .08, .017, .042, 'ear', ear, st=3.5)                                     # overlapping, so one leaf
+    hb(x * .33, .055, .15, .055, .012, .024, 'ear', ear, st=3.5)                                   # tapering to its point
 # arms: thick, long, a heavy forearm, a big hand with thick fingers
 for s, x in (('l', 1), ('r', -1)):
     ua, la, hd, tip = 'upperarm.' + s, 'lowerarm.' + s, 'hand.' + s, 'handtip.' + s
