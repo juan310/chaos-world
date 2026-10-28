@@ -28,7 +28,8 @@ unchanged from that project) on their own slim, human-proportioned skeleton, wit
   the RTX 5080) generates natural motion from each key pose to the next and re-times it so every key pose (a strike's
   contact frame) lands at its own time; `mb_bridge.load` brings the result back onto the slim skeleton through the same
   retargeter as the motion capture. 25 of the game's own moves are made this way (`mb_bridge.MB_CLIPS`); the poses
-  and timing stay ours, MotionBricks only fills the in-between.
+  and timing stay ours, MotionBricks only fills the in-between. Which gaps it fills, and with which settings, follows
+  what the MotionBricks lab measured on our clips (`Docs/MOTIONBRICKS_PLAYBOOK.md`).
 - Smeared flanks: the Codex bodies were reconstructed from front and back pictures, so surfaces that face sideways (the
   outsides of the legs and boots) came out smeared. `Tools/slim/paint_sides.py` repairs a body's texture: it renders the
   body in the game's standing pose, the local Forge's edit tool turns that render into left and right profiles (so they

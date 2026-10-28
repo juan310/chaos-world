@@ -1,8 +1,9 @@
 # The MotionBricks side of the bridge (see mb_bridge.py). For each clip in export.json: the four poses leading into its
 # first key pose are the context; each next key pose (four poses from that moment) is the target; MotionBricks generates
 # the motion between them on the SOMA skeleton, and the result is re-timed so the key pose lands at its own time (the
-# game times strikes by them). Each generation's last four played poses are the next one's context.
-# Run from the MotionBricks checkout:  uv run python <this file> export.json mb_out.json
+# game times strikes by them). Each generation's last four played poses are the next one's context. How each gap is
+# generated is one of the lab's settings (mb_lab.py; measured in Docs/MOTIONBRICKS_PLAYBOOK.md).
+# Run from the MotionBricks checkout:  uv run python <this file> export.json mb_out.json [setting, default adaptive]
 import json, sys
 import numpy as np
 import warp as wp
@@ -38,34 +39,26 @@ def retime(gen, count):
     return out
 
 
-def main(src, dst):
+def main(src, dst, policy='adaptive'):
+    """each clip under one of the lab's settings (mb_lab.VARIANTS; Docs/MOTIONBRICKS_PLAYBOOK.md says why 'adaptive':
+    MotionBricks only where a gap between our key poses gives it room, the length fitted to the gap, two target poses
+    through the middle keys and one on the last, and gentle clips kept as ours). 'base' is the old way (every gap, four
+    target poses, the model choosing the length), which the lab measured squeezing its motion 4.5 times."""
+    import mb_lab
     data = json.load(open(src))
     wp.init(); wp.set_device("cuda:0")
     sk = load_skeleton_from_usd(get_asset_file("human", "soma_base_skel_minimal_no_root.usd"), SOMA_SKELETON_PRIM_PATH)
     result = []
     with MotionBricksSOMAEngine(SOMA_N1_FP32_ONNX_PATH) as engine, wp.ScopedStream(engine.stream):
-        context = engine.create_input(sk); target = engine.create_input(sk); output = engine.create_output(sk)
         for clip in data['clips']:
-            fps = clip['fps']
-            frames = np.array(clip['frames'], dtype=np.float32)
-            keys = [int(round(t * fps)) for t in clip['keys']]
-            out = [f for f in frames[:keys[0] + 1]]
-            ctx = window(frames, keys[0] - (MODEL_POSES_PER_TOKEN - 1))
-            for k0, k1 in zip(keys, keys[1:]):
-                context.update_from_poses(wp.array(ctx, dtype=wp.transform), stream=engine.stream)
-                target.update_from_poses(wp.array(window(frames, k1), dtype=wp.transform), stream=engine.stream)
-                engine.generate_animation(context, target, output)
-                engine.synchronize()
-                gen = output.poses[:output.num_frames].numpy().reshape(output.num_frames, -1, 7)
-                seg = retime(gen, k1 - k0)
-                out += seg
-                ctx = np.array(out[-MODEL_POSES_PER_TOKEN:], dtype=np.float32)
-                print('MB_GEN %s %d->%d: %d generated frames into %d' % (clip['name'], k0, k1, len(gen), k1 - k0), flush=True)
-            out += [f for f in frames[keys[-1] + 1:]]
-            result.append({'name': clip['name'], 'fps': fps, 'frames': np.array(out).round(5).tolist()})
-    json.dump({'clips': result}, open(dst, 'w'))
-    print('MB_DONE', len(result), 'clips', flush=True)
+            r = mb_lab.run(engine, sk, clip, mb_lab.VARIANTS[policy])
+            for g in r['gaps']:
+                print('MB_GEN %s %d->%d: %s' % (clip['name'], g['from'], g['to'], 'kept ours' + (' (gentle clip)' if g.get('still') else '')
+                      if g.get('kept') else '%d generated frames into %d (%s target poses)' % (g['generated'], g['to'] - g['from'], g['poses'])), flush=True)
+            result.append({'name': clip['name'], 'fps': clip['fps'], 'frames': r['frames'], 'contacts': r['contacts']})
+    json.dump({'clips': result, 'policy': policy}, open(dst, 'w'))
+    print('MB_DONE', len(result), 'clips', policy, flush=True)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], *sys.argv[3:4])
