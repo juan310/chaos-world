@@ -9,7 +9,11 @@
 #   tokens  'auto': the model chooses the length (8-14 tokens, the default); 'fit': the one token count whose length is
 #           nearest the gap between the key poses (each token is four poses, the valid frames 4n - 6, at least 18)
 #   short   'mb': every gap goes to MotionBricks; 'keep': a gap shorter than MotionBricks' shortest motion (18 frames,
-#           0.6 s) keeps our own keyposed frames there (MotionBricks would be squashed into it)
+#           0.6 s) keeps our own keyposed frames there (MotionBricks would be squashed into it); 'merge': key poses
+#           closer than that are dropped (the first, the last and the ones 18 frames apart stay), so MotionBricks fills
+#           the longer gaps between the ones that stay at its own pace
+#   mix     (optional) how much of MotionBricks goes into the result: 1 = all of it; less, our own in-betweens mixed in,
+#           fading to ours entirely at every key pose (so the keys are exactly ours), the most MotionBricks mid-gap
 # and the generated frames are then fitted to the gap (re-timed). Written per variant and clip: the frames, the foot
 # contacts MotionBricks predicted (heel and toe, left and right, 0-1 per frame) and, per gap, what was generated.
 #
@@ -22,7 +26,7 @@ import numpy as np
 import warp as wp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mb_generate import window, retime                                    # noqa: E402
+from mb_generate import window, retime, slerp                                    # noqa: E402
 from motionbricks.io.usd import load_skeleton_from_usd                    # noqa: E402
 from motionbricks.io.utils import SOMA_SKELETON_PRIM_PATH, get_asset_file  # noqa: E402
 from motionbricks.model.config import MotionBricksInferenceConfig          # noqa: E402
@@ -37,7 +41,31 @@ VARIANTS = {
     'speed':  dict(poses=2, tokens='fit', short='mb'),
     'hybrid': dict(poses=4, tokens='fit', short='keep'),
     'best':   dict(poses='end1', tokens='fit', short='keep'),  # momentum through the middle keys, settling on the last
+    'merge':  dict(poses='end1', tokens='fit', short='merge'),
+    'weave':  dict(poses='end1', tokens='fit', short='mb', mix=.5),
+    'weave_m': dict(poses='end1', tokens='fit', short='merge', mix=.5),
 }
+MIN_FRAMES = 18                                             # MotionBricks' shortest motion (6 tokens: 4 x 6 - 6)
+
+
+def merged(keys):
+    """the key frames 18 or more apart (always the first and the last)"""
+    out = [keys[0]]
+    for k in keys[1:-1]:
+        if k - out[-1] >= MIN_FRAMES and keys[-1] - k >= MIN_FRAMES: out.append(k)
+    out.append(keys[-1])
+    return out
+
+
+def weave(gen, src, k0, mix):
+    """MotionBricks' frames after k0 mixed with ours: ours at both keys, `mix` of MotionBricks mid-gap"""
+    n = len(gen); out = []
+    for j, g in enumerate(gen):
+        w = mix * np.sin(np.pi * (j + 1) / n) ** 2 if n > 1 else 0.0
+        a = src[k0 + 1 + j]
+        out.append(np.concatenate([a[:, :3] * (1 - w) + g[:, :3] * w, slerp(a[:, 3:], g[:, 3:], w)], axis=1))
+    return out
+
 
 
 def fit_tokens(frames):
@@ -49,6 +77,7 @@ def run(engine, sk, clip, v):
     fps = clip['fps']
     frames = np.array(clip['frames'], dtype=np.float32)
     keys = [int(round(t * fps)) for t in clip['keys']]
+    if v['short'] == 'merge': keys = merged(keys)
     context = engine.create_input(sk); target = engine.create_input(sk); output = engine.create_output(sk)
     out = [f for f in frames[:keys[0] + 1]]
     contacts = [[1, 1, 1, 1]] * len(out)
@@ -73,6 +102,7 @@ def run(engine, sk, clip, v):
         gen = output.poses[:m].numpy().reshape(m, -1, 7)
         fc = output.foot_contacts.numpy()[:m]
         seg = retime(gen, gap)
+        if v.get('mix') is not None: seg = weave(seg, frames, k0, v['mix'])
         # the contacts follow the same re-timing (nearest generated frame)
         cs = [fc[min(m - 1, int(round(j / gap * (m - 1))))].round(3).tolist() for j in range(1, gap + 1)]
         out += seg; contacts += cs

@@ -167,7 +167,7 @@ def main(soma_json, lab_json, out_dir):
     for v, s in summary.items():
         lines.append('| %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (v, s['smooth'], s['pops'], s['keys'], s['free'], s.get('slide', '-'),
                                                                        s['slide_low'], s['floor'], s.get('squash', '-')))
-    (out / 'lab_summary.md').write_text('\n'.join(lines) + '\n\ncontact channels: %s\n' % report['contact_channels'])
+    (out / 'lab_summary.md').write_text('\n'.join(lines) + '\n\ncontact channels: %s\n' % report['contact_channels'], encoding='utf-8')
     print('\n'.join(lines))
     print('MB_EVAL_DONE contact channels', report['contact_channels'], flush=True)
 
