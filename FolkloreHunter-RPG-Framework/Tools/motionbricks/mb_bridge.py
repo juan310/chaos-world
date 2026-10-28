@@ -28,7 +28,8 @@ MB_CLIPS = ['SnS_Rush_1', 'SnS_Rush_2', 'SnS_Leap_Slash', 'SnS_Shield_Crash', 'S
             'Bow_Draw', 'Bow_Shoot',
             # the gaits (mb_loco.py: chained locomotion, one seamless cycle each)
             'Gait_Walk', 'Gait_Jog', 'Gait_Sprint', 'Walking_Backwards', 'Running_Strafe_Left', 'Running_Strafe_Right',
-            'Sneak_Walk', 'Crouch_Walk']
+            'Sneak_Walk', 'Crouch_Walk',
+            'Jump_Up', 'Jump_Forward']
 LOOPS = {'2H_Melee_Idle', 'Lance_Charge', 'Bow_Aim_Walk', 'Ride_Idle', 'Bow_Draw'}   # their last key pose is their first: they stay seamless
 MIN_GAP = .25                                   # key poses closer than this are merged into one target
 

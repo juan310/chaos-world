@@ -39,6 +39,11 @@ def retime(gen, count):
     return out
 
 
+# clips the lab films showed better under another setting (Docs/MOTIONBRICKS_PLAYBOOK.md, round 5): the dive arcs
+# instead of flying as a plank, the standing jump keeps our arm swing over its calmer body
+PICK = {'Jump_Full_Short': 'settle', 'Jump_Up': 'settle_arms'}
+
+
 def main(src, dst, policy='adaptive'):
     """each clip under one of the lab's settings (mb_lab.VARIANTS; Docs/MOTIONBRICKS_PLAYBOOK.md says why 'adaptive':
     MotionBricks only where a gap between our key poses gives it room, the length fitted to the gap, two target poses
@@ -58,7 +63,9 @@ def main(src, dst, policy='adaptive'):
                 print('MB_GEN %s: one cycle of %d frames by locomotion (%s)' % (clip['name'], len(r['frames']) - 1, pick), flush=True)
                 result.append({'name': clip['name'], 'fps': clip['fps'], 'frames': r['frames'], 'contacts': r['contacts'], 'loop': True})
                 continue
-            r = mb_lab.run(engine, sk, clip, mb_lab.VARIANTS[policy])
+            pick = PICK.get(clip['name'], policy) if policy == 'adaptive' else policy
+            r = mb_lab.run(engine, sk, clip, mb_lab.VARIANTS[pick])
+            if pick != policy: print('MB_GEN %s: %s (the lab\'s pick)' % (clip['name'], pick), flush=True)
             for g in r['gaps']:
                 print('MB_GEN %s %d->%d: %s' % (clip['name'], g['from'], g['to'], 'kept ours' + (' (gentle clip)' if g.get('still') else '')
                       if g.get('kept') else '%d generated frames into %d (%s target poses)' % (g['generated'], g['to'] - g['from'], g['poses'])), flush=True)
