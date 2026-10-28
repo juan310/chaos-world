@@ -159,17 +159,23 @@ def run(engine, sk, clip, v):
 
 def main(src, dst, names=None):
     data = json.load(open(src))
-    names = names or list(VARIANTS)
+    import mb_loco
+    asked = names or []
+    # the names asked for split into clip settings (here) and gait settings (mb_loco); none asked of a kind: all of it
+    loco_names = [n for n in asked if n in mb_loco.VARIANTS] or list(mb_loco.VARIANTS)
+    names = [n for n in asked if n in VARIANTS] or ([] if asked else list(VARIANTS))
+    for n in asked:
+        if n not in VARIANTS and n not in mb_loco.VARIANTS: raise SystemExit('MB_LAB unknown setting %s' % n)
     wp.init(); wp.set_device("cuda:0")
     sk = load_skeleton_from_usd(get_asset_file("human", "soma_base_skel_minimal_no_root.usd"), SOMA_SKELETON_PRIM_PATH)
-    import mb_loco
     result = {'variants': {n: VARIANTS[n] for n in names}, 'clips': []}
     with MotionBricksSOMAEngine(SOMA_N1_FP32_ONNX_PATH) as engine, wp.ScopedStream(engine.stream):
         for clip in data['clips']:
             if 'loco' in clip:                      # a gait: MotionBricks' locomotion settings, measured travelling
                 N = clip['loco']['cycle']
                 row = {'name': clip['name'], 'fps': clip['fps'], 'keys': [0, N / clip['fps']], 'variants': {}, 'loco': clip['loco']}
-                for n, v in mb_loco.VARIANTS.items():
+                for n in loco_names:
+                    v = mb_loco.VARIANTS[n]
                     r = mb_loco.run(engine, sk, clip, v, inplace=False)
                     row['source'] = r.pop('source'); row['variants'][n] = r
                     result['variants'].setdefault(n, v)
@@ -182,7 +188,7 @@ def main(src, dst, names=None):
                 print('MB_LAB %s %s %s' % (clip['name'], n, json.dumps(row['variants'][n]['gaps'])), flush=True)
             result['clips'].append(row)
     json.dump(result, open(dst, 'w'))
-    print('MB_LAB_DONE', len(result['clips']), 'clips x', len(names), 'variants', flush=True)
+    print('MB_LAB_DONE', len(result['clips']), 'clips x', len(result['variants']), 'variants', flush=True)
 
 
 if __name__ == '__main__':

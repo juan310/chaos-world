@@ -24,10 +24,19 @@ VARIANTS = {
     'loco2': dict(poses=2, tokens='fit'),
     'loco_auto': dict(poses=4, tokens='auto'),
     'loco4_arms': dict(poses=4, tokens='fit', upper='arms'),      # the bow drawn while walking, the lance held level
+    'loco2_arms': dict(poses=2, tokens='fit', upper='arms'),
     'loco4_raw': dict(poses=4, tokens='fit', correct=False),       # without its spreading of the end correction
     'loco4_ground': dict(poses=4, tokens='fit', ground=True),      # every frame lifted back onto the floor
 }
-DEFAULT = 'loco4'
+DEFAULT = 'loco2'
+# per gait, what the lab films chose (Docs/MOTIONBRICKS_PLAYBOOK.md, locomotion): two target poses keep the planted feet
+# the steadiest after the foot lock; the sprint holds its long flight stride better with all four, kept on the floor
+# (a weapon held still while walking keeps our arms over MotionBricks' legs)
+PICK = {'Gait_Sprint': 'loco4_ground', 'Bow_Aim_Walk': 'loco2_arms', 'Lance_Charge': 'loco2_arms'}
+
+
+def setting(name):
+    return PICK.get(name, DEFAULT)
 
 
 def fit_tokens(frames):
