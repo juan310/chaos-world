@@ -71,24 +71,38 @@ cam.data.type = 'ORTHO'
 report = {}
 sc.render.resolution_x, sc.render.resolution_y = 520, 620
 cam.data.ortho_scale = 2.6
+def wear(act):
+    arm.animation_data_create(); arm.animation_data.action = act
+    try:
+        if act.slots: arm.animation_data.action_slot = act.slots[0]
+    except AttributeError: pass
+    return map(int, act.frame_range)
+
+
 for name in want:
     rs = [r for r in rows if r[0] == name]
     if not rs: continue
     d = out / name; d.mkdir(parents=True, exist_ok=True)
+    # a move that travels (a leap, a lunge) is framed whole: the camera sits over the middle of every setting's travel
+    centre, scale = 0.0, 2.6
+    if not rs[0][4]:
+        ys = []
+        for n, v, key, speed, loco in rs:
+            f0, f1 = wear(made[key])
+            for f in range(f0, f1 + 1, 2):
+                sc.frame_set(f); ys.append((arm.matrix_world @ arm.pose.bones['hips'].head).y)
+        centre = (max(ys) + min(ys)) / 2; scale = max(2.6, max(ys) - min(ys) + 1.6)
+    cam.data.ortho_scale = scale
     for col, (n, v, key, speed, loco) in enumerate(rs):
         act = made[key]
-        arm.animation_data_create(); arm.animation_data.action = act
-        try:
-            if act.slots: arm.animation_data.action_slot = act.slots[0]
-        except AttributeError: pass
-        f0, f1 = map(int, act.frame_range)
+        f0, f1 = wear(act)
         i = 0
         for k in range(2 if loco else 1):                 # a gait twice round, walking over the grid
             for f in range(f0, f1 + (0 if loco else 1)):
                 sc.frame_set(f)
                 t = (k * (f1 - f0) + f - f0) / choreo.FPS
                 arm.location = (0, -speed * t, 0)
-                cam.location = (6.0, -speed * t - .15, 1.0); cam.rotation_euler = (math.radians(87), 0, math.radians(90))
+                cam.location = (6.0, centre - speed * t - .15, scale / 2 - .3); cam.rotation_euler = (math.radians(87), 0, math.radians(90))
                 sc.render.filepath = str(d / ('c%d_f%03d.png' % (col, i))); bpy.ops.render.render(write_still=True); i += 1
         arm.location = (0, 0, 0)
     report[name] = {'columns': [v for _, v, _, _, _ in rs], 'frames': i,
