@@ -29,8 +29,16 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
   (Wan 2.2 on this PC, the VAE untiled), dataset, train, read and solve (`capture.ps1`), and `to_clip.py` turns a
   capture into a clip on our skeleton. Not run end to end yet: the first film crashed in the VAE tiling, now fixed and
   not yet re-run. Next: prep on the math troll, film a roar, check that the two views stay in step.
-- MotionBricks lab, rounds 1-3: `Docs/MOTIONBRICKS_PLAYBOOK.md`. The pipeline's default is now `adaptive`, which takes
-  effect at the next `mbrun` regeneration of the hunters (not run yet).
+- MotionBricks lab, rounds 1-6: `Docs/MOTIONBRICKS_PLAYBOOK.md`. The owner asked to master it for crouching, sneaking,
+  running, walking, jumping, the bow and sword and shield (2026-10-28).
+  - The lab now films every setting on the Tripo hunter (`mb_lab_view.py`, `mb_lab_gif.py`; PC: `mbview.ps1`).
+  - Gaits go through its chained locomotion (`mb_loco.py`), with a pick per gait. Clips get per-clip picks
+    (`mb_generate.PICK`). Jog and sprint come out clearly better; the dive arcs; bow and sword combos stay ours.
+  - New clips: sneak and crouch walk and their idles (the hips sat back, the trunk tipped forward, hands in body space),
+    the standing jump and the running leap (its landing bug fixed, baked on the spot).
+  - In the game: Z / L3 crouch (a light push creeps, a full push sneaks), V jump (on the move a running leap). The jump
+    has no pad button yet. The Proving Grounds check them through the controls.
+  - 2026-10-28: `mbrun` regenerated all 45 clips with the picks; the hunters were rebuilt through the gate.
 
 ## Done
 - SightForge / Studio **0.19** (installed; backup `ClaudeEyesStudio\backups\app_0_18_before_0_19_20261027`):

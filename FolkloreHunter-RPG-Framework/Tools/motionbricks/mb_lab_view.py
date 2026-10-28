@@ -84,7 +84,7 @@ for name in want:
     if not rs: continue
     d = out / name; d.mkdir(parents=True, exist_ok=True)
     # a move that travels (a leap, a lunge) is framed whole: the camera sits over the middle of every setting's travel
-    # (and one that leaves the ground is framed to the top of its head)
+    # (and one that leaves the ground is framed to the top of its head and raised hands)
     centre, scale = 0.0, 2.6
     if not rs[0][4]:
         ys, zs = [], []
@@ -92,8 +92,8 @@ for name in want:
             f0, f1 = wear(made[key])
             for f in range(f0, f1 + 1, 2):
                 sc.frame_set(f); ys.append((arm.matrix_world @ arm.pose.bones['hips'].head).y)
-                zs.append((arm.matrix_world @ arm.pose.bones['head'].tail).z)
-        centre = (max(ys) + min(ys)) / 2; scale = max(2.6, max(ys) - min(ys) + 1.6, max(zs) + .55)
+                zs += [(arm.matrix_world @ arm.pose.bones[b].tail).z for b in ('head', 'hand.l', 'hand.r')]
+        centre = (max(ys) + min(ys)) / 2; scale = max(2.6, max(ys) - min(ys) + 1.6, max(zs) + .75)
     cam.data.ortho_scale = scale
     for col, (n, v, key, speed, loco) in enumerate(rs):
         act = made[key]
