@@ -24,6 +24,8 @@ VARIANTS = {
     'loco2': dict(poses=2, tokens='fit'),
     'loco_auto': dict(poses=4, tokens='auto'),
     'loco4_arms': dict(poses=4, tokens='fit', upper='arms'),      # the bow drawn while walking, the lance held level
+    'loco4_raw': dict(poses=4, tokens='fit', correct=False),       # without its spreading of the end correction
+    'loco4_ground': dict(poses=4, tokens='fit', ground=True),      # every frame lifted back onto the floor
 }
 DEFAULT = 'loco4'
 
@@ -42,7 +44,8 @@ def run(engine, sk, clip, v, inplace=True):
     ctx = window(F, N - (MODEL_POSES_PER_TOKEN - 1))
     out, cts, gaps = [], [], []
     for k in (2, 3):
-        cfg = MotionBricksInferenceConfig(allowed_token_counts=(fit_tokens(N),)) if v['tokens'] == 'fit' else MotionBricksInferenceConfig()
+        kw = {} if v.get('correct', True) else {'correct_generated_diff': False}
+        cfg = MotionBricksInferenceConfig(allowed_token_counts=(fit_tokens(N),), **kw) if v['tokens'] == 'fit' else MotionBricksInferenceConfig(**kw)
         context.update_from_poses(wp.array(ctx, dtype=wp.transform), stream=engine.stream)
         target.update_from_poses(wp.array(window(F, k * N)[:v['poses']], dtype=wp.transform), stream=engine.stream)
         engine.generate_animation(context, target, output, config=cfg)
@@ -64,9 +67,25 @@ def run(engine, sk, clip, v, inplace=True):
     if v.get('upper'):
         from mb_lab import keep_upper, upper_joints
         clip_frames = keep_upper(clip_frames, src, upper_joints(list(sk.joint_names), v['upper']))
+    if v.get('ground'):
+        clip_frames = grounded(clip_frames, src, sk)
     # the clip and our cycle both start where our cycle does (frame 0); in place, the travel is taken off as well
     for arr in (clip_frames, src):
         for i in range(len(arr)):
             arr[i, 0, :3] -= d * (2 * N + (i if inplace else 0))
     return {'frames': clip_frames.round(5).tolist(), 'contacts': cts, 'gaps': gaps, 'source': src.round(5).tolist(),
             'loop': True}
+
+
+def grounded(frames, src, sk):
+    """each frame lifted (never lowered) so its lowest heel or toe is no lower than ours ever goes"""
+    from mb_lab_eval import fk
+    par = {'parents': list(sk.parent_indices.numpy())}
+    names = list(sk.joint_names)
+    feet = [names.index(n) for n in ('LeftFoot', 'LeftToeBase', 'RightFoot', 'RightToeBase')]
+    floor = fk(par, src)[:, feet, 1].min()
+    P = fk(par, frames)
+    low = P[:, feet, 1].min(1)
+    out = np.array(frames)
+    out[:, 0, 1] += np.maximum(0, floor - low)
+    return out
