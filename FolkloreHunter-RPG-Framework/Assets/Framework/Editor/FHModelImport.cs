@@ -6,14 +6,14 @@ using UnityEngine;
 public class FHModelImport : AssetPostprocessor
 {
     // bumped when the import rules change, so Unity re-imports what they apply to
-    public override uint GetVersion() => 3;
+    public override uint GetVersion() => 4;          // 4: Monster_* models import their clips (legacy) and full-size textures
 
     void OnPreprocessModel()
     {
         var m = (ModelImporter)assetImporter;
         m.materialImportMode = ModelImporterMaterialImportMode.ImportStandard; m.importCameras = false; m.importLights = false; m.isReadable = true;
         string p = assetPath;
-        if (p.EndsWith("Briarhound.fbx") || p.EndsWith("CuSith.fbx") || p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx") || p.EndsWith("Hunter.fbx") || p.Contains("/Hunter_") || p.Contains("/Gravebound_") || p.Contains("/Skel_") || p.Contains("/Villager_") || p.EndsWith("GraveWarden.fbx") || p.EndsWith("Gravebound.fbx") || p.EndsWith("Herbalist.fbx") || p.EndsWith("Smith.fbx") || p.EndsWith("Noble.fbx"))
+        if (p.EndsWith("Briarhound.fbx") || p.EndsWith("CuSith.fbx") || p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx") || p.EndsWith("Hunter.fbx") || p.Contains("/Hunter_") || p.Contains("/Gravebound_") || p.Contains("/Skel_") || p.Contains("/Villager_") || p.Contains("/Monster_") || p.EndsWith("GraveWarden.fbx") || p.EndsWith("Gravebound.fbx") || p.EndsWith("Herbalist.fbx") || p.EndsWith("Smith.fbx") || p.EndsWith("Noble.fbx"))
         {
             m.animationType = ModelImporterAnimationType.Legacy; m.importAnimation = true; m.animationCompression = ModelImporterAnimationCompression.Off;
             if (p.EndsWith("Thornback.fbx") || p.EndsWith("Mirejaw.fbx") || p.EndsWith("Briarhound.fbx")) { m.skinWeights = ModelImporterSkinWeights.Custom; m.maxBonesPerVertex = 8; m.minBoneWeight = .001f; }
@@ -26,9 +26,9 @@ public class FHModelImport : AssetPostprocessor
         var t = (TextureImporter)assetImporter;
         t.textureType = TextureImporterType.Default; t.mipmapEnabled = true; t.filterMode = FilterMode.Bilinear; t.maxTextureSize = 1024;
         // The characters' own atlases at full size (the Codex bodies' 2K-4K textures, also as copied beside the slim game
-        // models: Hunter_*_Slim, Skel_*, Villager_*, the Warden's helmet), compressed at high quality, sharp at an angle.
+        // models: Hunter_*_Slim, Skel_*, Villager_*, Monster_*, the Warden's helmet), compressed at high quality, sharp at an angle.
         var file = System.IO.Path.GetFileName(assetPath);
-        if (assetPath.Contains("/Models/Codex/") || (assetPath.Contains("/Models/") && (file.StartsWith("Skel_") || file.StartsWith("Villager_") || file.Contains("_Slim_"))))
+        if (assetPath.Contains("/Models/Codex/") || (assetPath.Contains("/Models/") && (file.StartsWith("Skel_") || file.StartsWith("Villager_") || file.StartsWith("Monster_") || file.Contains("_Slim_"))))
         {
             t.maxTextureSize = 4096; t.textureCompression = TextureImporterCompression.CompressedHQ; t.anisoLevel = 4;
         }
