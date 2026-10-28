@@ -42,7 +42,8 @@ namespace FH.Game
         }
 
         /// <summary>The test body: the owner's Tripo male (all its own Tripo animations kept) built with the newest clips
-        /// (the MotionBricks moves, crouch, sneak and the jumps), so they are tried here before they go on the hunters.</summary>
+        /// (the MotionBricks gaits, crouch, sneak, the jumps and evasions; built with movement only, no attacks), so they
+        /// are tried here before they go on the hunters.</summary>
         public const string TestBody = "Hunter_Test_Slim";
         public bool TestBodyOn => S.Hunter.Look == TestBody;
         public bool TestBodyAvailable => CharacterFactory.Exists(TestBody);
@@ -55,7 +56,8 @@ namespace FH.Game
             S.Hunter.CancelActions();
             S.Hunter.ApplyLook(on ? new[] { TestBody } : Appearance.Models(S.Settings.lookBody, S.Settings.lookHair));
             if (weapon != null) SetWeapon(weapon);
-            S.Hud?.Flash(on ? "Test body: the newest moves (Z crouch, V jump)" : "Back in your hunter");
+            if (on && S.Hunter.Hunt) S.Hunter.Hunt.SetSheathed(true);     // it carries movement only, no attacks
+            S.Hud?.Flash(on ? "Test body: the newest movement (Z crouch, V jump; no attacks)" : "Back in your hunter");
         }
 
         public static readonly (string id, string label)[] Monsters =
