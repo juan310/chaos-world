@@ -172,31 +172,31 @@ def walk_back(rig, name='Walking_Backwards'):
 
 
 def sneak(rig, name='Sneak_Walk'):
-    """creeping: half crouched with the hips sat back and the trunk tipped in over the knees, long slow steps rolled heel
+    """creeping: half crouched with the hips sat back and the trunk tipped in over the knees (about 25 degrees: the lean is shared by hips, spine and chest), long slow steps rolled heel
     to toe, hands carried low and forward"""
-    return gait(rig, name, period=1.3, duty=.68, stride=.62, lift=.09, kick=.03, drop=.2, bob=.012, lean=30, hip_yaw=4,
-                arm=.07, elbow_up=.45, hands_low=.3, hands_fwd=.14, knees_out=.14, hips_back=.07)
+    return gait(rig, name, period=1.3, duty=.68, stride=.62, lift=.09, kick=.03, drop=.2, bob=.012, lean=44, hip_yaw=4,
+                arm=.07, elbow_up=.45, hands_low=.3, hands_fwd=.16, knees_out=.14, hips_back=.09)
 
 
 def crouch_walk(rig, name='Crouch_Walk'):
-    """low to the ground: deep knees, short steps, the hips sat back and the body tipped well forward over the knees"""
-    return gait(rig, name, period=1.15, duty=.66, stride=.46, lift=.08, kick=.02, drop=.34, bob=.01, lean=40, hip_yaw=3,
-                arm=.05, elbow_up=.6, hands_low=.44, hands_fwd=.2, knees_out=.18, hips_back=.11)
+    """low to the ground: deep knees, short steps, the hips sat back and the trunk tipped well forward over the knees (about 37 degrees)"""
+    return gait(rig, name, period=1.15, duty=.66, stride=.46, lift=.08, kick=.02, drop=.34, bob=.01, lean=60, hip_yaw=3,
+                arm=.05, elbow_up=.6, hands_low=.44, hands_fwd=.22, knees_out=.18, hips_back=.14)
 
 
-CROUCH = merge(RELAX, {'hips': (0, .11, -.34), 'hipsR': (12, 0, 0), 'spine': (20, 0, 0), 'chest': (12, 0, 0), 'head': (-36, 0, 0),
+CROUCH = merge(RELAX, {'hips': (0, .14, -.34), 'hipsR': (18, 0, 0), 'spine': (30, 0, 0), 'chest': (18, 0, 0), 'head': (-54, 0, 0),
                        'footL': (.06, -.04, 0, 0, 10), 'footR': (-.06, .08, 0, 0, -10), 'kneeL': (.2, -1, 0), 'kneeR': (-.2, -1, 0),
                        'handL': (.22, -.22, .72), 'elbowL': (.6, .4, -1), 'handR': (-.22, -.22, .72), 'elbowR': (-.6, .4, -1)})
-SNEAK = merge(CROUCH, {'hips': (0, .07, -.2), 'hipsR': (9, 0, 0), 'spine': (15, 0, 0), 'chest': (9, 0, 0), 'head': (-27, 0, 0),
+SNEAK = merge(CROUCH, {'hips': (0, .09, -.2), 'hipsR': (13, 0, 0), 'spine': (22, 0, 0), 'chest': (13, 0, 0), 'head': (-40, 0, 0),
                        'handL': (.22, -.16, .86), 'handR': (-.22, -.16, .86), 'kneeL': (.14, -1, 0), 'kneeR': (-.14, -1, 0)})
 
 
 def crouch_idle(rig, name='Crouch_Idle'):
-    return loop2(rig, name, CROUCH, {'hips': (0, .11, -.35), 'chest': (14, 0, 0), 'head': (-38, 0, 4)}, 2.6)
+    return loop2(rig, name, CROUCH, {'hips': (0, .14, -.35), 'chest': (20, 0, 0), 'head': (-56, 0, 4)}, 2.6)
 
 
 def sneak_idle(rig, name='Sneak_Idle'):
-    return loop2(rig, name, SNEAK, {'hips': (0, .07, -.21), 'chest': (11, 0, 0), 'head': (-25, 0, -6)}, 2.4)
+    return loop2(rig, name, SNEAK, {'hips': (0, .09, -.21), 'chest': (15, 0, 0), 'head': (-38, 0, -6)}, 2.4)
 
 
 def strafe(rig, side, name):
