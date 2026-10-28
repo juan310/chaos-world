@@ -3,7 +3,7 @@
 # re-seated and sized for a 1.8 m hunter), and every clip from moves.py; exported as Models/<name>.fbx with its texture.
 #   blender -b --python Tools/slim/build_slim.py -- <Codex body .fbx> <name> [--pieces a,b] [--size piece=metres] [--helmet <fbx>]
 #       [--monster] [--m2m <folder of the Mesh2Motion human .glb files>] [--mb <mb_out.json> --soma <soma.json>]
-#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock] [--skin-relax]
+#       [--villager --cloth <hue 0-1>,<saturation scale>,<value scale>] [--texture <png>] [--smooth <passes>] [--footlock] [--skirt] [--skin-relax]
 #       [--fingers] [--out <folder>] [--keep-clips "<source clip>=<Game_Clip>+<Game_Clip>,..."]
 # --keep-clips keeps clips that came in the source file (a Tripo export's walk, run, idle...): each is sampled at 30
 # frames a second, held in place (the game moves the body; the hips' travel over the clip is taken out) and stored under
@@ -18,6 +18,7 @@
 # --fingers finds the fingers in the mesh, gives each three bones, and solves how they close round each held piece
 # (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
 # --out writes the model somewhere else than the game's Models folder (trials).
+# --skirt weights cloth hanging from the hips as cloth (Tools/sightforge/eyeslib/skinfix_blender.py skirt).
 # --skin-relax smooths the bone weights where the clips tear the skin (Tools/sightforge/eyeslib/skinfix_blender.py).
 # --footlock holds the planted feet of walks, jogs and runs still on the ground (Tools/sightforge/eyeslib/footslide_blender.py).
 # --texture uses another picture as the body's texture (the flank-repaired copy from paint_sides.py).
@@ -519,6 +520,12 @@ if '--footlock' in argv:
     import footslide_blender
     footslide_blender.run(arm, fix=True, fps=choreo.FPS, log=lambda m: print('SLIM_' + m, flush=True))
     arm.animation_data.action = None
+if '--skirt' in argv:
+    # cloth hanging from the hips (loincloth, sash, skirt) follows the hips, each thigh only by up to half and only
+    # near it (SightForge's skinfix_blender.skirt): auto-skinning ties it to the nearest thigh and strides tear it
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'sightforge' / 'eyeslib'))
+    import skinfix_blender
+    skinfix_blender.skirt(body, arm, log=lambda m: print('SLIM_' + m, flush=True))
 if '--skin-relax' in argv:
     # bone weights smoothed only where the clips tear the skin, kept only if the tearing drops (SightForge's skin
     # relaxer, for auto-skinned bodies such as Tripo's); the fingers' own weights stay as fingers.py made them
