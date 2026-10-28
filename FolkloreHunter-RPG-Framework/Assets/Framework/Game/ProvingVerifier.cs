@@ -1189,6 +1189,7 @@ namespace FH.Game
                       ballSlide.ToString("0.00") + " vs " + bodyV.ToString("0.00") + " m/s over " + grounded.Count + " grounded foot-frames");
                 H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
             }
+            yield return CrouchJumpChecks(o, ballL, ballR);
             // Drawn weapon: a slower jog, not the old shuffle.
             F.SetSheathed(false); yield return Frames(2);
             Vector3 d0 = H.transform.position;
@@ -1209,6 +1210,71 @@ namespace FH.Game
             GamePad.Inject(PadButton.None); yield return Until(() => CurrentId == "shield_bash", .3f);
             Check("Y then B a moment later still becomes Y+B (shield bash)", CurrentId == "shield_bash", CurrentId + ", " + F.LastEvent);
             yield return UntilNeutral();
+        }
+
+        /// <summary>Crouch and sneak (L3) and the jumps (the Jump action), through the controls: the clips play, the feet hold
+        /// the ground while creeping, the body leaves the ground and comes back down.</summary>
+        IEnumerator CrouchJumpChecks(Vector3 o, Transform ballL, Transform ballR)
+        {
+            if (!H.Anim.Has("Crouch_Idle") || !H.Anim.Has("Jump_Up")) { Note("crouch and jump: this body has no crouch or jump clips (" + H.Look + ")"); yield break; }
+            H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Wait(.3f);
+            yield return Tap(PadButton.LeftStick); yield return Wait(.6f);
+            Check("L3 crouches (Crouch_Idle)", H.Crouched && H.Anim.Current.Contains("Crouch_Idle"), H.Crouched + ", " + H.Anim.Current);
+            yield return Snap("crouch_idle");
+            foreach (var (label, stick, clip) in new[] { ("light push creeps low", new Vector2(0, .4f), "Crouch_Walk"), ("full push sneaks", new Vector2(0, 1), "Sneak_Walk") })
+            {
+                Hold(PadButton.None, stick); yield return Wait(.6f);
+                Vector3 start = H.transform.position; float t0 = Time.time;
+                var grounded = new List<float>(); var body = new List<float>();
+                Vector3 bl = ballL.position, br = ballR.position, pb = H.transform.position;
+                for (float t = 0; t < 1.5f; t += Time.unscaledDeltaTime)
+                {
+                    yield return null;
+                    float dt = Time.deltaTime; if (dt <= 0) continue;
+                    // the lower ball of the foot is the planted one while creeping (both are never off the ground together)
+                    var low = ballL.position.y < ballR.position.y ? (ballL, bl) : (ballR, br);
+                    grounded.Add(Vector3.Distance(Flat(low.Item1.position), Flat(low.Item2)) / dt);
+                    body.Add(Vector3.Distance(Flat(H.transform.position), Flat(pb)) / dt);
+                    bl = ballL.position; br = ballR.position; pb = H.transform.position;
+                }
+                float speed = Vector3.Distance(Flat(start), Flat(H.transform.position)) / Mathf.Max(.01f, Time.time - t0);
+                string playing = H.Anim.Current;
+                if (clip == "Sneak_Walk") yield return Snap("sneak_walk"); else yield return Snap("crouch_walk");
+                Release(); yield return Wait(.3f);
+                float slide = Median(grounded), bodyV = Median(body);
+                Check("crouched, " + label + " (" + clip + ")", playing.Contains(clip) && speed > .4f && speed < 1.8f && H.Crouched, speed.ToString("0.00") + " m/s, " + playing);
+                Check("crouched, " + label + ": the planted foot holds the ground (under 30 % of body speed)", slide < bodyV * .3f, slide.ToString("0.00") + " vs " + bodyV.ToString("0.00") + " m/s");
+            }
+            Hold(PadButton.RT, new Vector2(0, 1)); yield return Wait(.3f); Release(); yield return Wait(.3f);
+            Check("sprinting stands the hunter up", !H.Crouched, H.Anim.Current);
+            // standing jump
+            H.Teleport(S.SafeGround(o), 45); LookAlong(45); H.Stamina.Current = H.Stamina.Max; yield return Wait(.4f);
+            float y0 = H.transform.position.y, top = y0; bool apexShot = false;
+            InputRouter.Press(GameAction.Jump); yield return Frames(2);
+            string jumpClip = H.Anim.Current;
+            for (float t = 0; t < 1.6f; t += Time.unscaledDeltaTime)
+            {
+                yield return null; top = Mathf.Max(top, H.transform.position.y);
+                if (!apexShot && t > .7f) { apexShot = true; yield return Snap("jump_up_apex"); }
+            }
+            Check("Jump from standing: Jump_Up, the body leaves the ground and comes back down", jumpClip.Contains("Jump_Up") && top - y0 > .3f && Mathf.Abs(H.transform.position.y - y0) < .15f && !H.Jumping,
+                  jumpClip + ", rose " + (top - y0).ToString("0.00") + " m, ends " + (H.transform.position.y - y0).ToString("0.00") + " m from the start height");
+            // running leap
+            H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Wait(.3f);
+            Hold(PadButton.None, new Vector2(0, 1)); yield return Wait(.7f);
+            Vector3 from = H.transform.position; y0 = from.y; top = y0; apexShot = false;
+            InputRouter.Press(GameAction.Jump); yield return Frames(2);
+            jumpClip = H.Anim.Current;
+            for (float t = 0; t < 1.3f; t += Time.unscaledDeltaTime)
+            {
+                yield return null; top = Mathf.Max(top, H.transform.position.y);
+                if (!apexShot && t > .55f) { apexShot = true; yield return Snap("jump_forward_flight"); }
+            }
+            float far = Vector3.Distance(Flat(from), Flat(H.transform.position));
+            Release(); yield return Wait(.4f);
+            Check("Jump on the move: a running leap (Jump_Forward) that carries forward and lands", jumpClip.Contains("Jump_Forward") && top - y0 > .3f && far > 2f,
+                  jumpClip + ", rose " + (top - y0).ToString("0.00") + " m, carried " + far.ToString("0.00") + " m");
+            H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
         }
 
         // ---------------- lance ----------------
