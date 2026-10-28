@@ -67,7 +67,11 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
   AnimationDriver plays like a model's, so the brain, strike timing and hurtboxes work unchanged. Guards the Old Bridge
   (`sp_troll_bridge`), in the Proving Grounds roster. Proving: 7 troll checks pass (226 checks, the same 10 older failures);
   the fight is recorded to `Captures/Proving/TrollFight`. To do: send the hound away while recording; the hit flash is strong.
-- `sync.ps1` copies `Assets/Resources/Sprites`; `build.ps1` stops when the scripts do not compile (a Unity build would
+- Three views (2026-10-28): front and back from the sheet (`Tools/sprites/troll_views.py`, same moves and timing as the
+  side); `SpriteActor` shows the front when the troll heads within 50 deg of the camera, the back beyond 130, the side
+  between (margins against flicker). Proving: 8 troll checks pass (227 checks, 8 failures). The frames (~55 MB) are not in
+  git: `sync.ps1` runs `Tools/sprites/make_sprites.py`, which makes them in the project when the scripts or sheet change.
+- `sync.ps1` used to copy `Assets/Resources/Sprites` (now made on the PC instead); `build.ps1` stops when the scripts do not compile (a Unity build would
   otherwise run the old scripts); `build_quick.ps1` = sync, compile, Unity build, Proving.
 
 ## Next
