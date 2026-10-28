@@ -34,6 +34,8 @@ TAIL_JOINT = {'head': 'head_top', 'hand': 'handtip', 'toes': 'toetip'}
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=fbx)
+# the texture lies beside the model (the game's Models folder); the FBX may name another path
+bpy.ops.file.find_missing_files(directory=str(Path(fbx).parent))
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 meshes = [o for o in bpy.data.objects if o.type == 'MESH']
 body = max(meshes, key=lambda o: len(o.data.vertices))
@@ -49,8 +51,14 @@ if arm.animation_data: arm.animation_data.action = None
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 bpy.context.view_layer.update()
 B = arm.data.bones
-# facing -Y (anymove's front camera looks along +Y at the face): the toes point forward
-fwd = (B['toes.l'].tail_local - B['foot.l'].head_local)
+# facing -Y (anymove's front camera looks along +Y at the face): the toes' skin lies in front of the ankles (the toe
+# bones' own direction is not to be trusted after an FBX round trip)
+gi = {g.name: g.index for g in body.vertex_groups}
+toe = [body.matrix_world @ v.co for v in body.data.vertices
+       if any(g.group in (gi.get('toes.l'), gi.get('toes.r')) and g.weight > .5 for g in v.groups)]
+ankles = (B['foot.l'].head_local + B['foot.r'].head_local) / 2
+fwd = (sum(toe, Vector()) / len(toe) - ankles) if toe else (B['toes.l'].tail_local - B['foot.l'].head_local)
+print('CAPTURE toes lie %.2f m along y from the ankles' % fwd.y, flush=True)
 if fwd.y > 0:
     print('CAPTURE turning the model to face -Y', flush=True)
     arm.rotation_euler = (0, 0, math.pi); bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
