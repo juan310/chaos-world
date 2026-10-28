@@ -1,0 +1,18 @@
+{
+  "name": "troll",
+  "noun": "troll",
+  "model": "Assets/Resources/Models/Monster_Troll.fbx",
+  "layout": {"W_FRONT": 512, "W_SIDE": 768, "M_PER_PX": 0.005, "GROUND_V": 650},
+  "paint": {
+    "AL": {"color": "#F53CD1", "bones": ["upperarm.l", "lowerarm.l", "hand.l"]},
+    "AR": {"color": "#2F6BFF", "bones": ["upperarm.r", "lowerarm.r", "hand.r"]},
+    "LL": {"color": "#FFD21F", "bones": ["upperleg.l", "lowerleg.l", "foot.l", "toes.l"]},
+    "LR": {"color": "#19D3E0", "bones": ["upperleg.r", "lowerleg.r", "foot.r", "toes.r"]}
+  },
+  "feet": ["toetip.l", "toetip.r", "ankle.l", "ankle.r"],
+  "describe": "a huge hunched green-skinned troll with a heavy brow, tusks, long arms that hang to its knees and a hide loincloth",
+  "colour_code": "left arm pink, right arm blue, left leg yellow, right leg cyan",
+  "count": "Exactly two arms, two legs, one head. No weapon, no club, no dust, no rocks.",
+  "limit_margin_deg": 30,
+  "limit_floor_deg": 25
+}
