@@ -34,8 +34,16 @@ TAIL_JOINT = {'head': 'head_top', 'hand': 'handtip', 'toes': 'toetip'}
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=fbx)
-# the texture lies beside the model (the game's Models folder); the FBX may name another path
-bpy.ops.file.find_missing_files(directory=str(Path(fbx).parent))
+# the texture lies beside the model (the game's Models folder, <model>_texture.png); the FBX names the path it was
+# built from, which is elsewhere
+here = Path(fbx).parent
+beside = sorted(here.glob(Path(fbx).stem + '*.png'))
+for im in bpy.data.images:
+    if im.source == 'FILE' and not Path(bpy.path.abspath(im.filepath)).is_file():
+        found = here / Path(im.filepath).name if (here / Path(im.filepath).name).is_file() else (beside[0] if beside else None)
+        if found:
+            im.filepath = str(found); im.reload()
+            print('CAPTURE texture', im.name, '->', found, flush=True)
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 meshes = [o for o in bpy.data.objects if o.type == 'MESH']
 body = max(meshes, key=lambda o: len(o.data.vertices))
