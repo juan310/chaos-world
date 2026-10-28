@@ -88,11 +88,13 @@ def smash(rig, name='Troll_Smash'):
                               'spine': (6, 0, 0), 'hips': T(rig, (0, .02, -.11))})
     # the reach to the ground comes mostly from the back bending, with the feet wide and the knees out: a deep squat
     # folded the thighs onto the loincloth and crushed it (the body check measured 12 % of the skin torn there)
-    hit = {'hips': T(rig, (0, -.06, -.38)), 'spine': (58, 0, 0), 'chest': (18, 0, 0), 'neck': (6, 0, 0), 'head': (-36, 0, 0),
+    # (with the body turned to face its skeleton's way, 2026-10-28, the bend really is forward: 58 degrees of back
+    # pinched the belly, 6.1 %; more of the reach now comes from the hips hinging back)
+    hit = {'hips': T(rig, (0, .06, -.4)), 'spine': (44, 0, 0), 'chest': (14, 0, 0), 'neck': (6, 0, 0), 'head': (-30, 0, 0),
            'handL': T(rig, (.2, -.92, .3)), 'elbowL': (1, .3, -.2), 'wristL': (20, 0, 0),
            'handR': T(rig, (-.2, -.92, .3)), 'elbowR': (-1, .3, -.2), 'wristR': (20, 0, 0),
            'footL': (.24, -.1, 0, 0, 22), 'footR': (-.24, .12, 0, 0, -22), 'kneeL': (1.3, -1, 0), 'kneeR': (-1.3, -1, 0)}
-    hold = moves.merge(hit, {'hips': T(rig, (0, -.04, -.35)), 'spine': (54, 0, 0)})
+    hold = moves.merge(hit, {'hips': T(rig, (0, .05, -.37)), 'spine': (40, 0, 0)})
     # the blow itself runs straight and fast from the peak to the ground ('_ease' carries forward, so it is reset after)
     keys = [(0, {}), (.36, rear), (.5, moves.merge(peak, {'_ease': 'linear'})), (.62, moves.merge(hit, {'_ease': 'smooth'})), (.86, hold), (1.3, {})]
     return choreo.bake(rig, name, keys, base)

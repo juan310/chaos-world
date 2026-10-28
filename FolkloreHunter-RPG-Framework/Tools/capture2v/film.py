@@ -55,6 +55,10 @@ def main():
     prompt = PROMPT.format(noun=c['noun'], flank=c.get('flank', 'side'), describe=c['describe'], limbs=c.get('limbs', 'limbs'),
                            colour_code=c['colour_code'], count=c['count'], action=a.action.strip())
     from video2sprite import generate                               # the Forge's Wan 2.2 runner (memory-safe on 16 GB)
+    # the VAE's tiling (which the runner turns on to save memory) skips Wan 2.2's patching on a frame this wide: the
+    # first frame's encoding failed ('expected 12 channels, got 3'); untiled it encodes as the model expects
+    import diffusers
+    diffusers.AutoencoderKLWan.enable_tiling = lambda self, *a, **k: None
     import imageio
     for seed in [int(s) for s in a.seeds.split(',')]:
         out = run / 'videos' / a.move / ('s%d' % seed)
