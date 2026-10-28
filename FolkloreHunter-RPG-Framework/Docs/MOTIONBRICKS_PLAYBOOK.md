@@ -168,7 +168,9 @@ What the films show:
   - The hands are placed in the body's own space (`hands_at`). In the chest's frame they swing back behind the hips
     once the trunk tips forward.
   - Measured on the hunter, the trunk angle is the same through MotionBricks and back (25.4° / 25.4°): the round trip
-    loses nothing.
+    loses nothing. Now the trunk tips 29° (sneak) and 43° (crouch).
+  - On its own, MotionBricks stands the sneak up a little (29° to 26.5°) and lets the hands hang back behind the knees.
+    `loco2_torso` keeps our spine, neck and arms over its legs: our hunch with its steps. All settings lock to 0% slide.
 - It takes shorter strides than ours in the crouch (0.41 against 0.58 m/s with four target poses). The planted foot
   then cannot match the body's travel, and the lock cannot hold it. With two target poses it keeps our stride.
 - Without its end correction (loco4_raw) it misses our poses by 6.5 cm. Keep the correction on.
@@ -177,6 +179,7 @@ What the films show:
 - `loco2` for every gait.
 - `loco4_ground` for the sprint.
 - `loco2_arms` for the bow aim walk and the lance charge (our arms held over its legs).
+- `loco2_torso` for the sneak and the crouch walk (our hunch and hands over its legs).
 
 The Tripo hunter's own walk and jog clips (`--keep-clips`) still take the place of `Gait_Walk` / `Gait_Jog` on the male.
 

@@ -33,7 +33,9 @@ DEFAULT = 'loco2'
 # per gait, what the lab films chose (Docs/MOTIONBRICKS_PLAYBOOK.md, locomotion): two target poses keep the planted feet
 # the steadiest after the foot lock; the sprint holds its long flight stride better with all four, kept on the floor
 # (a weapon held still while walking keeps our arms over MotionBricks' legs)
-PICK = {'Gait_Sprint': 'loco4_ground', 'Bow_Aim_Walk': 'loco2_arms', 'Lance_Charge': 'loco2_arms'}
+# (the sneak and the crouch walk keep our hunch and hands too: alone it stands them up and lets the hands hang back)
+PICK = {'Gait_Sprint': 'loco4_ground', 'Bow_Aim_Walk': 'loco2_arms', 'Lance_Charge': 'loco2_arms',
+        'Sneak_Walk': 'loco2_torso', 'Crouch_Walk': 'loco2_torso'}
 
 
 def setting(name):
