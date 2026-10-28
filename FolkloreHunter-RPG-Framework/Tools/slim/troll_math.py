@@ -175,9 +175,14 @@ bm = bmesh.new(); bm.from_mesh(me)
 bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
 bm.to_mesh(me); bm.free()
 n0 = len(me.vertices)
-if n0 > 32000:                                   # the field's even grid is denser than a game body needs
-    dec = body.modifiers.new('fewer', 'DECIMATE'); dec.ratio = 32000 / n0
-    bpy.context.view_layer.objects.active = body; bpy.ops.object.modifier_apply(modifier=dec.name)
+# an even skin: the field's own surface is cut by a grid into slivers (tiny edges that read as torn skin at the
+# slightest move: 7-10 % in the body check), so it is rebuilt as even quads 2 cm apart and smoothed a little
+bpy.context.view_layer.objects.active = body; body.select_set(True)
+me.remesh_voxel_size = .02
+bpy.ops.object.voxel_remesh()
+sm = body.modifiers.new('even', 'SMOOTH'); sm.factor = .5; sm.iterations = 4
+bpy.ops.object.modifier_apply(modifier=sm.name)
+me = body.data
 print('TROLL_MATH body %d vertices (field surface %d) from %d shapes' % (len(me.vertices), n0, len(ELEMS)), flush=True)
 
 
