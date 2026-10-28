@@ -12,9 +12,9 @@ public class FHTextureImport : AssetPostprocessor
         // their own size (not stretched to a power of two), clamped so no edge bleeds round the card.
         if (assetPath.Contains("/Resources/Sprites/"))
         {
-            var t = (TextureImporter)assetImporter;
-            t.alphaIsTransparency = true; t.npotScale = TextureImporterNPOTScale.None; t.wrapMode = UnityEngine.TextureWrapMode.Clamp;
-            t.mipmapEnabled = true; t.maxTextureSize = 1024;
+            var sp = (TextureImporter)assetImporter;
+            sp.alphaIsTransparency = true; sp.npotScale = TextureImporterNPOTScale.None; sp.wrapMode = UnityEngine.TextureWrapMode.Clamp;
+            sp.mipmapEnabled = true; sp.maxTextureSize = 1024;
             return;
         }
         if (!assetPath.EndsWith("_n.png") || !(assetPath.Contains("/Environment/") || assetPath.Contains("/Models/Lair/"))) return;

@@ -62,6 +62,21 @@ namespace FH.Game
         void Note(string t) => lines.Add("NOTE " + t);
         static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
         static IEnumerator Wait(float s) { float t = 0; while (t < s) { t += Time.unscaledDeltaTime; yield return null; } }
+        /// <summary>The game camera's picture every <paramref name="every"/> seconds for <paramref name="seconds"/> (a fight to watch:
+        /// Captures/Proving/&lt;folder&gt;/NNN.png), alongside whatever the checks are doing.</summary>
+        IEnumerator Record(string folder, float seconds, float every)
+        {
+            var dir = Path.Combine(root, folder);
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            Directory.CreateDirectory(dir);
+            int n = 0;
+            for (float t = 0; t < seconds;)
+            {
+                yield return new WaitForEndOfFrame();
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, (n++).ToString("000") + ".png"));
+                for (float w = 0; w < every; ) { w += Time.unscaledDeltaTime; t += Time.unscaledDeltaTime; yield return null; }
+            }
+        }
         IEnumerator Snap(string name) { yield return new WaitForEndOfFrame(); ScreenCapture.CaptureScreenshot(Path.Combine(root, name + ".png")); yield return null; }
 
         /// <summary>Presses pad buttons for a few frames, then releases (pad stays connected with nothing held).</summary>
@@ -550,38 +565,48 @@ namespace FH.Game
             Check("Barrow Troll: the walk plays its drawn frames", frames.Count(f => f.StartsWith("Walking_A/")) >= 8, frames.Count(f => f.StartsWith("Walking_A/")) + " frames");
             m.Anim.Current = ""; m.Anim.Play("Idle");
             yield return Portraits(m);
-            // it attacks the hunter standing in front of it
+            // the fight, recorded from the game camera (Captures/Proving/TrollFight, 10 pictures a second): it comes for the
+            // locked-on hunter, strikes, takes the hunter's blows (the real presses) and falls
             S.ProvingRig.Invulnerable = true;
-            m.Passive = false; Face(m, 2.2f); yield return Frames(2);
+            m.Passive = false; m.Brain.Health = m.Def.maxHealth;
+            Face(m, 6f); yield return Frames(2);
+            if (!H.LockTarget) yield return Tap(PadButton.RightStick);
+            StartCoroutine(Record("TrollFight", 13f, .1f));
             int started = m.AttacksStarted; bool hurt = false, struck = false; float hp = H.Health;
             var seen = new HashSet<string>();
-            for (float t = 0; t < 9 && !(struck && hurt); t += Time.unscaledDeltaTime)
+            for (float t = 0; t < 8 && !(struck && hurt); t += Time.unscaledDeltaTime)
             {
                 seen.Add(sa.Frame.Split('/')[0]);
-                if (m.AttacksStarted > started && !struck && (sa.Frame.StartsWith("Troll_Smash/0") || sa.Frame.StartsWith("Troll_Swipe/0"))) { struck = true; }
+                if (m.AttacksStarted > started && (sa.Frame.StartsWith("Troll_Smash/") || sa.Frame.StartsWith("Troll_Swipe/"))) struck = true;
                 if (H.Hurt || H.Health < hp - .5f) hurt = true;
-                if (struck && sa.Frame.EndsWith("/09")) yield return Snap("s11-troll-strike");
                 yield return null;
             }
-            Check("Barrow Troll: winds up and strikes the hunter with its drawn pound or backhand", m.AttacksStarted > started && hurt,
+            Check("Barrow Troll: comes for the hunter, winds up and strikes with its drawn pound or backhand", m.AttacksStarted > started && hurt,
                   "attacks " + (m.AttacksStarted - started) + ", hunter hurt " + hurt + ", clips " + string.Join("/", seen));
-            S.ProvingRig.Invulnerable = false;
-            // the hunter's blows land on it (the real Y presses) and the card flashes
-            m.Passive = true; yield return UntilNeutral(); m.Brain.Health = m.Def.maxHealth;
-            Face(m, 1.9f); yield return Frames(3);
+            yield return Snap("s11-troll-strike");
+            // the hunter closes in (stick forward, locked on) and strikes back
+            yield return UntilNeutral();
+            for (float t = 0; t < 2.5f && Vector3.Distance(Flat(H.transform.position), Flat(m.transform.position)) > 2.2f; t += Time.unscaledDeltaTime) { Hold(PadButton.None, new Vector2(0, 1)); yield return null; }
+            Hold(PadButton.None);
             float before = m.Brain.Health; int flashes = sa.Flashes;
-            for (int i = 0; i < 4; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.35f); }
+            for (int i = 0; i < 5; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.35f); }
             yield return UntilNeutral();
             Check("Barrow Troll: the hunter's blows land on it (its hurtboxes ride the drawn body) and it flashes when struck",
                   m.Brain.Health < before && sa.Flashes > flashes, "damage " + (before - m.Brain.Health).ToString("0", ci) + ", flashes " + (sa.Flashes - flashes));
             yield return Snap("s12-troll-struck");
             // and it falls
-            m.Brain.Health = 4;
-            for (int i = 0; i < 6 && m.Alive; i++) { Face(m, 1.9f); yield return Tap(PadButton.Y, 2); yield return Wait(.45f); }
-            yield return Wait(1.4f);
+            m.Brain.Health = Mathf.Min(m.Brain.Health, 6);
+            for (int i = 0; i < 8 && m.Alive; i++)
+            {
+                if (Vector3.Distance(Flat(H.transform.position), Flat(m.transform.position)) > 2.4f) { Hold(PadButton.None, new Vector2(0, 1)); yield return Wait(.3f); Hold(PadButton.None); }
+                yield return Tap(PadButton.Y, 2); yield return Wait(.45f);
+            }
+            yield return Wait(1.6f);
             Check("Barrow Troll: struck down, it falls with its drawn death", !m.Alive && sa.Frame.StartsWith("Death_A/"), sa.Frame);
             yield return Snap("s13-troll-fallen");
             yield return UntilNeutral();
+            if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            S.ProvingRig.Invulnerable = false;
             S.ProvingRig.ClearMonsters();
         }
 
