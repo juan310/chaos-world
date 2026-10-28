@@ -23,6 +23,7 @@ VARIANTS = {
     'loco4': dict(poses=4, tokens='fit'),
     'loco2': dict(poses=2, tokens='fit'),
     'loco_auto': dict(poses=4, tokens='auto'),
+    'loco4_arms': dict(poses=4, tokens='fit', upper='arms'),      # the bow drawn while walking, the lance held level
 }
 DEFAULT = 'loco4'
 
@@ -60,6 +61,9 @@ def run(engine, sk, clip, v, inplace=True):
         ctx = np.array(out[-MODEL_POSES_PER_TOKEN:], dtype=np.float32)
     clip_frames = np.array(out)
     src = F[2 * N: 3 * N + 1].copy()
+    if v.get('upper'):
+        from mb_lab import keep_upper, upper_joints
+        clip_frames = keep_upper(clip_frames, src, upper_joints(list(sk.joint_names), v['upper']))
     # the clip and our cycle both start where our cycle does (frame 0); in place, the travel is taken off as well
     for arr in (clip_frames, src):
         for i in range(len(arr)):

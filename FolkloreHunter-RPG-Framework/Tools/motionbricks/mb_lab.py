@@ -17,6 +17,9 @@
 #           the lab found it smoother than our own in-betweens wherever it is squeezed no more than ~1.4 times
 #   still   (optional) a gentle clip (its hands, feet, head and hips never accelerating past 15 m/s^2: a held stance, a
 #           drink) is kept as ours: MotionBricks gives it motion it should not have
+#   upper   (optional) 'arms' or 'torso': those joints keep our own motion (their local turns) over MotionBricks' body:
+#           for the bow and the sword and shield, MotionBricks moves the hips, legs (and the back, with 'arms') and our
+#           arms keep the aim and the grips exactly as authored
 #   mix     (optional) how much of MotionBricks goes into the result: 1 = all of it; less, our own in-betweens mixed in,
 #           fading to ours entirely at every key pose (so the keys are exactly ours), the most MotionBricks mid-gap
 # and the generated frames are then fitted to the gap (re-timed). Written per variant and clip: the frames, the foot
@@ -52,7 +55,25 @@ VARIANTS = {
     'weave_m': dict(poses='end1', tokens='fit', short='merge', mix=.5),
     'adaptive': dict(poses='mid2end1', tokens='fit', short='keep', min_gap=13, still=True),
     'adaptive1': dict(poses=1, tokens='fit', short='keep', min_gap=13, still=True),
+    'settle_arms': dict(poses=1, tokens='fit', short='mb', upper='arms'),
+    'settle_torso': dict(poses=1, tokens='fit', short='mb', upper='torso'),
+    'adaptive_arms': dict(poses='mid2end1', tokens='fit', short='keep', min_gap=13, still=True, upper='arms'),
 }
+
+
+def upper_joints(names, which):
+    """the joints kept as ours: the arms (shoulders down to the fingertips), or the torso (the spine up, with the arms)"""
+    arm = [i for i, n in enumerate(names) if n.startswith(('Left', 'Right')) and not any(k in n for k in ('Leg', 'Shin', 'Foot', 'Toe'))]
+    if which == 'arms': return arm
+    return arm + [i for i, n in enumerate(names) if n in ('Spine1', 'Spine2', 'Chest', 'Neck1', 'Neck2', 'Head', 'HeadEnd', 'Jaw', 'LeftEye', 'RightEye')]
+
+
+def keep_upper(out, src, idx):
+    """our own local turns on the kept joints, frame by frame"""
+    out = np.array(out); src = np.asarray(src)
+    m = min(len(out), len(src))
+    out[:m, idx, 3:] = src[:m, idx, 3:]
+    return out
 MIN_FRAMES = 18                                             # MotionBricks' shortest motion (6 tokens: 4 x 6 - 6)
 
 
@@ -132,6 +153,7 @@ def run(engine, sk, clip, v):
                      'tokens': fit_tokens(gap) if v['tokens'] == 'fit' else 'auto'})
     out += [f for f in frames[keys[-1] + 1:]]
     contacts += [contacts[-1]] * (len(out) - len(contacts))
+    if v.get('upper'): out = list(keep_upper(out, frames, upper_joints(list(sk.joint_names), v['upper'])))
     return {'frames': np.array(out).round(5).tolist(), 'contacts': contacts, 'gaps': gaps}
 
 
