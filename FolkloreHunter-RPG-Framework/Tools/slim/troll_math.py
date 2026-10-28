@@ -18,8 +18,10 @@ import numpy as np
 from mathutils import Vector, Quaternion, Matrix
 
 OUT = Path(sys.argv[sys.argv.index('--') + 1]); OUT.mkdir(parents=True, exist_ok=True)
-STIFF = 3.0
-VIS = (1 - (0.6 / STIFF) ** (1 / 3)) ** .5        # where an element's field meets the threshold, as a share of its radius
+STIFF = 3.0                                        # soft shapes (body masses) blend wide; sharp ones (face, fingers) keep their form
+SHARP = 7.0
+def vis(st): return (1 - (0.6 / st) ** (1 / 3)) ** .5   # where a lone shape's field meets the threshold, as a share of its radius
+VIS = vis(STIFF)
 rng = np.random.default_rng(7)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -62,30 +64,30 @@ field_obj = bpy.data.objects.new('TrollField', mb); sc.collection.objects.link(f
 ELEMS = []        # (kind, centre, rotation, radius, size, bones {name: share}, paint)
 
 
-def _el(kind, c, q, r, size, bones, paint, neg=False):
-    e = mb.elements.new(type=kind); e.co = c; e.rotation = q; e.radius = r; e.stiffness = STIFF; e.use_negative = neg
+def _el(kind, c, q, r, size, bones, paint, neg=False, st=STIFF):
+    e = mb.elements.new(type=kind); e.co = c; e.rotation = q; e.radius = r; e.stiffness = st; e.use_negative = neg
     if kind in ('ELLIPSOID', 'CAPSULE'): e.size_x, e.size_y, e.size_z = size
-    if not neg: ELEMS.append((kind, Vector(c), q.copy(), r, tuple(size), bones, paint))
+    if not neg: ELEMS.append((kind, Vector(c), q.copy(), r, tuple(size), bones, paint, st))
 
 
-def ball(c, vis, bones, paint='skin', neg=False):
-    _el('BALL', c, Quaternion(), vis / VIS, (1, 1, 1), bones, paint, neg)
+def ball(c, v, bones, paint='skin', neg=False, st=STIFF):
+    _el('BALL', c, Quaternion(), v / vis(st), (1, 1, 1), bones, paint, neg, st)
 
 
-def blob(c, semi, bones, paint='skin', rot=Quaternion(), neg=False):
+def blob(c, semi, bones, paint='skin', rot=Quaternion(), neg=False, st=STIFF):
     """an ellipsoid with these visible semi-axes"""
-    r = max(semi) / VIS
-    _el('ELLIPSOID', c, rot, r, tuple(a / VIS / r for a in semi), bones, paint, neg)
+    r = max(semi) / vis(st)
+    _el('ELLIPSOID', c, rot, r, tuple(a / vis(st) / r for a in semi), bones, paint, neg, st)
 
 
-def limb(a, b, ra, rb, bones, paint='skin', n=4):
+def limb(a, b, ra, rb, bones, paint='skin', n=4, st=STIFF):
     """a tapering limb from a to b: capsules whose radius goes from ra to rb"""
     a, b = Vector(a), Vector(b)
     for i in range(n):
         p, q = a.lerp(b, i / n), a.lerp(b, (i + 1) / n)
         r = ra + (rb - ra) * (i + .5) / n
         d = q - p; rot = Vector((1, 0, 0)).rotation_difference(d.normalized())
-        _el('CAPSULE', (p + q) / 2, rot, r / VIS, (d.length / 2, 1, 1), bones, paint)
+        _el('CAPSULE', (p + q) / 2, rot, r / vis(st), (d.length / 2, 1, 1), bones, paint, False, st)
 
 
 def mid(a, b, t=.5): return V(a).lerp(V(b), t)
@@ -106,21 +108,25 @@ blob(V('hips') + Vector((0, .16, -.06)), (.30, .14, .17), {'hips': 1})          
 # neck and head: thick neck pushed forward, heavy brow, jaw, bulbous nose, pointed ears
 limb(V('neck') + Vector((0, .06, -.12)), V('head') + Vector((0, .02, .02)), .21, .16, {'neck': 1})
 H = V('head')
-blob(H + Vector((0, .0, .13)), (.16, .17, .17), {'head': 1})                                       # cranium
-blob(H + Vector((0, -.08, .17)), (.15, .12, .10), {'head': 1})                                     # forehead
-blob(H + Vector((0, -.20, .13)), (.17, .07, .065), {'head': 1})                                    # brow ridge, jutting
-blob(H + Vector((0, -.10, -.01)), (.17, .15, .11), {'head': 1})                                    # jaw, wide
-blob(H + Vector((0, -.21, -.04)), (.14, .07, .07), {'head': 1})                                    # underbite: the lower lip pushed out
-blob(H + Vector((0, -.15, -.10)), (.10, .08, .06), {'head': 1})                                    # chin under it
-blob(H + Vector((0, -.26, .06)), (.065, .07, .075), {'head': 1}, 'nose')                           # nose: long, heavy
-blob(H + Vector((0, -.30, .015)), (.075, .055, .05), {'head': 1}, 'nose')                          # its bulb, drooping
+HS = 1.2                                            # the sheet's head is a sixth of the troll's height
+def hp(x, y, z): return H + Vector((x, y, z)) * HS
+def hb(x, y, z, sx, sy, sz, paint='skin', rot=Quaternion(), neg=False, st=SHARP):
+    blob(hp(x, y, z), (sx * HS, sy * HS, sz * HS), {'head': 1}, paint, rot, neg, st)
+hb(0, .0, .13, .16, .17, .17, st=STIFF)                                                            # cranium
+hb(0, -.08, .17, .15, .12, .10, st=4.0)                                                            # forehead
+hb(0, -.19, .125, .165, .065, .06)                                                                 # brow ridge, jutting
+hb(0, -.10, -.01, .17, .15, .11, st=4.0)                                                           # jaw, wide
+hb(0, -.20, -.045, .135, .065, .06)                                                                # underbite: the lower lip pushed out
+hb(0, -.15, -.10, .10, .08, .06, st=4.0)                                                           # chin under it
+hb(0, -.25, .06, .06, .065, .07, 'nose')                                                           # nose: long, heavy
+hb(0, -.29, .015, .07, .055, .05, 'nose')                                                          # its bulb, drooping
 for s, x in (('l', 1), ('r', -1)):
-    blob(H + Vector((x * .045, -.30, .005)), (.03, .03, .025), {'head': 1}, 'nose')                # nostril wings
-    blob(H + Vector((x * .075, -.215, .085)), (.034, .03, .03), {'head': 1}, neg=True)             # eye socket under the brow
-    blob(H + Vector((x * .12, -.16, .03)), (.07, .06, .055), {'head': 1})                          # cheek
-    ear = Quaternion((0, 0, 1), x * math.radians(-20)) @ Quaternion((0, 1, 0), x * math.radians(-18))
-    blob(H + Vector((x * .20, -.02, .13)), (.11, .025, .06), {'head': 1}, 'ear', ear)              # ear, out to the side
-    blob(H + Vector((x * .30, .02, .17)), (.06, .018, .035), {'head': 1}, 'ear', ear)              # its long point
+    hb(x * .045, -.29, .005, .028, .028, .024, 'nose')                                             # nostril wings
+    hb(x * .072, -.205, .085, .032, .03, .028, neg=True)                                           # eye socket under the brow
+    hb(x * .12, -.16, .03, .065, .055, .05, st=4.0)                                                # cheek
+    ear = Quaternion((0, 0, 1), x * math.radians(-28)) @ Quaternion((0, 1, 0), x * math.radians(-10))
+    hb(x * .20, .0, .12, .11, .022, .055, 'ear', ear)                                              # ear, out to the side and back
+    hb(x * .29, .05, .145, .06, .016, .032, 'ear', ear)                                            # its long point
 # arms: thick, long, a heavy forearm, a big hand with thick fingers
 for s, x in (('l', 1), ('r', -1)):
     ua, la, hd, tip = 'upperarm.' + s, 'lowerarm.' + s, 'hand.' + s, 'handtip.' + s
@@ -137,11 +143,11 @@ for s, x in (('l', 1), ('r', -1)):
         base = palm + Vector((0, off, 0)) + d * .10
         mid1 = base + d * .07 + Vector((-x * .02, 0, 0))
         end = mid1 + d * .03 + Vector((-x * .05, 0, .0))
-        ball(base, .042, {hd: 1})                                                                   # knuckle
-        limb(base, mid1, .04, .036, {hd: 1}, n=1); limb(mid1, end, .036, .03, {hd: 1}, n=1)
-        ball(end + Vector((-x * .016, 0, -.004)), .022, {hd: 1}, 'nail')
+        ball(base, .04, {hd: 1}, st=SHARP)                                                          # knuckle
+        limb(base, mid1, .036, .033, {hd: 1}, n=1, st=SHARP); limb(mid1, end, .033, .028, {hd: 1}, n=1, st=SHARP)
+        ball(end + Vector((-x * .016, 0, -.004)), .02, {hd: 1}, 'nail', st=SHARP)
     thumb0 = V(hd).lerp(palm, .6) + Vector((0, -.08, 0))
-    limb(thumb0, thumb0 + Vector((-x * .03, -.06, -.07)), .035, .028, {hd: 1}, n=2)
+    limb(thumb0, thumb0 + Vector((-x * .03, -.07, -.08)), .038, .03, {hd: 1}, n=2, st=SHARP)
 # legs: thick thighs and calves, big knees, broad feet with stubby toes and dark nails
 for s, x in (('l', 1), ('r', -1)):
     ul, ll, ft, to, tt = 'upperleg.' + s, 'lowerleg.' + s, 'foot.' + s, 'toes.' + s, 'toetip.' + s
@@ -154,9 +160,10 @@ for s, x in (('l', 1), ('r', -1)):
     blob(mid(ft, to, .45) + Vector((0, 0, -.04)), (.16, .21, .08), {ft: 1})                         # the foot, broad
     blob(V(ft) + Vector((0, .08, -.06)), (.08, .07, .06), {ft: 1})                                  # heel
     for k, off in enumerate((-.10, -.035, .03, .095)):
-        c = V(to) + Vector((x * off, -.08, -.005))
-        ball(c, .048 - .005 * abs(k - 1.5), {to: 1})
-        ball(c + Vector((0, -.04, .016)), .025, {to: 1}, 'nail')
+        c = V(to) + Vector((x * off, -.11, .0))
+        r = .05 - .006 * abs(k - 1.5)
+        limb(c + Vector((0, .07, 0)), c, r, r * .95, {to: 1}, n=1, st=SHARP)
+        ball(c + Vector((0, -r * .7, r * .45)), r * .55, {to: 1}, 'nail', st=SHARP)
 
 # the surface
 dg = bpy.context.evaluated_depsgraph_get()
@@ -176,13 +183,13 @@ print('TROLL_MATH body %d vertices (field surface %d) from %d shapes' % (len(me.
 def fields(P):
     """each shape's field at points P (n x 3), as Blender sums them (stiffness x (1 - d^2/r^2)^3 inside the radius)"""
     F = np.zeros((len(P), len(ELEMS)))
-    for i, (kind, c, q, r, size, _, _) in enumerate(ELEMS):
+    for i, (kind, c, q, r, size, _, _, st) in enumerate(ELEMS):
         Rm = np.array(q.to_matrix())
         d = (P - np.array(c)) @ Rm                                  # into the shape's own frame
         if kind == 'CAPSULE': d[:, 0] -= np.clip(d[:, 0], -size[0], size[0])
         if kind == 'ELLIPSOID': d = d / np.array(size)
         q2 = 1 - (d ** 2).sum(1) / r ** 2
-        F[:, i] = np.where(q2 > 0, STIFF * q2 ** 3, 0)
+        F[:, i] = np.where(q2 > 0, st * q2 ** 3, 0)
     return F
 
 
@@ -247,15 +254,15 @@ def torus(name, centre, axis, R, r, n=48, m=8, paint='leather'):
 for k in range(3):
     zz = belt_z + .02 - k * .028
     rr = np.mean([body_radius(zz, 2 * math.pi * i / NA) for i in range(0, NA, 6)]) + .035
-    o = torus('Troll_Belt%d' % k, (0, .04, zz), (0, 0, 1), rr, .017, paint='rope')
+    o = torus('Troll_Belt%d' % k, (0, .04, zz), (0, 0, 1), rr, .024, paint='rope')
     o.scale = (1.0, .86, 1.0)
 for s in 'lr':
     for k in range(3):
         c = mid('lowerarm.' + s, 'hand.' + s, .58 + k * .09)
-        torus('Troll_Wrap_%s%d' % (s, k), c, V('hand.' + s) - V('lowerarm.' + s), .125 - k * .008, .016, paint='leather')
+        torus('Troll_Wrap_%s%d' % (s, k), c, V('hand.' + s) - V('lowerarm.' + s), .118 - k * .01, .026, paint='leather')
 # tusks: curved cones from the lower jaw
 for s, x in (('l', 1), ('r', -1)):
-    base = H + Vector((x * .085, -.265, -.035))
+    base = hp(x * .085, -.255, -.04)
     vs, fs = [], []
     n = 10; m = 8
     for i in range(n + 1):
@@ -271,13 +278,13 @@ for s, x in (('l', 1), ('r', -1)):
     parts.append((new_obj('Troll_Tusk_' + s, vs, fs), 'tusk'))
 # eyes: small dark balls in the sockets
 for s, x in (('l', 1), ('r', -1)):
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=.024, location=H + Vector((x * .075, -.225, .08)), segments=12, ring_count=8)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=.024, location=hp(x * .072, -.215, .082), segments=12, ring_count=8)
     o = bpy.context.object; o.name = 'Troll_Eye_' + s; parts.append((o, 'eye'))
 # hair: long dark strands from the back and top of the head, down over the shoulders and back
 for i in range(110):
     a = rng.uniform(-2.6, 2.6)                     # around the head (0 = straight back, +-2.6 = beside the face)
     up = rng.uniform(.06, .22)
-    root = H + Vector((.155 * math.sin(a), .01 + .15 * math.cos(a), up))
+    root = hp(.15 * math.sin(a), .01 + .15 * math.cos(a), up)
     L = rng.uniform(.40, .85) * (.75 if abs(a) > 2.0 else 1)
     vs, fs = [], []
     n, m = 12, 5
@@ -304,7 +311,7 @@ for i in range(110):
 
 # ---- paint (vertex colours, by math) --------------------------------------------------------------------------------
 def srgb(r, g, b): return np.array([(c / 255) ** 2.2 for c in (r, g, b)])
-SKIN, SKIN_DARK, SKIN_LIGHT = srgb(150, 154, 126), srgb(104, 118, 98), srgb(170, 168, 140)
+SKIN, SKIN_DARK, SKIN_LIGHT = srgb(152, 152, 128), srgb(102, 112, 96), srgb(172, 168, 142)
 PINK, NAIL = srgb(176, 128, 118), srgb(58, 56, 60)
 LEATHER, LEATHER_DARK, LEATHER_TAN = srgb(112, 72, 44), srgb(66, 46, 34), srgb(150, 108, 66)
 ROPE, TUSK, EYE, HAIR, HAIR_LIGHT = srgb(98, 66, 42), srgb(226, 214, 180), srgb(30, 24, 20), srgb(44, 37, 32), srgb(78, 64, 52)
@@ -341,8 +348,8 @@ def paint(o, cols):
 P = coords(body); Fb = fields(P)
 own = np.argmax(Fb, 1)
 kinds = np.array([e[6] for e in ELEMS])
-blot = noise3(P, .16, 1); fine = noise3(P, .045, 2)
-mott = np.clip((blot - .48) * 4, 0, 1)
+blot = noise3(P, .085, 1); fine = noise3(P, .03, 2); spots = noise3(P, .035, 9)
+mott = np.clip((blot - .5) * 3, 0, 1) * .75 + np.clip((spots - .68) * 6, 0, 1) * .5
 col = SKIN * (1 - mott[:, None]) + SKIN_DARK * mott[:, None]
 col = col * (.9 + .2 * fine[:, None])
 belly = np.exp(-((P[:, 2] - 1.32) / .22) ** 2) * (P[:, 1] < -.15)
