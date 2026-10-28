@@ -5,13 +5,18 @@
 # For each clip, between each pair of its key poses (the first key's four poses before it are the context, as in
 # mb_generate.py), a variant sets:
 #   poses   how many of the target's four poses inform the model: 1 = arrive and settle there, 2 = arrive with its speed,
-#           4 = arrive with its speed and momentum (MotionBricks' own description)
+#           4 = arrive with its speed and momentum (MotionBricks' own description); 'end1' 4 then 1 on the last key,
+#           'mid2end1' 2 then 1 on the last key
 #   tokens  'auto': the model chooses the length (8-14 tokens, the default); 'fit': the one token count whose length is
 #           nearest the gap between the key poses (each token is four poses, the valid frames 4n - 6, at least 18)
 #   short   'mb': every gap goes to MotionBricks; 'keep': a gap shorter than MotionBricks' shortest motion (18 frames,
 #           0.6 s) keeps our own keyposed frames there (MotionBricks would be squashed into it); 'merge': key poses
 #           closer than that are dropped (the first, the last and the ones 18 frames apart stay), so MotionBricks fills
 #           the longer gaps between the ones that stay at its own pace
+#   min_gap (optional, with short 'keep') the shortest gap MotionBricks fills (default 18 frames, its shortest motion);
+#           the lab found it smoother than our own in-betweens wherever it is squeezed no more than ~1.4 times
+#   still   (optional) a gentle clip (its hands, feet, head and hips never accelerating past 15 m/s^2: a held stance, a
+#           drink) is kept as ours: MotionBricks gives it motion it should not have
 #   mix     (optional) how much of MotionBricks goes into the result: 1 = all of it; less, our own in-betweens mixed in,
 #           fading to ours entirely at every key pose (so the keys are exactly ours), the most MotionBricks mid-gap
 # and the generated frames are then fitted to the gap (re-timed). Written per variant and clip: the frames, the foot
@@ -26,7 +31,8 @@ import numpy as np
 import warp as wp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mb_generate import window, retime, slerp                                    # noqa: E402
+from mb_generate import window, retime, slerp                             # noqa: E402
+from mb_lab_eval import fk, JOINTS                                       # noqa: E402
 from motionbricks.io.usd import load_skeleton_from_usd                    # noqa: E402
 from motionbricks.io.utils import SOMA_SKELETON_PRIM_PATH, get_asset_file  # noqa: E402
 from motionbricks.model.config import MotionBricksInferenceConfig          # noqa: E402
@@ -44,6 +50,8 @@ VARIANTS = {
     'merge':  dict(poses='end1', tokens='fit', short='merge'),
     'weave':  dict(poses='end1', tokens='fit', short='mb', mix=.5),
     'weave_m': dict(poses='end1', tokens='fit', short='merge', mix=.5),
+    'adaptive': dict(poses='mid2end1', tokens='fit', short='keep', min_gap=13, still=True),
+    'adaptive1': dict(poses=1, tokens='fit', short='keep', min_gap=13, still=True),
 }
 MIN_FRAMES = 18                                             # MotionBricks' shortest motion (6 tokens: 4 x 6 - 6)
 
@@ -55,6 +63,17 @@ def merged(keys):
         if k - out[-1] >= MIN_FRAMES and keys[-1] - k >= MIN_FRAMES: out.append(k)
     out.append(keys[-1])
     return out
+
+
+def is_still(frames, fps, sk, limit=15.0):
+    """a gentle clip: its hands, feet, head and hips never accelerate past `limit` m/s^2 (the 95th percentile; a held
+    stance, a drink, a draw-and-hold). The lab: our own were smoother than anything MotionBricks made of those (it gives
+    them motion they should not have), and MotionBricks was smoother on every clip livelier than that."""
+    P = fk({'parents': list(sk.parent_indices.numpy())}, frames)
+    names = list(sk.joint_names)
+    J = [names.index(n) for n in JOINTS if n in names]
+    A = np.linalg.norm(np.diff(P[:, J], 2, axis=0), axis=-1) * fps * fps
+    return bool(len(A) and np.percentile(A, 95) < limit)
 
 
 def weave(gen, src, k0, mix):
@@ -78,6 +97,8 @@ def run(engine, sk, clip, v):
     frames = np.array(clip['frames'], dtype=np.float32)
     keys = [int(round(t * fps)) for t in clip['keys']]
     if v['short'] == 'merge': keys = merged(keys)
+    if v.get('still') and is_still(frames, fps, sk):
+        return {'frames': frames.round(5).tolist(), 'contacts': [[1, 1, 1, 1]] * len(frames), 'gaps': [{'from': keys[0], 'to': keys[-1], 'kept': True, 'still': True}]}
     context = engine.create_input(sk); target = engine.create_input(sk); output = engine.create_output(sk)
     out = [f for f in frames[:keys[0] + 1]]
     contacts = [[1, 1, 1, 1]] * len(out)
@@ -85,14 +106,14 @@ def run(engine, sk, clip, v):
     gaps = []
     for gi, (k0, k1) in enumerate(zip(keys, keys[1:])):
         gap = k1 - k0
-        if v['short'] == 'keep' and gap < 18:
+        if v['short'] == 'keep' and gap < v.get('min_gap', MIN_FRAMES):
             seg = [f for f in frames[k0 + 1:k1 + 1]]                   # our own keyposed frames for a quick gap
             out += seg; contacts += [contacts[-1]] * len(seg)
             ctx = np.array(out[-MODEL_POSES_PER_TOKEN:], dtype=np.float32)
             gaps.append({'from': k0, 'to': k1, 'kept': True})
             continue
         last = gi == len(keys) - 2
-        n = v['poses'] if v['poses'] != 'end1' else (1 if last else 4)
+        n = {'end1': 1 if last else 4, 'mid2end1': 1 if last else 2}.get(v['poses'], v['poses'])
         cfg = MotionBricksInferenceConfig(allowed_token_counts=(fit_tokens(gap),)) if v['tokens'] == 'fit' else MotionBricksInferenceConfig()
         context.update_from_poses(wp.array(ctx, dtype=wp.transform), stream=engine.stream)
         target.update_from_poses(wp.array(window(frames, k1)[:n], dtype=wp.transform), stream=engine.stream)

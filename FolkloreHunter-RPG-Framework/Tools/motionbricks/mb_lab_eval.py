@@ -10,7 +10,9 @@
 #           (and, for the source, while it is low and near-still, the same test for every variant: 'slide_low')
 #   floor   the deepest any toe or heel goes under the floor (cm)
 #   squash  the most a gap squeezed the generated motion (generated frames / frames it had to fill)
-# The contact channels (four per frame) are matched to the heels and toes by which joint is low when the channel is on.
+# The contact channels (four per frame) are MotionBricks' left heel, left toe, right heel, right toe (its SOMA contract:
+# LeftFoot, LeftToeBase, RightFoot, RightToeBase); which joint is low when each is on is reported as a check of that.
+CONTACTS = ['LeftFoot', 'LeftToeBase', 'RightFoot', 'RightToeBase']
 #
 # Run from the MotionBricks checkout:  uv run python <this file> soma.json lab_out.json <out folder>
 import itertools
@@ -139,7 +141,7 @@ def main(soma_json, lab_json, out_dir):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     rest = fk(sk, [[list(t) for t in sk['rest']]])[0]
     floor = {k: float(rest[idx[k], 1]) for k in FEET}           # each heel's and toe's height standing at rest is its floor
-    report = {'variants': data['variants'], 'clips': [], 'contact_channels': None}
+    report = {'variants': data['variants'], 'clips': [], 'contact_channels': CONTACTS, 'contact_check': {}}
     for clip in data['clips']:
         src, P0 = measure(sk, idx, clip, clip['source'], floor=floor)
         row = {'name': clip['name'], 'frames': len(clip['source']), 'source': src, 'variants': {}}
@@ -147,8 +149,8 @@ def main(soma_json, lab_json, out_dir):
         for v, r in clip['variants'].items():
             P = fk(sk, r['frames'])
             order = match_contacts(P, idx, r['contacts'])
-            if report['contact_channels'] is None and all(order): report['contact_channels'] = order
-            m, P = measure(sk, idx, clip, r['frames'], r['contacts'], report['contact_channels'] or order, floor)
+            if all(order): report['contact_check'][v] = report['contact_check'].get(v, 0) + sum(a == b for a, b in zip(order, CONTACTS))
+            m, P = measure(sk, idx, clip, r['frames'], r['contacts'], CONTACTS, floor)
             gens = [g for g in r['gaps'] if not g.get('kept')]
             m['squash'] = max([g['squash'] for g in gens], default=1.0)
             m['kept'] = sum(1 for g in r['gaps'] if g.get('kept'))
@@ -170,9 +172,9 @@ def main(soma_json, lab_json, out_dir):
     for v, s in summary.items():
         lines.append('| %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (v, s['smooth'], s['pops'], s['keys'], s['free'], s.get('slide', '-'),
                                                                        s['slide_low'], s['floor'], s.get('squash', '-')))
-    (out / 'lab_summary.md').write_text('\n'.join(lines) + '\n\ncontact channels: %s\n' % report['contact_channels'], encoding='utf-8')
+    (out / 'lab_summary.md').write_text('\n'.join(lines) + '\n\ncontact channels: %s; matched by height (of 4 per clip): %s\n' % (report['contact_channels'], report['contact_check']), encoding='utf-8')
     print('\n'.join(lines))
-    print('MB_EVAL_DONE contact channels', report['contact_channels'], flush=True)
+    print('MB_EVAL_DONE contact channels', report['contact_channels'], 'matched by height', report['contact_check'], flush=True)
 
 
 if __name__ == '__main__':
