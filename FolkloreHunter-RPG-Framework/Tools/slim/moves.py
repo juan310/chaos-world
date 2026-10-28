@@ -102,14 +102,16 @@ GAITS = {}      # every gait cycle baked: its period, duty, stride and direction
 
 
 def gait(rig, name, period, duty, stride, lift, kick, drop, bob, lean, hip_yaw, arm, elbow_up, direction=(0, 1), upper=None,
-         hands_low=0.0, hands_fwd=0.0, knees_out=0.1, hips_back=0.0):
+         hands_low=0.0, hands_fwd=0.0, knees_out=0.1, hips_back=0.0, hands_at=None):
     """A walk/jog/sprint cycle in place: each foot is planted for `duty` of the cycle, sliding `stride` metres the way
     the ground passes under the body (direction (0, 1) is walking forward: the feet slide back, +Y), then swings
     back to the front with its heel lifted `lift` and kicked back `kick`. Arms swing against the legs; the hips bob
     (`bob`, twice a cycle: + highest at mid-stance as in a walk, - lowest as in a run), turn with the stepping leg and
     the chest turns back against them. `upper` replaces the arms and chest (a weapon held still). A crouched gait
     (sneaking) lowers the hands with the body (`hands_low`), carries them forward (`hands_fwd`) and the knees wider, and
-    sits the hips back behind the feet (`hips_back`) so the forward-tipped trunk balances over them."""
+    sits the hips back behind the feet (`hips_back`) so the forward-tipped trunk balances over them. `hands_at`
+    (forward, height) places the hands in the body's own space instead of the chest's: a trunk tipped far forward
+    would otherwise swing them back behind the hips."""
     dx, dy = direction
     GAITS[name] = {'period': period, 'duty': duty, 'stride': stride, 'direction': direction}
 
@@ -145,8 +147,12 @@ def gait(rig, name, period, duty, stride, lift, kick, drop, bob, lean, hip_yaw, 
         P['head'] = (-lean * .9 * dy, 0, hip_yaw * .2 * cy)
         for s_, sign in (('L', 1), ('R', -1)):
             a = cy if s_ == 'L' else -cy             # + : this arm swings back
-            P['hand' + s_] = (sign * (.2 - elbow_up * .03), -.02 - hands_fwd + arm * a, 1.15 - hands_low + elbow_up * (.16 + .08 * max(0, -a)))
-            P['elbow' + s_] = (sign * .35, 1, -.6)
+            if hands_at:
+                P['hand' + s_] = (sign * .21, -hands_at[0] + arm * a, hands_at[1] + .05 * max(0, -a))
+                P['world' + s_] = True; P['elbow' + s_] = (sign * .4, .5, -.6)
+            else:
+                P['hand' + s_] = (sign * (.2 - elbow_up * .03), -.02 - hands_fwd + arm * a, 1.15 - hands_low + elbow_up * (.16 + .08 * max(0, -a)))
+                P['elbow' + s_] = (sign * .35, 1, -.6)
             P['wrist' + s_] = (-10 - 30 * elbow_up, 0, 0)
         if upper:
             u = upper(t) if callable(upper) else upper
@@ -175,20 +181,21 @@ def sneak(rig, name='Sneak_Walk'):
     """creeping: half crouched with the hips sat back and the trunk tipped in over the knees (about 25 degrees: the lean is shared by hips, spine and chest), long slow steps rolled heel
     to toe, hands carried low and forward"""
     return gait(rig, name, period=1.3, duty=.68, stride=.62, lift=.09, kick=.03, drop=.2, bob=.012, lean=44, hip_yaw=4,
-                arm=.07, elbow_up=.45, hands_low=.3, hands_fwd=.16, knees_out=.14, hips_back=.09)
+                arm=.07, elbow_up=.45, knees_out=.14, hips_back=.09, hands_at=(.2, .74))
 
 
 def crouch_walk(rig, name='Crouch_Walk'):
     """low to the ground: deep knees, short steps, the hips sat back and the trunk tipped well forward over the knees (about 37 degrees)"""
     return gait(rig, name, period=1.15, duty=.66, stride=.46, lift=.08, kick=.02, drop=.34, bob=.01, lean=60, hip_yaw=3,
-                arm=.05, elbow_up=.6, hands_low=.44, hands_fwd=.22, knees_out=.18, hips_back=.14)
+                arm=.05, elbow_up=.6, knees_out=.18, hips_back=.14, hands_at=(.3, .6))
 
 
 CROUCH = merge(RELAX, {'hips': (0, .14, -.34), 'hipsR': (18, 0, 0), 'spine': (30, 0, 0), 'chest': (18, 0, 0), 'head': (-54, 0, 0),
                        'footL': (.06, -.04, 0, 0, 10), 'footR': (-.06, .08, 0, 0, -10), 'kneeL': (.2, -1, 0), 'kneeR': (-.2, -1, 0),
-                       'handL': (.22, -.22, .72), 'elbowL': (.6, .4, -1), 'handR': (-.22, -.22, .72), 'elbowR': (-.6, .4, -1)})
+                       'handL': (.21, -.3, .6), 'elbowL': (.4, .5, -.6), 'handR': (-.21, -.3, .6), 'elbowR': (-.4, .5, -.6),
+                       'worldL': True, 'worldR': True})      # hands in the body's space, ahead of the knees
 SNEAK = merge(CROUCH, {'hips': (0, .09, -.2), 'hipsR': (13, 0, 0), 'spine': (22, 0, 0), 'chest': (13, 0, 0), 'head': (-40, 0, 0),
-                       'handL': (.22, -.16, .86), 'handR': (-.22, -.16, .86), 'kneeL': (.14, -1, 0), 'kneeR': (-.14, -1, 0)})
+                       'handL': (.21, -.2, .74), 'handR': (-.21, -.2, .74), 'kneeL': (.14, -1, 0), 'kneeR': (-.14, -1, 0)})
 
 
 def crouch_idle(rig, name='Crouch_Idle'):
