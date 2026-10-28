@@ -59,8 +59,9 @@ def _write(body, W, idx, deform):
         row = W[vi] * deform
         keep = np.argsort(row)[::-1][:4]; keep = keep[row[keep] > .01]
         tot = row[keep].sum() / max(.05, 1 - float((W[vi] * (1 - deform)).sum()))   # beside what kept groups hold
-        for g in np.nonzero(W[vi] * deform)[0]:
-            if g not in keep: vg[int(g)].remove([int(vi)])
+        # every deforming group the vertex is in now and is not keeping goes (a weight set to nothing included)
+        for g in [x.group for x in body.data.vertices[int(vi)].groups]:
+            if g < len(deform) and deform[g] > 0 and g not in keep: vg[int(g)].remove([int(vi)])
         for g in keep:
             vg[int(g)].add([int(vi)], float(row[g] / tot), 'REPLACE')
 
