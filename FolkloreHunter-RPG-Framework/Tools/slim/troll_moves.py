@@ -134,7 +134,8 @@ def death(rig, name='Death_A'):
              'footL': (.08, .5, .2, 80, 6), 'footR': (-.08, .5, .2, 80, -6), 'kneeL': (.3, -1, -.2), 'kneeR': (-.3, -1, -.2),
              'handL': off(rig, 'l', (.1, -.1, -.2)), 'handR': off(rig, 'r', (-.1, -.1, -.2))}
     sway = moves.merge(knees, {'spine': (26, 4, 0), 'head': (-4, 0, 6)})
-    down = moves.merge(knees, {'hips': T(rig, (0, -.1, -.9)), 'hipsR': (70, 0, 0), 'spine': (12, 0, 0), 'chest': (4, 0, 0), 'head': (-30, 0, 14),
+    # face down: the hips at the belly's depth above the ground (lower, the body sank 30 cm into it: the body check)
+    down = moves.merge(knees, {'hips': T(rig, (0, -.1, -.62)), 'hipsR': (70, 0, 0), 'spine': (12, 0, 0), 'chest': (4, 0, 0), 'head': (-30, 0, 14),
                                'handL': T(rig, (.5, -.9, .25)), 'handR': T(rig, (-.45, -.7, .25))})
     return choreo.bake(rig, name, [(0, {}), (.3, knees), (.55, sway), (.9, down), (1.4, down)], base)
 
