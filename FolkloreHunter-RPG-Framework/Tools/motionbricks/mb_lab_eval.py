@@ -166,7 +166,7 @@ def main(soma_json, lab_json, out_dir):
     summary['source'] = {k: round(float(np.mean([c['source'][k] for c in report['clips']])), 2) for k in ('smooth', 'pops', 'keys', 'free', 'slide_low', 'floor')}
     report['summary'] = summary
     json.dump(report, open(out / 'lab_report.json', 'w'), indent=1)
-    lines = ['| variant | smooth m/s² | pops | keys cm | free cm | slide cm/s | slide (low) cm/s | floor cm | squash |', '|---|---|---|---|---|---|---|---|---|']
+    lines = ['| variant | smooth m/s2 | pops | keys cm | free cm | slide cm/s | slide (low) cm/s | floor cm | squash |', '|---|---|---|---|---|---|---|---|---|']
     for v, s in summary.items():
         lines.append('| %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (v, s['smooth'], s['pops'], s['keys'], s['free'], s.get('slide', '-'),
                                                                        s['slide_low'], s['floor'], s.get('squash', '-')))
