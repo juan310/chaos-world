@@ -681,12 +681,16 @@ def jump_forward(rig, name='Jump_Forward'):
     running on (it starts and ends in the jog's stride)"""
     push = {'hips': (0, -.12, -.1), 'spine': (14, 0, 0), 'footL': (.03, -.3, 0, 0, 4), 'footR': (-.03, .36, .04, 40, -4),
             'kneeL': (.1, -1, .2), 'handL': (.24, .18, 1.1), 'handR': (-.24, -.3, 1.36)}
-    fly = {'feetHips': True, 'hips': (0, -.5, .32), 'spine': (12, 0, 0), 'head': (-12, 0, 0),
-           'footL': (.05, -.42, .5, 20, 4), 'footR': (-.05, .32, .36, 60, -4), 'kneeL': (.1, -1, .6), 'kneeR': (-.1, -1, -.2),
-           'handL': (.32, -.3, 1.5), 'handR': (-.32, -.1, 1.45)}
-    land = {'hips': (0, -.9, -.18), 'spine': (18, 0, 0), 'footL': (.04, -.98, 0, 0, 4), 'footR': (-.04, -.5, .08, 30, -4),
-            'handL': (.28, -.9, 1.0), 'handR': (-.28, -.7, 1.1)}
-    return choreo.bake(rig, name, [(0, {}), (.18, push), (.5, fly), (.78, land), (1.1, {'hips': (0, -1.0, -.06), 'footL': (.02, -1.0, 0, 0, 4), 'footR': (-.02, -1.0, 0, 0, -4)})], RELAX)
+    # the feet are placed over the ground in every key: a key placing them from the hips (feetHips) passes that on to
+    # the keys after it, which put the landing feet a metre too far ahead and tipped the body back
+    fly = {'hips': (0, -.5, .32), 'spine': (12, 0, 0), 'head': (-12, 0, 0),
+           'footL': (.05, -.92, .82, 20, 4), 'footR': (-.05, -.18, .68, 60, -4), 'toesL': 0, 'toesR': 0,
+           'kneeL': (.1, -1, .6), 'kneeR': (-.1, -1, -.2), 'handL': (.32, -.3, 1.5), 'handR': (-.32, -.1, 1.45)}
+    land = {'hips': (0, -.9, -.18), 'spine': (18, 0, 0), 'footL': (.04, -.98, 0, 0, 4), 'footR': (-.04, -.5, .08, 30, -4), 'toesL': 0, 'toesR': 30,
+            'handL': (.28, -.24, 1.05), 'handR': (-.28, -.1, 1.15)}          # hands in the chest's frame: out for balance
+    run_on = {'hips': (0, -1.0, -.06), 'footL': (.02, -1.0, 0, 0, 4), 'footR': (-.02, -1.0, 0, 0, -4), 'toesL': 0, 'toesR': 0,
+              'handL': (.22, .04, 1.12), 'handR': (-.22, -.14, 1.2)}
+    return choreo.bake(rig, name, [(0, {}), (.18, push), (.5, fly), (.78, land), (1.1, run_on)], RELAX)
 
 
 def hit(rig, name, side=0.0):
