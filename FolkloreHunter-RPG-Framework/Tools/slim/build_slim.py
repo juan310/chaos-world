@@ -19,6 +19,7 @@
 # (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
 # --out writes the model somewhere else than the game's Models folder (trials).
 # --moves <module> plays only that module's CLIPS (a body with its own moves: troll_moves), no motion capture.
+# --only-clips <a,b,...> keeps only those clips (the Proving Grounds' test body: movement only).
 # --face-fix turns a body skinned to a backwards skeleton round to face the skeleton's way (skinfix_blender.turn_around).
 # --untangle frees the thighs' skin from the hands that hung against them when the body was skinned (skinfix_blender.untangle).
 # --skirt weights cloth hanging from the hips as cloth (Tools/sightforge/eyeslib/skinfix_blender.py skirt).
@@ -557,6 +558,12 @@ if '--skin-relax' in argv:
     skinfix_blender.run(body, arm, list(made), log=lambda m: print('SLIM_' + m, flush=True),
                         keep=('thumb_', 'index_', 'middle_', 'ring_', 'pinky_', 'handslot'))
     arm.animation_data.action = None
+if opt('--only-clips'):
+    # a body carrying only the clips being tried (the Proving Grounds' test body: the source's own clips and the
+    # newest movement, no attacks), so the gate judges just those
+    _keep = set(opt('--only-clips').split(','))
+    for _a in [a for a in made if a.name not in _keep]: made.remove(_a); bpy.data.actions.remove(_a)
+    print('SLIM_ONLY', len(made), 'clips kept;', 'missing:', ' '.join(sorted(_keep - {a.name for a in made})) or 'none', flush=True)
 assert all('.' not in a.name for a in made) and len(bpy.data.actions) == len(made), 'stray clips: ' + ', '.join(a.name for a in bpy.data.actions)
 arm.animation_data.action = None
 print('SLIM_CLIPS', len(made), ' '.join(a.name for a in made), flush=True)
