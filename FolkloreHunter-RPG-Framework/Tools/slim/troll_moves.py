@@ -83,11 +83,13 @@ def smash(rig, name='Troll_Smash'):
             'footL': (.12, -.08, 0, 0, 14), 'footR': (-.12, .1, 0, 0, -14)}
     peak = moves.merge(rear, {'handL': tuple(top + Vector((.12, .18, .52)) / rig.k), 'handR': tuple(top + Vector((-.12, .18, .52)) / rig.k),
                               'spine': (-18, 0, 0), 'hips': T(rig, (0, .12, -.1))})
-    hit = {'hips': T(rig, (0, -.06, -.62)), 'spine': (48, 0, 0), 'chest': (16, 0, 0), 'neck': (6, 0, 0), 'head': (-34, 0, 0),
-           'handL': T(rig, (.16, -.86, .14)), 'elbowL': (1, .3, -.2), 'wristL': (20, 0, 0),
-           'handR': T(rig, (-.16, -.86, .14)), 'elbowR': (-1, .3, -.2), 'wristR': (20, 0, 0),
-           'footL': (.16, -.14, 0, 0, 18), 'footR': (-.16, .14, 0, 0, -18), 'kneeL': (1, -1, 0), 'kneeR': (-1, -1, 0)}
-    hold = moves.merge(hit, {'hips': T(rig, (0, -.04, -.58)), 'spine': (44, 0, 0)})
+    # the reach to the ground comes mostly from the back bending, with the feet wide and the knees out: a deep squat
+    # folded the thighs onto the loincloth and crushed it (the body check measured 12 % of the skin torn there)
+    hit = {'hips': T(rig, (0, -.06, -.38)), 'spine': (58, 0, 0), 'chest': (18, 0, 0), 'neck': (6, 0, 0), 'head': (-36, 0, 0),
+           'handL': T(rig, (.2, -.92, .3)), 'elbowL': (1, .3, -.2), 'wristL': (20, 0, 0),
+           'handR': T(rig, (-.2, -.92, .3)), 'elbowR': (-1, .3, -.2), 'wristR': (20, 0, 0),
+           'footL': (.24, -.1, 0, 0, 22), 'footR': (-.24, .12, 0, 0, -22), 'kneeL': (1.3, -1, 0), 'kneeR': (-1.3, -1, 0)}
+    hold = moves.merge(hit, {'hips': T(rig, (0, -.04, -.35)), 'spine': (54, 0, 0)})
     # the blow itself runs straight and fast from the peak to the ground ('_ease' carries forward, so it is reset after)
     keys = [(0, {}), (.36, rear), (.5, moves.merge(peak, {'_ease': 'linear'})), (.62, moves.merge(hit, {'_ease': 'smooth'})), (.86, hold), (1.3, {})]
     return choreo.bake(rig, name, keys, base)
