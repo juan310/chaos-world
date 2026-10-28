@@ -140,4 +140,18 @@ def death(rig, name='Death_A'):
     return choreo.bake(rig, name, [(0, {}), (.3, knees), (.55, sway), (.9, down), (1.4, down)], base)
 
 
-CLIPS = [idle, idle_combat, walk, smash, swipe, hit, death]
+def _captured():
+    """moves captured from video by the two-view capture (Tools/capture2v: Wan 2.2 on this PC, read and fitted locally),
+    one clip each, named in creatures/troll/clips/clips.json; none until a capture passes its checks"""
+    import json, sys
+    from pathlib import Path
+    d = Path(__file__).resolve().parent.parent / 'capture2v'
+    table = d / 'creatures' / 'troll' / 'clips' / 'clips.json'
+    if not table.exists(): return []
+    sys.path.insert(0, str(d))
+    import to_clip
+    return [(lambda rig, move=move, game=game: to_clip.clip(rig, game, table.with_name(move + '.json'), rig_info=table.with_name('rig_info.json')))
+            for move, game in json.load(open(table)).items()]
+
+
+CLIPS = [idle, idle_combat, walk, smash, swipe, hit, death] + _captured()
