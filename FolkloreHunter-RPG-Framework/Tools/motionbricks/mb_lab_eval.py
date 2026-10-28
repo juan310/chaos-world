@@ -49,7 +49,7 @@ def qrot(q, v):
 def fk(sk, frames):
     """[frames, joints, 7] local (position, quaternion xyzw) -> [frames, joints, 3] world positions"""
     f = np.asarray(frames, dtype=np.float64)
-    n = len(sk['names'])
+    n = len(sk['parents'])
     gp = np.zeros((len(f), n, 3)); gr = np.zeros((len(f), n, 4))
     for i, j in enumerate(sk['parents']):
         p, q = f[:, i, :3], f[:, i, 3:] / np.linalg.norm(f[:, i, 3:], axis=-1, keepdims=True)
