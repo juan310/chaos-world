@@ -18,6 +18,7 @@
 # --fingers finds the fingers in the mesh, gives each three bones, and solves how they close round each held piece
 # (Tools/slim/fingers.py); the curl angles go beside the model as <name>_grips.json for the game's HandGrip.
 # --out writes the model somewhere else than the game's Models folder (trials).
+# --moves <module> plays only that module's CLIPS (a body with its own moves: troll_moves), no motion capture.
 # --skirt weights cloth hanging from the hips as cloth (Tools/sightforge/eyeslib/skinfix_blender.py skirt).
 # --skin-relax smooths the bone weights where the clips tear the skin (Tools/sightforge/eyeslib/skinfix_blender.py).
 # --footlock holds the planted feet of walks, jogs and runs still on the ground (Tools/sightforge/eyeslib/footslide_blender.py).
@@ -250,7 +251,13 @@ if '--fingers' in argv:
     rig = choreo.Rig(arm)             # the bone lists again, fingers included
     if '--fingers-only' in argv: sys.exit(0)        # trials of the finger detection: no clips, no export
 
-made = [] if villager else [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
+custom = opt('--moves')                 # a body with its own moveset (troll_moves): only its clips, no hunter capture
+if custom:
+    import importlib
+    made = [fn(rig) for fn in importlib.import_module(custom).CLIPS]
+    print('SLIM_MOVES', custom, ' '.join(a.name for a in made), flush=True)
+else:
+    made = [] if villager else [fn(rig) for fn in (moves.MONSTER if '--monster' in argv else moves.CLIPS)]
 # the shield arm: motion capture and MotionBricks make the body and sword arm move naturally, but their left hand holds
 # nothing, so a shield on it lay flat or swung into the body (SightForge mesh3d: 7-11 cm inside in every sword-and-shield
 # clip). The keyposed clips place the shield on purpose: their left arm is kept aside here and put back into whatever
@@ -263,14 +270,14 @@ if any(o.name in ('Round_Shield', 'Hunt_TowerShield') for o in bpy.data.objects 
         _a = bpy.data.actions.get(_n)
         if _a: _c = _a.copy(); _c.name = 'AUTH__' + _n; _c.use_fake_user = True; AUTH[_n] = _c
 mb = opt('--mb'); soma = opt('--soma')
-if mb and soma and not villager:
+if mb and soma and not villager and not custom:
     # the game's own moves with MotionBricks' natural motion between their key poses (Tools/motionbricks)
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'motionbricks'))
     import mb_bridge
     mb_bridge.load(rig, mb_bridge.Soma(soma), mb)
     rig.arm.animation_data.action = None
 m2m = opt('--m2m')
-if m2m:
+if m2m and not custom:
     # the everyday moves from CC0 motion capture (Mesh2Motion), replacing the keyposed versions of the same name
     import retarget
     src = retarget.Source(m2m)

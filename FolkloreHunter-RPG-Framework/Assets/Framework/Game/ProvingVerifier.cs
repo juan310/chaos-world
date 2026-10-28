@@ -529,52 +529,82 @@ namespace FH.Game
             S.ProvingRig.ClearMonsters();
         }
 
-        /// <summary>The Barrow Troll, a monster drawn as a sprite (SpriteActor, from the owner's troll sheet): it stands on the
-        /// ground at its height with its card turned to the camera, walks, strikes the hunter, takes the hunter's blows (Y, the
-        /// real controls), flashes when struck and falls. Pictures from the game camera (s10-s13) and close views (Monsters).</summary>
+        /// <summary>The Barrow Troll (the owner's troll sheet): the 3D troll with its own moves (Monster_Troll) or, when that is
+        /// not in the build, the drawn one (SpriteActor). It stands on the ground at its height, walks, strikes the hunter,
+        /// takes the hunter's blows (Y, the real controls) and falls; the drawn one also turns its card to the camera and shows
+        /// the view that matches its heading. The hound is sent off so the camera sees the fight. Pictures from the game
+        /// camera (s10-s13), the fight recorded (TrollFight) and close views (Monsters).</summary>
         IEnumerator TrollChecks()
         {
             S.ProvingRig.ClearMonsters();
             if (H.LockTarget) yield return Tap(PadButton.RightStick);
+            bool houndWas = S.Hound && S.Hound.gameObject.activeSelf;
+            if (S.Hound) S.Hound.gameObject.SetActive(false);
             yield return Frames(2);
             var m = S.ProvingRig.Spawn("barrow_troll", true);
-            if (!m) { Check("the Barrow Troll can be spawned", false); yield break; }
+            if (!m) { Check("the Barrow Troll can be spawned", false); if (S.Hound) S.Hound.gameObject.SetActive(houndWas); yield break; }
             var sa = m.Visual.GetComponent<SpriteActor>();
+            string kind = sa ? "drawn" : "3D";
+            string Clip() => sa ? sa.Frame.Split('/')[0] : m.Anim.Current;
             m.Passive = true;
             Face(m, 5f); yield return Frames(8);
             var ci = System.Globalization.CultureInfo.InvariantCulture;
-            if (!sa || !sa.Card) { Check("Barrow Troll: drawn as a sprite card", false, m.Model); S.ProvingRig.ClearMonsters(); yield break; }
             float ground = S.GroundHeight(m.transform.position);
-            var b = sa.Card.bounds;
             var head = WorldKit.Find(m.Visual, "head"); var chest = WorldKit.Find(m.Visual, "chest"); var hips = WorldKit.Find(m.Visual, "hips");
-            Check("Barrow Troll: a drawn monster (its sprite card, frame " + sa.Frame + ") standing on the ground, as tall as its data",
-                  sa.Card.enabled && Mathf.Abs(b.min.y - ground) < .45f && head && head.position.y - ground > m.Def.height * .7f,
-                  "card " + (b.min.y - ground).ToString("0.00", ci) + ".." + (b.max.y - ground).ToString("0.00", ci) + " m, head " + (head ? (head.position.y - ground).ToString("0.00", ci) : "-") + " m (height " + m.Def.height + ")");
-            var toCard = Flat(sa.Card.transform.position - Camera.main.transform.position);
-            float facing = Vector3.Angle(Flat(sa.Card.transform.forward), toCard);
-            Check("Barrow Troll: the card faces the camera", facing < 8, facing.ToString("0", ci) + " deg off");
+            if (sa)
+            {
+                var b = sa.Card.bounds;
+                Check("Barrow Troll: a drawn monster (its sprite card, frame " + sa.Frame + ") standing on the ground, as tall as its data",
+                      sa.Card.enabled && Mathf.Abs(b.min.y - ground) < .45f && head && head.position.y - ground > m.Def.height * .7f,
+                      "card " + (b.min.y - ground).ToString("0.00", ci) + ".." + (b.max.y - ground).ToString("0.00", ci) + " m, head " + (head ? (head.position.y - ground).ToString("0.00", ci) : "-") + " m (height " + m.Def.height + ")");
+                var toCard = Flat(sa.Card.transform.position - Camera.main.transform.position);
+                float facing = Vector3.Angle(Flat(sa.Card.transform.forward), toCard);
+                Check("Barrow Troll: the card faces the camera", facing < 8, facing.ToString("0", ci) + " deg off");
+                // the view follows its heading: front coming at the camera, side crossing, back walking away
+                m.enabled = false;
+                float yaw0 = m.transform.eulerAngles.y;
+                var viewsSeen = new List<string>();
+                foreach (var turn in new[] { 0f, 90f, 180f })
+                {
+                    m.transform.rotation = Quaternion.Euler(0, yaw0 + turn, 0); yield return Frames(3);
+                    viewsSeen.Add(sa.ViewName);
+                    yield return Snap("s10-troll-" + sa.ViewName);
+                }
+                m.transform.rotation = Quaternion.Euler(0, yaw0, 0); m.enabled = true; yield return Frames(2);
+                Check("Barrow Troll: drawn from the front coming at the camera, from the side crossing it, from the back walking away",
+                      string.Join(",", viewsSeen) == "front,side,back", string.Join(",", viewsSeen));
+            }
+            else
+            {
+                var bb = CharacterFactory.PosedBounds(m.Visual.GetComponentsInChildren<SkinnedMeshRenderer>());
+                Check("Barrow Troll: the 3D troll (" + m.Model + ", its own moves) stands on the ground at its height",
+                      Mathf.Abs(bb.min.y - ground) < .2f && Mathf.Abs(bb.size.y - m.Def.height) < .5f,
+                      "height " + bb.size.y.ToString("0.00", ci) + " m (def " + m.Def.height + "), lowest " + (bb.min.y - ground).ToString("0.00", ci) + " m, clip " + m.Anim.Current);
+                m.enabled = false;
+                float yaw0 = m.transform.eulerAngles.y;
+                foreach (var (turn, view) in new[] { (0f, "front"), (90f, "side"), (180f, "back") })
+                {
+                    m.transform.rotation = Quaternion.Euler(0, yaw0 + turn, 0); yield return Frames(3);
+                    yield return Snap("s10-troll-" + view);
+                }
+                m.transform.rotation = Quaternion.Euler(0, yaw0, 0); m.enabled = true; yield return Frames(2);
+            }
             Check("Barrow Troll: its moves are clips like any monster's (idle, walk, pound, backhand, flinch, fall) with its bones in order",
                   new[] { "Idle", "Walking_A", "Troll_Smash", "Troll_Swipe", "Hit_A", "Death_A" }.All(m.Anim.Has) && head && chest && hips && head.position.y > chest.position.y && chest.position.y > hips.position.y);
-            // the view follows its heading: front coming at the camera, side crossing, back walking away
-            m.enabled = false;
-            float yaw0 = m.transform.eulerAngles.y;
-            var viewsSeen = new List<string>();
-            foreach (var turn in new[] { 0f, 90f, 180f })
-            {
-                m.transform.rotation = Quaternion.Euler(0, yaw0 + turn, 0); yield return Frames(3);
-                viewsSeen.Add(sa.ViewName);
-                yield return Snap("s10-troll-" + sa.ViewName);
-            }
-            m.transform.rotation = Quaternion.Euler(0, yaw0, 0); m.enabled = true; yield return Frames(2);
-            Check("Barrow Troll: drawn from the front coming at the camera, from the side crossing it, from the back walking away",
-                  string.Join(",", viewsSeen) == "front,side,back", string.Join(",", viewsSeen));
-            // walking: the card steps through the walk's frames
+            // walking: the drawn one steps through its frames; the 3D one moves its feet
             m.enabled = false;                                           // its brain would ask for the idle every frame
             m.Anim.Play("Walking_A", true, 1, true);
             var frames = new HashSet<string>();
-            for (float t = 0; t < 1.2f; t += Time.unscaledDeltaTime) { frames.Add(sa.Frame); yield return null; }
+            var footL = WorldKit.Find(m.Visual, "foot.l"); float footMin = 1e9f, footMax = -1e9f;
+            for (float t = 0; t < 1.4f; t += Time.unscaledDeltaTime)
+            {
+                if (sa) frames.Add(sa.Frame);
+                if (footL) { float z = m.transform.InverseTransformPoint(footL.position).z; footMin = Mathf.Min(footMin, z); footMax = Mathf.Max(footMax, z); }
+                yield return null;
+            }
             m.enabled = true;
-            Check("Barrow Troll: the walk plays its drawn frames", frames.Count(f => f.StartsWith("Walking_A/")) >= 8, frames.Count(f => f.StartsWith("Walking_A/")) + " frames");
+            if (sa) Check("Barrow Troll: the walk plays its drawn frames", frames.Count(f => f.StartsWith("Walking_A/")) >= 8, frames.Count(f => f.StartsWith("Walking_A/")) + " frames");
+            else Check("Barrow Troll: the walk swings its feet through a stride", footMax - footMin > .4f, "the left foot travels " + (footMax - footMin).ToString("0.00", ci) + " m");
             m.Anim.Current = ""; m.Anim.Play("Idle");
             yield return Portraits(m);
             // the fight, recorded from the game camera (Captures/Proving/TrollFight, 10 pictures a second): it comes for the
@@ -588,23 +618,23 @@ namespace FH.Game
             var seen = new HashSet<string>();
             for (float t = 0; t < 8 && !(struck && hurt); t += Time.unscaledDeltaTime)
             {
-                seen.Add(sa.Frame.Split('/')[0]);
-                if (m.AttacksStarted > started && (sa.Frame.StartsWith("Troll_Smash/") || sa.Frame.StartsWith("Troll_Swipe/"))) struck = true;
+                seen.Add(Clip());
+                if (m.AttacksStarted > started && (Clip().EndsWith("Troll_Smash") || Clip().EndsWith("Troll_Swipe"))) struck = true;
                 if (H.Hurt || H.Health < hp - .5f) hurt = true;
                 yield return null;
             }
-            Check("Barrow Troll: comes for the hunter, winds up and strikes with its drawn pound or backhand", m.AttacksStarted > started && hurt,
+            Check("Barrow Troll: comes for the hunter, winds up and strikes with its pound or backhand (" + kind + ")", m.AttacksStarted > started && hurt,
                   "attacks " + (m.AttacksStarted - started) + ", hunter hurt " + hurt + ", clips " + string.Join("/", seen));
             yield return Snap("s11-troll-strike");
             // the hunter closes in (stick forward, locked on) and strikes back
             yield return UntilNeutral();
             for (float t = 0; t < 2.5f && Vector3.Distance(Flat(H.transform.position), Flat(m.transform.position)) > 2.2f; t += Time.unscaledDeltaTime) { Hold(PadButton.None, new Vector2(0, 1)); yield return null; }
             Hold(PadButton.None);
-            float before = m.Brain.Health; int flashes = sa.Flashes;
+            float before = m.Brain.Health; int flashes = sa ? sa.Flashes : 0;
             for (int i = 0; i < 5; i++) { yield return Tap(PadButton.Y, 2); yield return Wait(.35f); }
             yield return UntilNeutral();
-            Check("Barrow Troll: the hunter's blows land on it (its hurtboxes ride the drawn body) and it flashes when struck",
-                  m.Brain.Health < before && sa.Flashes > flashes, "damage " + (before - m.Brain.Health).ToString("0", ci) + ", flashes " + (sa.Flashes - flashes));
+            Check("Barrow Troll: the hunter's blows land on it (its hurtboxes ride its body)" + (sa ? " and it flashes when struck" : ""),
+                  m.Brain.Health < before && (!sa || sa.Flashes > flashes), "damage " + (before - m.Brain.Health).ToString("0", ci) + (sa ? ", flashes " + (sa.Flashes - flashes) : ""));
             yield return Snap("s12-troll-struck");
             // and it falls
             m.Brain.Health = Mathf.Min(m.Brain.Health, 6);
@@ -614,12 +644,13 @@ namespace FH.Game
                 yield return Tap(PadButton.Y, 2); yield return Wait(.45f);
             }
             yield return Wait(1.6f);
-            Check("Barrow Troll: struck down, it falls with its drawn death", !m.Alive && sa.Frame.StartsWith("Death_A/"), sa.Frame);
+            Check("Barrow Troll: struck down, it falls with its death", !m.Alive && Clip().EndsWith("Death_A"), Clip());
             yield return Snap("s13-troll-fallen");
             yield return UntilNeutral();
             if (H.LockTarget) yield return Tap(PadButton.RightStick);
             S.ProvingRig.Invulnerable = false;
             S.ProvingRig.ClearMonsters();
+            if (S.Hound) S.Hound.gameObject.SetActive(houndWas);
         }
 
         /// <summary>Close views of a monster for review by eye (Captures/Proving/Monsters): front and side, standing, walking,

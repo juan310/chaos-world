@@ -73,7 +73,7 @@ namespace FH.Game
             return t && System.Text.RegularExpressions.Regex.IsMatch(t.text, "\"ownHair\"\\s*:\\s*true");
         }
 
-        static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_") || resource.StartsWith("Villager_");
+        static bool Slim(string resource) => resource.EndsWith("_Slim") || resource.StartsWith("Skel_") || resource.StartsWith("Villager_") || resource.StartsWith("Monster_");
 
         /// <summary>The meshes' bounds in their bind pose, in world space (independent of the clip playing).</summary>
         public static Bounds RestBounds(Renderer[] body)
