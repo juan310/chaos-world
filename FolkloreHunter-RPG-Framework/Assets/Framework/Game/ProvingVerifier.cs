@@ -555,7 +555,19 @@ namespace FH.Game
             Check("Barrow Troll: the card faces the camera", facing < 8, facing.ToString("0", ci) + " deg off");
             Check("Barrow Troll: its moves are clips like any monster's (idle, walk, pound, backhand, flinch, fall) with its bones in order",
                   new[] { "Idle", "Walking_A", "Troll_Smash", "Troll_Swipe", "Hit_A", "Death_A" }.All(m.Anim.Has) && head && chest && hips && head.position.y > chest.position.y && chest.position.y > hips.position.y);
-            yield return Snap("s10-troll-standing");
+            // the view follows its heading: front coming at the camera, side crossing, back walking away
+            m.enabled = false;
+            float yaw0 = m.transform.eulerAngles.y;
+            var viewsSeen = new List<string>();
+            foreach (var turn in new[] { 0f, 90f, 180f })
+            {
+                m.transform.rotation = Quaternion.Euler(0, yaw0 + turn, 0); yield return Frames(3);
+                viewsSeen.Add(sa.ViewName);
+                yield return Snap("s10-troll-" + sa.ViewName);
+            }
+            m.transform.rotation = Quaternion.Euler(0, yaw0, 0); m.enabled = true; yield return Frames(2);
+            Check("Barrow Troll: drawn from the front coming at the camera, from the side crossing it, from the back walking away",
+                  string.Join(",", viewsSeen) == "front,side,back", string.Join(",", viewsSeen));
             // walking: the card steps through the walk's frames
             m.enabled = false;                                           // its brain would ask for the idle every frame
             m.Anim.Play("Walking_A", true, 1, true);
