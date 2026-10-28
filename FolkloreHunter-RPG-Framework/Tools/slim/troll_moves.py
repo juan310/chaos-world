@@ -77,14 +77,15 @@ def smash(rig, name='Troll_Smash'):
     thrown down: the fists hammer the ground in front, the troll dropping into a deep squat; a moment's hold; it rises"""
     base = idle_combat_pose(rig)
     top = head_top(rig)
-    # the fists raised just above and in front of the head, elbows bent, the back only a little arched: further back and
-    # higher, the shoulders and the belly under the loincloth over-stretched (the body check: 12 % of the skin)
-    rear = {'hips': T(rig, (0, .05, -.08)), 'spine': (-7, 0, 0), 'chest': (-4, 0, 0), 'neck': (-4, 0, 0), 'head': (0, 0, 0),
+    # the fists raised just above and in front of the head, elbows bent, the back still hunched: the troll's belly and
+    # loincloth are weighted to its thighs, so arching the back (even 10 degrees) or pushing the hips back tore them
+    # (the body check: 12 % of the skin at the peak); the arms alone go up
+    rear = {'hips': T(rig, (0, .02, -.1)), 'spine': (8, 0, 0), 'chest': (0, 0, 0), 'neck': (-2, 0, 0), 'head': (-8, 0, 0),
             'handL': tuple(top + Vector((.2, -.08, .26)) / rig.k), 'elbowL': (1, .2, .3),
             'handR': tuple(top + Vector((-.2, -.08, .26)) / rig.k), 'elbowR': (-1, .2, .3),
             'footL': (.12, -.08, 0, 0, 14), 'footR': (-.12, .1, 0, 0, -14)}
     peak = moves.merge(rear, {'handL': tuple(top + Vector((.17, -.04, .34)) / rig.k), 'handR': tuple(top + Vector((-.17, -.04, .34)) / rig.k),
-                              'spine': (-10, 0, 0), 'hips': T(rig, (0, .06, -.1))})
+                              'spine': (6, 0, 0), 'hips': T(rig, (0, .02, -.11))})
     # the reach to the ground comes mostly from the back bending, with the feet wide and the knees out: a deep squat
     # folded the thighs onto the loincloth and crushed it (the body check measured 12 % of the skin torn there)
     hit = {'hips': T(rig, (0, -.06, -.38)), 'spine': (58, 0, 0), 'chest': (18, 0, 0), 'neck': (6, 0, 0), 'head': (-36, 0, 0),
