@@ -96,7 +96,7 @@ blob(V('chest') + Vector((0, .02, .10)), (.40, .30, .30), {'chest': 1})
 blob(V('chest') + Vector((0, .14, .26)), (.36, .22, .22), {'chest': .7, 'neck': .3})               # the hump over the shoulders
 for s, x in (('l', 1), ('r', -1)):
     blob(V('chest') + Vector((x * .17, -.17, .14)), (.17, .10, .13), {'chest': 1})                # pectorals
-    blob(V('upperarm.' + s) + Vector((-x * .04, .0, .03)), (.20, .19, .19), {'upperarm.' + s: .6, 'shoulder.' + s: .4})   # deltoid
+    blob(V('upperarm.' + s) + Vector((-x * .05, .01, .0)), (.17, .16, .17), {'upperarm.' + s: .6, 'shoulder.' + s: .4})   # deltoid
     blob(mid('shoulder.' + s, 'upperarm.' + s, .45) + Vector((0, .06, .08)), (.18, .12, .09), {'shoulder.' + s: .6, 'chest': .4})  # trapezius
     blob(V('chest') + Vector((x * .28, .10, -.04)), (.12, .16, .26), {'chest': 1})                # lats
 blob(V('spine') + Vector((0, -.08, .06)), (.37, .33, .27), {'spine': 1})                           # belly
@@ -104,20 +104,23 @@ blob(V('spine') + Vector((0, -.15, -.06)), (.30, .24, .20), {'spine': .7, 'hips'
 blob(V('hips') + Vector((0, .04, .0)), (.36, .27, .20), {'hips': 1})                               # pelvis
 blob(V('hips') + Vector((0, .16, -.06)), (.30, .14, .17), {'hips': 1})                             # seat
 # neck and head: thick neck pushed forward, heavy brow, jaw, bulbous nose, pointed ears
-limb(V('neck') + Vector((0, .04, -.10)), V('head') + Vector((0, .02, .02)), .17, .14, {'neck': 1})
+limb(V('neck') + Vector((0, .06, -.12)), V('head') + Vector((0, .02, .02)), .21, .16, {'neck': 1})
 H = V('head')
-blob(H + Vector((0, -.02, .14)), (.15, .17, .16), {'head': 1})                                      # cranium
-blob(H + Vector((0, -.10, .02)), (.15, .13, .10), {'head': 1})                                      # jaw
-blob(H + Vector((0, -.18, -.03)), (.12, .07, .07), {'head': 1})                                     # chin and lower lip
-blob(H + Vector((0, -.17, .15)), (.15, .06, .05), {'head': 1})                                      # brow ridge
-blob(H + Vector((0, -.25, .06)), (.06, .07, .07), {'head': 1}, 'nose')                              # nose
-blob(H + Vector((0, -.27, .03)), (.075, .05, .045), {'head': 1}, 'nose')                            # nose tip
+blob(H + Vector((0, .0, .13)), (.16, .17, .17), {'head': 1})                                       # cranium
+blob(H + Vector((0, -.08, .17)), (.15, .12, .10), {'head': 1})                                     # forehead
+blob(H + Vector((0, -.20, .13)), (.17, .07, .065), {'head': 1})                                    # brow ridge, jutting
+blob(H + Vector((0, -.10, -.01)), (.17, .15, .11), {'head': 1})                                    # jaw, wide
+blob(H + Vector((0, -.21, -.04)), (.14, .07, .07), {'head': 1})                                    # underbite: the lower lip pushed out
+blob(H + Vector((0, -.15, -.10)), (.10, .08, .06), {'head': 1})                                    # chin under it
+blob(H + Vector((0, -.26, .06)), (.065, .07, .075), {'head': 1}, 'nose')                           # nose: long, heavy
+blob(H + Vector((0, -.30, .015)), (.075, .055, .05), {'head': 1}, 'nose')                          # its bulb, drooping
 for s, x in (('l', 1), ('r', -1)):
-    blob(H + Vector((x * .07, -.22, .07)), (.035, .03, .03), {'head': 1}, neg=True)                 # eye socket
-    blob(H + Vector((x * .11, -.15, .03)), (.06, .05, .05), {'head': 1})                            # cheek
-    ear = Quaternion((0, 0, 1), x * math.radians(-25)) @ Quaternion((0, 1, 0), x * math.radians(-30))
-    blob(H + Vector((x * .19, -.02, .14)), (.10, .02, .05), {'head': 1}, 'ear', ear)                # ear, swept up and back
-    blob(H + Vector((x * .26, .02, .19)), (.05, .015, .03), {'head': 1}, 'ear', ear)                # its point
+    blob(H + Vector((x * .045, -.30, .005)), (.03, .03, .025), {'head': 1}, 'nose')                # nostril wings
+    blob(H + Vector((x * .075, -.215, .085)), (.034, .03, .03), {'head': 1}, neg=True)             # eye socket under the brow
+    blob(H + Vector((x * .12, -.16, .03)), (.07, .06, .055), {'head': 1})                          # cheek
+    ear = Quaternion((0, 0, 1), x * math.radians(-20)) @ Quaternion((0, 1, 0), x * math.radians(-18))
+    blob(H + Vector((x * .20, -.02, .13)), (.11, .025, .06), {'head': 1}, 'ear', ear)              # ear, out to the side
+    blob(H + Vector((x * .30, .02, .17)), (.06, .018, .035), {'head': 1}, 'ear', ear)              # its long point
 # arms: thick, long, a heavy forearm, a big hand with thick fingers
 for s, x in (('l', 1), ('r', -1)):
     ua, la, hd, tip = 'upperarm.' + s, 'lowerarm.' + s, 'hand.' + s, 'handtip.' + s
@@ -128,14 +131,15 @@ for s, x in (('l', 1), ('r', -1)):
     blob(mid(la, hd, .3) + Vector((x * .02, .0, 0)), (.13, .12, .17), {la: 1})                      # forearm bulk
     ball(V(hd), .09, {la: .4, hd: .6})                                                              # wrist
     palm = V(hd).lerp(V(tip), .35)
-    blob(palm, (.07, .11, .13), {hd: 1})                                                            # palm and back of the hand
+    blob(palm, (.08, .13, .15), {hd: 1})                                                            # palm and back of the hand
     d = (V(tip) - V(hd)).normalized()
-    for k, off in enumerate((-.06, -.02, .02, .06)):                                               # four fingers, curled
+    for k, off in enumerate((-.075, -.025, .025, .075)):                                           # four fingers, curled
         base = palm + Vector((0, off, 0)) + d * .10
         mid1 = base + d * .07 + Vector((-x * .02, 0, 0))
         end = mid1 + d * .03 + Vector((-x * .05, 0, .0))
-        limb(base, mid1, .033, .03, {hd: 1}, n=1); limb(mid1, end, .03, .026, {hd: 1}, n=1)
-        ball(end + Vector((-x * .012, 0, -.004)), .018, {hd: 1}, 'nail')
+        ball(base, .042, {hd: 1})                                                                   # knuckle
+        limb(base, mid1, .04, .036, {hd: 1}, n=1); limb(mid1, end, .036, .03, {hd: 1}, n=1)
+        ball(end + Vector((-x * .016, 0, -.004)), .022, {hd: 1}, 'nail')
     thumb0 = V(hd).lerp(palm, .6) + Vector((0, -.08, 0))
     limb(thumb0, thumb0 + Vector((-x * .03, -.06, -.07)), .035, .028, {hd: 1}, n=2)
 # legs: thick thighs and calves, big knees, broad feet with stubby toes and dark nails
@@ -147,12 +151,12 @@ for s, x in (('l', 1), ('r', -1)):
     limb(V(ll), V(ft), .15, .10, {ll: 1})
     blob(mid(ll, ft, .3) + Vector((0, .06, 0)), (.12, .11, .17), {ll: 1})                           # calf
     ball(V(ft), .10, {ll: .4, ft: .6})                                                              # ankle
-    blob(mid(ft, to, .5) + Vector((0, 0, -.04)), (.13, .17, .07), {ft: 1})                          # the foot
+    blob(mid(ft, to, .45) + Vector((0, 0, -.04)), (.16, .21, .08), {ft: 1})                         # the foot, broad
     blob(V(ft) + Vector((0, .08, -.06)), (.08, .07, .06), {ft: 1})                                  # heel
-    for k, off in enumerate((-.08, -.03, .02, .07)):
-        c = V(to) + Vector((x * off, -.08, -.01))
-        ball(c, .035 - .004 * abs(k - 1.5), {to: 1})
-        ball(c + Vector((0, -.03, .012)), .018, {to: 1}, 'nail')
+    for k, off in enumerate((-.10, -.035, .03, .095)):
+        c = V(to) + Vector((x * off, -.08, -.005))
+        ball(c, .048 - .005 * abs(k - 1.5), {to: 1})
+        ball(c + Vector((0, -.04, .016)), .025, {to: 1}, 'nail')
 
 # the surface
 dg = bpy.context.evaluated_depsgraph_get()
@@ -251,13 +255,13 @@ for s in 'lr':
         torus('Troll_Wrap_%s%d' % (s, k), c, V('hand.' + s) - V('lowerarm.' + s), .125 - k * .008, .016, paint='leather')
 # tusks: curved cones from the lower jaw
 for s, x in (('l', 1), ('r', -1)):
-    base = H + Vector((x * .075, -.21, -.02))
+    base = H + Vector((x * .085, -.265, -.035))
     vs, fs = [], []
     n = 10; m = 8
     for i in range(n + 1):
         t = i / n
-        c = base + Vector((x * .01 * t, -.025 * t * t, .075 * t))
-        r = .022 * (1 - t) + .002
+        c = base + Vector((x * .012 * t, -.03 * t * t, .11 * t))
+        r = .027 * (1 - t) + .003
         for k in range(m):
             b = 2 * math.pi * k / m
             vs.append(c + Vector((r * math.cos(b), r * math.sin(b), 0)))
@@ -267,18 +271,18 @@ for s, x in (('l', 1), ('r', -1)):
     parts.append((new_obj('Troll_Tusk_' + s, vs, fs), 'tusk'))
 # eyes: small dark balls in the sockets
 for s, x in (('l', 1), ('r', -1)):
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=.022, location=H + Vector((x * .07, -.225, .07)), segments=12, ring_count=8)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=.024, location=H + Vector((x * .075, -.225, .08)), segments=12, ring_count=8)
     o = bpy.context.object; o.name = 'Troll_Eye_' + s; parts.append((o, 'eye'))
 # hair: long dark strands from the back and top of the head, down over the shoulders and back
-for i in range(46):
-    a = rng.uniform(-2.2, 2.2)                     # around the back of the head (0 = straight back)
-    up = rng.uniform(.05, .17)
-    root = H + Vector((.15 * math.sin(a), .02 + .15 * math.cos(a), up))
-    L = rng.uniform(.35, .75)
+for i in range(110):
+    a = rng.uniform(-2.6, 2.6)                     # around the head (0 = straight back, +-2.6 = beside the face)
+    up = rng.uniform(.06, .22)
+    root = H + Vector((.155 * math.sin(a), .01 + .15 * math.cos(a), up))
+    L = rng.uniform(.40, .85) * (.75 if abs(a) > 2.0 else 1)
     vs, fs = [], []
     n, m = 12, 5
     pts = []
-    p = root.copy(); d = Vector((math.sin(a) * .3, .5 + .3 * math.cos(a), .2)).normalized()
+    p = root.copy(); d = Vector((math.sin(a) * .45, .35 + .35 * math.cos(a), .1)).normalized()
     for k in range(n + 1):
         pts.append(p.copy())
         d = (d + Vector((0, .06, -.35))).normalized()
@@ -289,7 +293,7 @@ for i in range(46):
             if f < .45: break
             p = p + Vector((math.sin(a) * .5, .7 + .3 * math.cos(a), 0)).normalized() * .02
     for k, c in enumerate(pts):
-        r = .016 * (1 - k / n) + .004
+        r = .022 * (1 - k / n) + .006
         for j in range(m):
             b = 2 * math.pi * j / m
             vs.append(c + Vector((r * math.cos(b), r * math.sin(b) * .6, 0)))
