@@ -131,6 +131,7 @@ for s, x in (('l', 1), ('r', -1)):
 # arms: thick, long, a heavy forearm, a big hand with thick fingers
 for s, x in (('l', 1), ('r', -1)):
     ua, la, hd, tip = 'upperarm.' + s, 'lowerarm.' + s, 'hand.' + s, 'handtip.' + s
+    ball(V(ua), .15, {'shoulder.' + s: .5, ua: .5})                                                 # shoulder joint, shared
     limb(V(ua), V(la), .15, .12, {ua: 1})
     blob(mid(ua, la, .4) + Vector((0, -.05, 0)), (.10, .09, .17), {ua: 1})                          # biceps
     ball(V(la), .12, {ua: .5, la: .5})                                                              # elbow
@@ -152,6 +153,7 @@ for s, x in (('l', 1), ('r', -1)):
 # legs: thick thighs and calves, big knees, broad feet with stubby toes and dark nails
 for s, x in (('l', 1), ('r', -1)):
     ul, ll, ft, to, tt = 'upperleg.' + s, 'lowerleg.' + s, 'foot.' + s, 'toes.' + s, 'toetip.' + s
+    ball(V(ul) + Vector((0, .04, 0)), .2, {'hips': .5, ul: .5})                                     # hip joint: shared, so the seat follows the thigh
     limb(V(ul), V(ll), .22, .15, {ul: 1})
     blob(mid(ul, ll, .35) + Vector((0, -.06, 0)), (.15, .14, .22), {ul: 1})                         # quadriceps
     ball(V(ll) + Vector((0, -.03, 0)), .14, {ul: .5, ll: .5})                                       # knee
