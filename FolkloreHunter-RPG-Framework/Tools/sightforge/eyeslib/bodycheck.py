@@ -9,6 +9,8 @@ Checks, each with a plain PASS or FAIL line (exit status 1 on any FAIL, so a scr
   height                    the body between 1.4 and 2.4 m tall (another scale breaks weapon placement and gait speeds)
   held pieces in the body   SightForge mesh3d over the clips: a held piece more than 4 cm inside the body in any clip FAILS
   skin                      a clip tearing over 6 % of the body's vertices FAILS; 3 to 6 % is listed to watch
+  skin folded inside out    faces turned to face away from where their bone carries them (holes in play), listed to watch
+                            from 0.5 % of the faces (no threshold to fail yet: the bodies in the game are measured first)
   against a baseline        with --baseline (a bodycheck report of the body installed now): any clip worse than it was by
                             more than 2 cm of depth or 1.5 points of tearing FAILS (a regression); problems the baseline
                             already had are listed as KNOWN instead of failing, so they stay in view without blocking
@@ -21,7 +23,7 @@ import sys
 from .findings import finding
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SLOT_CM, DEPTH_CM, TEAR_FAIL, TEAR_WATCH = 1.0, 4.0, 6.0, 3.0
+SLOT_CM, DEPTH_CM, TEAR_FAIL, TEAR_WATCH, FOLD_WATCH = 1.0, 4.0, 6.0, 3.0, 0.5
 
 
 def rest(model, out_json):
@@ -55,6 +57,9 @@ def gate(r, rep, base):
     watch = {c: v["stretch"] for c, v in rep["clips"].items() if TEAR_WATCH <= v["stretch"] < TEAR_FAIL}
     out.append((hard if tear else "PASS", "skin", "; ".join("%s %.1f %%" % kv for kv in tear.items()) or "no clip over %.0f %%" % TEAR_FAIL))
     if watch: out.append(("WATCH", "skin", "; ".join("%s %.1f %%" % kv for kv in sorted(watch.items(), key=lambda kv: -kv[1]))))
+    # skin turned inside out (shows as holes): listed to watch while the bodies in the game are measured for a threshold
+    folds = {c: v["folds"] for c, v in rep["clips"].items() if v.get("folds", 0) >= FOLD_WATCH}
+    if folds: out.append(("WATCH", "skin folded inside out", "; ".join("%s %.1f %% of faces" % kv for kv in sorted(folds.items(), key=lambda kv: -kv[1]))))
     if base:
         worse = []
         for c, v in rep["clips"].items():
@@ -86,7 +91,7 @@ def cmd(a, ctx):
     res = [finding("likely" if st == "FAIL" else "uncertain", "body gate: " + what, stem, detail) for st, what, detail in rows if st != "PASS"]
     res += mesh3d.findings(rep)
     pics = [c["picture"] for c in rep["clips"].values() if c.get("picture")]
-    clips = {c: {"stretch": v["stretch"], "clipping": v.get("clipping", 0), "clipDepthCm": v.get("clipDepthCm", 0)} for c, v in rep["clips"].items()}
+    clips = {c: {"stretch": v["stretch"], "folds": v.get("folds", 0), "clipping": v.get("clipping", 0), "clipDepthCm": v.get("clipDepthCm", 0)} for c, v in rep["clips"].items()}
     page = ctx["report"].write(out, "Body gate: %s (%s)" % (stem, "FAIL" if any(s == "FAIL" for s, _, _ in rows) else "PASS"), res,
                                sections=[("Gate", [], "\n".join("%-5s %-26s %s" % row for row in rows)), ("Clips", [], mesh3d.table(rep)),
                                          ("Worst frame of each clip", pics[:60], None)],

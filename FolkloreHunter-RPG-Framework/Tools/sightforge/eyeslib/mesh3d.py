@@ -99,8 +99,8 @@ def findings(rep):
 
 
 def table(rep):
-    lines = ["%-34s %8s %8s %8s %8s  %s" % ("clip", "stretch%", "points", "deep cm", "under cm", "where")]
+    lines = ["%-34s %8s %8s %8s %8s %8s  %s" % ("clip", "stretch%", "folds%", "points", "deep cm", "under cm", "where")]
     for clip, c in rep["clips"].items():
-        lines.append("%-34s %8.2f %8d %8.1f %8.1f  %s" % (clip[:34], c["stretch"], c["clipping"], c.get("clipDepthCm", 0), c["ground"],
+        lines.append("%-34s %8.2f %8.2f %8d %8.1f %8.1f  %s" % (clip[:34], c["stretch"], c.get("folds", 0), c["clipping"], c.get("clipDepthCm", 0), c["ground"],
                                                          ", ".join(c.get("where", {}))))
     return "\n".join(lines)

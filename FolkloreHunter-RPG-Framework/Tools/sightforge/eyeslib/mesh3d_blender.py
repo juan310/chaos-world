@@ -68,6 +68,16 @@ def main_bone(vi):
     gs = rest_me.vertices[vi].groups
     return groups.get(max(gs, key=lambda g: g.weight).group, '?') if len(gs) else '?'
 face_bone = [main_bone(f[0]) for f in faces]
+# folds: a face whose normal turns to face the other way from where its bone carries it (skin pulled inside out, seen as
+# a hole: back faces are not drawn). Stretch alone missed it on a body whose arms were made glued to its sides.
+F3 = np.array([f[:3] for f in faces], np.int64) if faces else np.zeros((0, 3), np.int64)
+def normals(c):
+    n = np.cross(c[F3[:, 1]] - c[F3[:, 0]], c[F3[:, 2]] - c[F3[:, 0]])
+    return n, np.linalg.norm(n, axis=1)
+n_rest, a_rest = normals(rest_co)
+okF = a_rest > 1e-9; n_rest = n_rest / np.where(okF, a_rest, 1)[:, None]
+FB = np.array([list(arm.data.bones.keys()).index(b) if b in arm.data.bones else -1 for b in face_bone], np.int64)
+AW3 = np.array(arm.matrix_world.to_3x3()); AW3i = np.linalg.inv(AW3)
 TWO_HANDED = ('Katana',)               # held in both hands: both hands and forearms meet it by design
 # a held piece meets the hand and forearm that hold it by design (a fist round a grip, inside a shield's boss): only the
 # rest of the body counts. The holding side is the side of the bone the piece rides on (handslot.l: the left hand).
@@ -123,6 +133,12 @@ for act in [a for a in bpy.data.actions if not only or clean(a.name) in only]:
         low = float(cn[:, 2].min() - sole)
         ground = -low if low < -.04 and not cname.startswith(UNGROUNDED) else 0.0
         share = len(bad) / max(1, len(cn)) * 100
+        R = np.array([AW3 @ np.array((pb.matrix @ pb.bone.matrix_local.inverted()).to_3x3()) @ AW3i for pb in arm.pose.bones] + [np.eye(3)])
+        nn, an = normals(cn)
+        want = np.einsum('fij,fj->fi', R[FB], n_rest)
+        folded = okF & (an > 1e-12) & (np.einsum('fi,fi->f', nn / np.where(an > 0, an, 1)[:, None], want) < -.2)
+        fold = float(folded.sum()) / max(1, int(okF.sum())) * 100
+        clip['folds'] = max(clip.get('folds', 0.0), round(fold, 2))
         for vi in list(bad)[:4000]:
             bn = main_bone(vi); clip['where'][bn] = clip['where'].get(bn, 0) + 1
         clip['stretch'] = max(clip['stretch'], round(share, 2))
