@@ -140,9 +140,20 @@ def main(src, dst, names=None):
     names = names or list(VARIANTS)
     wp.init(); wp.set_device("cuda:0")
     sk = load_skeleton_from_usd(get_asset_file("human", "soma_base_skel_minimal_no_root.usd"), SOMA_SKELETON_PRIM_PATH)
+    import mb_loco
     result = {'variants': {n: VARIANTS[n] for n in names}, 'clips': []}
     with MotionBricksSOMAEngine(SOMA_N1_FP32_ONNX_PATH) as engine, wp.ScopedStream(engine.stream):
         for clip in data['clips']:
+            if 'loco' in clip:                      # a gait: MotionBricks' locomotion settings, measured travelling
+                N = clip['loco']['cycle']
+                row = {'name': clip['name'], 'fps': clip['fps'], 'keys': [0, N / clip['fps']], 'variants': {}, 'loco': clip['loco']}
+                for n, v in mb_loco.VARIANTS.items():
+                    r = mb_loco.run(engine, sk, clip, v, inplace=False)
+                    row['source'] = r.pop('source'); row['variants'][n] = r
+                    result['variants'].setdefault(n, v)
+                    print('MB_LAB %s %s %s' % (clip['name'], n, json.dumps(r['gaps'])), flush=True)
+                result['clips'].append(row)
+                continue
             row = {'name': clip['name'], 'fps': clip['fps'], 'keys': clip['keys'], 'source': clip['frames'], 'variants': {}}
             for n in names:
                 row['variants'][n] = run(engine, sk, clip, VARIANTS[n])

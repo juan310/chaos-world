@@ -51,6 +51,12 @@ def main(src, dst, policy='adaptive'):
     result = []
     with MotionBricksSOMAEngine(SOMA_N1_FP32_ONNX_PATH) as engine, wp.ScopedStream(engine.stream):
         for clip in data['clips']:
+            if 'loco' in clip:                      # a gait: chained locomotion, one seamless cycle on the spot (mb_loco.py)
+                import mb_loco
+                r = mb_loco.run(engine, sk, clip, mb_loco.VARIANTS[mb_loco.DEFAULT], inplace=True)
+                print('MB_GEN %s: one cycle of %d frames by locomotion (%s)' % (clip['name'], len(r['frames']) - 1, mb_loco.DEFAULT), flush=True)
+                result.append({'name': clip['name'], 'fps': clip['fps'], 'frames': r['frames'], 'contacts': r['contacts'], 'loop': True})
+                continue
             r = mb_lab.run(engine, sk, clip, mb_lab.VARIANTS[policy])
             for g in r['gaps']:
                 print('MB_GEN %s %d->%d: %s' % (clip['name'], g['from'], g['to'], 'kept ours' + (' (gentle clip)' if g.get('still') else '')

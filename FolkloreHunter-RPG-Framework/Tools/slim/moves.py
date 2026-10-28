@@ -98,13 +98,19 @@ def blocking(rig, name='Blocking'):
 def smooth(x): x = max(0.0, min(1.0, x)); return x * x * (3 - 2 * x)
 
 
-def gait(rig, name, period, duty, stride, lift, kick, drop, bob, lean, hip_yaw, arm, elbow_up, direction=(0, 1), upper=None):
+GAITS = {}      # every gait cycle baked: its period, duty, stride and direction (MotionBricks' locomotion needs them)
+
+
+def gait(rig, name, period, duty, stride, lift, kick, drop, bob, lean, hip_yaw, arm, elbow_up, direction=(0, 1), upper=None,
+         hands_low=0.0, hands_fwd=0.0, knees_out=0.1):
     """A walk/jog/sprint cycle in place: each foot is planted for `duty` of the cycle, sliding `stride` metres the way
     the ground passes under the body (direction (0, 1) is walking forward: the feet slide back, +Y), then swings
     back to the front with its heel lifted `lift` and kicked back `kick`. Arms swing against the legs; the hips bob
     (`bob`, twice a cycle: + highest at mid-stance as in a walk, - lowest as in a run), turn with the stepping leg and
-    the chest turns back against them. `upper` replaces the arms and chest (a weapon held still)."""
+    the chest turns back against them. `upper` replaces the arms and chest (a weapon held still). A crouched gait
+    (sneaking) lowers the hands with the body (`hands_low`), carries them forward (`hands_fwd`) and the knees wider."""
     dx, dy = direction
+    GAITS[name] = {'period': period, 'duty': duty, 'stride': stride, 'direction': direction}
 
     def foot(phi):
         if phi < duty:
@@ -127,7 +133,7 @@ def gait(rig, name, period, duty, stride, lift, kick, drop, bob, lean, hip_yaw, 
         if side: pl, pr = pl * .3, pr * .3      # sideways: little heel-toe roll
         P['footL'] = (.01 + dl * dx, dl * dy, zl, pl * (1 if dy >= 0 else -.5), 3)
         P['footR'] = (-.01 + dr * dx, dr * dy, zr, pr * (1 if dy >= 0 else -.5), -3)
-        P['kneeL'] = (.1, -1, .2); P['kneeR'] = (-.1, -1, .2)
+        P['kneeL'] = (knees_out, -1, .2); P['kneeR'] = (-knees_out, -1, .2)
         c = math.cos(4 * math.pi * (phi - duty * .5))
         P['hips'] = (0, 0, -drop + bob * c)
         sway = math.sin(2 * math.pi * (phi - duty * .5))
@@ -138,7 +144,7 @@ def gait(rig, name, period, duty, stride, lift, kick, drop, bob, lean, hip_yaw, 
         P['head'] = (-lean * .9 * dy, 0, hip_yaw * .2 * cy)
         for s_, sign in (('L', 1), ('R', -1)):
             a = cy if s_ == 'L' else -cy             # + : this arm swings back
-            P['hand' + s_] = (sign * (.2 - elbow_up * .03), -.02 + arm * a, 1.15 + elbow_up * (.16 + .08 * max(0, -a)))
+            P['hand' + s_] = (sign * (.2 - elbow_up * .03), -.02 - hands_fwd + arm * a, 1.15 - hands_low + elbow_up * (.16 + .08 * max(0, -a)))
             P['elbow' + s_] = (sign * .35, 1, -.6)
             P['wrist' + s_] = (-10 - 30 * elbow_up, 0, 0)
         if upper:
@@ -162,6 +168,33 @@ def sprint(rig, name='Gait_Sprint'):
 
 def walk_back(rig, name='Walking_Backwards'):
     return gait(rig, name, period=1.0, duty=.62, stride=.6, lift=.07, kick=0, drop=.05, bob=.012, lean=-3, hip_yaw=4, arm=.08, elbow_up=.2, direction=(0, -1))
+
+
+def sneak(rig, name='Sneak_Walk'):
+    """creeping: half crouched, leaning in, long slow steps rolled heel to toe, hands carried low and forward"""
+    return gait(rig, name, period=1.3, duty=.68, stride=.62, lift=.09, kick=.03, drop=.26, bob=.012, lean=16, hip_yaw=4,
+                arm=.07, elbow_up=.45, hands_low=.24, hands_fwd=.1, knees_out=.25)
+
+
+def crouch_walk(rig, name='Crouch_Walk'):
+    """low to the ground: deep knees, short steps, the body tipped forward over them"""
+    return gait(rig, name, period=1.15, duty=.66, stride=.46, lift=.08, kick=.02, drop=.44, bob=.01, lean=26, hip_yaw=3,
+                arm=.05, elbow_up=.6, hands_low=.38, hands_fwd=.16, knees_out=.35)
+
+
+CROUCH = merge(RELAX, {'hips': (0, .06, -.44), 'spine': (22, 0, 0), 'chest': (8, 0, 0), 'head': (-24, 0, 0),
+                       'footL': (.06, -.04, 0, 0, 10), 'footR': (-.06, .08, 0, 0, -10), 'kneeL': (.4, -1, 0), 'kneeR': (-.4, -1, 0),
+                       'handL': (.22, -.2, .78), 'elbowL': (.6, .4, -1), 'handR': (-.22, -.2, .78), 'elbowR': (-.6, .4, -1)})
+SNEAK = merge(CROUCH, {'hips': (0, .04, -.26), 'spine': (14, 0, 0), 'chest': (5, 0, 0), 'head': (-16, 0, 0),
+                       'handL': (.22, -.14, .92), 'handR': (-.22, -.14, .92), 'kneeL': (.25, -1, 0), 'kneeR': (-.25, -1, 0)})
+
+
+def crouch_idle(rig, name='Crouch_Idle'):
+    return loop2(rig, name, CROUCH, {'hips': (0, .06, -.45), 'chest': (10, 0, 0), 'head': (-26, 0, 4)}, 2.6)
+
+
+def sneak_idle(rig, name='Sneak_Idle'):
+    return loop2(rig, name, SNEAK, {'hips': (0, .04, -.27), 'chest': (7, 0, 0), 'head': (-14, 0, -6)}, 2.4)
 
 
 def strafe(rig, side, name):
@@ -686,6 +719,7 @@ def same(fn, name): return lambda rig: fn(rig, name)
 CLIPS = [
     idle, idle_combat, katana_idle, blocking, same(blocking, 'Block'),
     walk, jog, sprint, same(walk, 'Walking_A'), same(jog, 'Running_A'), same(jog, 'Hunt_Jog'), same(sprint, 'Hunt_Sprint'), walk_back,
+    sneak, crouch_walk, crouch_idle, sneak_idle,
     lambda r: strafe(r, 'L', 'Running_Strafe_Left'), lambda r: strafe(r, 'R', 'Running_Strafe_Right'),
     roll, backstep, lambda r: jump_dash(r, 'L'), lambda r: jump_dash(r, 'R'), lambda r: jump_dash(r, 'L', 'Dodge_Left'), lambda r: jump_dash(r, 'R', 'Dodge_Right'),
     dive, lie_down, lie_standup, same(hit, 'Hit_A'), lambda r: hit(r, 'Hit_B', 1.0), death, use_item, interact, ride, sit_chair, spellcast,

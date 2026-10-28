@@ -183,7 +183,14 @@ def key_times(name, length):
     return out
 
 
-def export(rig, soma, names, path):
+LOCO_CYCLES = 4       # a gait is exported as this many cycles, travelling
+
+
+def export(rig, soma, names, path, gaits=None):
+    """gaits (moves.GAITS): the gait cycles among the names, exported travelling for MotionBricks' locomotion (mb_loco.py):
+    our cycles are baked on the spot (the game moves the body), but MotionBricks makes motion that goes somewhere, and
+    a body stepping without travelling reads to it as feet sliding; so the hips are carried forward at the speed the
+    planted foot slides back (stride over the stance time), LOCO_CYCLES cycles running"""
     clips = []
     for nm in names:
         act = bpy.data.actions.get(nm)
@@ -193,6 +200,21 @@ def export(rig, soma, names, path):
             if act.slots: rig.arm.animation_data.action_slot = act.slots[0]
         except AttributeError: pass
         f0, f1 = int(act.frame_range[0]), int(act.frame_range[1])
+        g = (gaits or {}).get(nm)
+        if g:
+            N = f1 - f0                                   # the cycle; its last frame is its first again
+            v = g['stride'] * rig.k / (g['duty'] * g['period']) / choreo.FPS
+            dx, dy = g['direction']; step = Vector((-dx, -dy, 0)) * v
+            frames = []
+            for i in range(LOCO_CYCLES * N + 1):
+                bpy.context.scene.frame_set(f0 + i % N)
+                W = {b.name: b.matrix.copy() for b in rig.arm.pose.bones}
+                W['hips'].translation += step * i
+                frames.append(soma.from_slim(rig, W))
+            clips.append({'name': nm, 'fps': choreo.FPS, 'keys': [k * N / choreo.FPS for k in range(LOCO_CYCLES + 1)], 'frames': frames,
+                          'loco': {'cycle': N, 'speed': v * choreo.FPS, 'direction': [-dx, -dy]}})
+            print('MB_EXPORT', nm, 'gait: %d cycles of %d frames at %.2f m/s' % (LOCO_CYCLES, N, v * choreo.FPS), flush=True)
+            continue
         frames = []
         for f in range(f0, f1 + 1):
             bpy.context.scene.frame_set(f)
@@ -219,7 +241,7 @@ def load(rig, soma, path, pins=()):
     for c in data['clips']:
         old = bpy.data.actions.get(c['name'])
         if old: bpy.data.actions.remove(old)
-        made.append(src.clip(rig, c['name'], c['name'], loop=c['name'] in LOOPS, pin=c['name'] in pins))
+        made.append(src.clip(rig, c['name'], c['name'], loop=c['name'] in LOOPS or c.get('loop', False), pin=c['name'] in pins))
         print('MB_CLIP', c['name'], flush=True)
     for a in [a for a in bpy.data.actions if a.name.startswith('mb:')]: bpy.data.actions.remove(a)
     bpy.data.objects.remove(arm)

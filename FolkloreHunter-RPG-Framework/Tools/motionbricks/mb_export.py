@@ -19,5 +19,5 @@ choreo.rename_bones(arm); choreo.add_hand_slots(arm)
 rig = choreo.Rig(arm)
 for a in [a for a in bpy.data.actions if a.name.split('|')[-1] in names]: bpy.data.actions.remove(a)   # a built model's own copies
 for fn in moves.CLIPS: fn(rig)
-mb_bridge.export(rig, mb_bridge.Soma(soma_json), names, out)
+mb_bridge.export(rig, mb_bridge.Soma(soma_json), names, out, gaits=moves.GAITS)
 print('MB_EXPORTED', out, flush=True)
