@@ -41,6 +41,23 @@ namespace FH.Game
                 "fast slashes, charged heavy, shield bash, guard."), NoticeKind.Story);
         }
 
+        /// <summary>The test body: the owner's Tripo male (all its own Tripo animations kept) built with the newest clips
+        /// (the MotionBricks moves, crouch, sneak and the jumps), so they are tried here before they go on the hunters.</summary>
+        public const string TestBody = "Hunter_Test_Slim";
+        public bool TestBodyOn => S.Hunter.Look == TestBody;
+        public bool TestBodyAvailable => CharacterFactory.Exists(TestBody);
+
+        /// <summary>Wears the test body, or goes back to the hunter chosen at the title (the weapon in hand is kept).</summary>
+        public void UseTestBody(bool on)
+        {
+            if (on && !TestBodyAvailable) return;
+            string weapon = S.Hunter.Hunt && S.Hunter.Hunt.Set != null ? S.Hunter.Hunt.Set.id : null;
+            S.Hunter.CancelActions();
+            S.Hunter.ApplyLook(on ? new[] { TestBody } : Appearance.Models(S.Settings.lookBody, S.Settings.lookHair));
+            if (weapon != null) SetWeapon(weapon);
+            S.Hud?.Flash(on ? "Test body: the newest moves (Z crouch, V jump)" : "Back in your hunter");
+        }
+
         public static readonly (string id, string label)[] Monsters =
             { ("gravebound", "Gravebound"), ("gravebound_knight", "Gravebound Knight"), ("gravebound_mage", "Gravebound Mage"), ("grave_warden", "Grave Warden"), ("thornback", "Thornback"), ("mirejaw", "Mirejaw"), ("barrow_troll", "Barrow Troll") };
 

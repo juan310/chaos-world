@@ -40,6 +40,8 @@ namespace FH.UI
             Toggle(right, "Frame-data overlay", rig.ShowOverlay, v => rig.ShowOverlay = v);
             Toggle(right, "Controller rumble", InputRouter.RumbleEnabled, v => { InputRouter.RumbleEnabled = v; if (!v) GamePad.StopRumble(); });
             if (S.InRange) Toggle(right, "Dodge hazards", RangeHazard.Enabled, v => RangeHazard.Enabled = v);
+            UiKit.Button(right, "Test body (newest moves):  " + (rig.TestBodyOn ? "ON" : "off"), () => { rig.UseTestBody(!rig.TestBodyOn); Ui.Close(this); })
+                .Active(rig.TestBodyOn).Enabled(rig.TestBodyAvailable, rig.TestBodyAvailable ? null : "The test body is not in this build.");
             UiKit.Button(right, "Heal and reset hunter", () => { rig.ResetHunter(); Ui.Close(this); });
             UiKit.Button(right, S.InRange ? "Go to the Proving Grounds" : "Go to the Training Range", () => { Ui.Close(this); S.SwitchTestArea(!S.InRange); });
             UiKit.Button(right, "Controls", () => Ui.Push(new ControlsScreen()));

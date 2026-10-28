@@ -1189,7 +1189,7 @@ namespace FH.Game
                       ballSlide.ToString("0.00") + " vs " + bodyV.ToString("0.00") + " m/s over " + grounded.Count + " grounded foot-frames");
                 H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
             }
-            yield return CrouchJumpChecks(o, ballL, ballR);
+            yield return CrouchJumpChecks(o);
             // Drawn weapon: a slower jog, not the old shuffle.
             F.SetSheathed(false); yield return Frames(2);
             Vector3 d0 = H.transform.position;
@@ -1214,9 +1214,17 @@ namespace FH.Game
 
         /// <summary>Crouch and sneak (L3) and the jumps (the Jump action), through the controls: the clips play, the feet hold
         /// the ground while creeping, the body leaves the ground and comes back down.</summary>
-        IEnumerator CrouchJumpChecks(Vector3 o, Transform ballL, Transform ballR)
+        IEnumerator CrouchJumpChecks(Vector3 o)
         {
-            if (!H.Anim.Has("Crouch_Idle") || !H.Anim.Has("Jump_Up")) { Note("crouch and jump: this body has no crouch or jump clips (" + H.Look + ")"); yield break; }
+            // the newest clips are tried on the test body (the owner's Tripo male rebuilt with them); the hunters stay as they are
+            var rig = S.ProvingRig;
+            if (!rig.TestBodyAvailable) { Note("crouch and jump: the test body (" + ProvingGrounds.TestBody + ") is not in this build"); yield break; }
+            string before = H.Look;
+            rig.UseTestBody(true); F.SetSheathed(true); yield return Frames(4);
+            var tripo = new[] { "Idle", "Walking_A", "Gait_Walk", "Running_A", "Gait_Jog", "Dodge_Forward", "Idle_Combat", "Dig", "Run_Upstairs" };
+            Check("test body: worn, with every Tripo animation the hunters have", H.Look == ProvingGrounds.TestBody && tripo.All(H.Anim.Has), H.Look + "; missing: " + string.Join(", ", tripo.Where(c => !H.Anim.Has(c))));
+            if (!H.Anim.Has("Crouch_Idle") || !H.Anim.Has("Jump_Up")) { Note("crouch and jump: the test body has no crouch or jump clips"); rig.UseTestBody(false); yield break; }
+            var ballL = WorldKit.Find(H.Visual, "toes.l") ?? WorldKit.Find(H.Visual, "foot.l"); var ballR = WorldKit.Find(H.Visual, "toes.r") ?? WorldKit.Find(H.Visual, "foot.r");
             H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Wait(.3f);
             yield return Tap(PadButton.LeftStick); yield return Wait(.6f);
             Check("L3 crouches (Crouch_Idle)", H.Crouched && H.Anim.Current.Contains("Crouch_Idle"), H.Crouched + ", " + H.Anim.Current);
@@ -1275,6 +1283,13 @@ namespace FH.Game
             Check("Jump on the move: a running leap (Jump_Forward) that carries forward and lands", jumpClip.Contains("Jump_Forward") && top - y0 > .3f && far > 2f,
                   jumpClip + ", rose " + (top - y0).ToString("0.00") + " m, carried " + far.ToString("0.00") + " m");
             H.Teleport(S.SafeGround(o), 45); LookAlong(45); yield return Frames(2);
+            // close-ups of the new moves for review
+            H.enabled = false;
+            yield return Closeups(H.Visual, H.transform, H.Anim, HunterController.LookHeight, "Closeups", "testbody_moves",
+                new[] { ("Crouch_Idle", 0f), ("Crouch_Walk", .3f), ("Sneak_Walk", .3f), ("Jump_Up", .55f), ("Jump_Forward", .45f), ("Jump_Full_Short", .5f), ("Gait_Sprint", .3f) });
+            H.enabled = true; H.Anim.Current = ""; H.Anim.Play("Idle"); yield return Frames(2);
+            rig.UseTestBody(false); yield return Frames(4);
+            Check("back in the hunter after the test body", H.Look == before, H.Look + " (was " + before + ")");
         }
 
         // ---------------- lance ----------------
