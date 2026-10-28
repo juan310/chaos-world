@@ -10,6 +10,7 @@
 # over a few frames of every clip. The vertices torn in any measured frame, and two rings round them, take their
 # neighbours' weights in steps (each step half its own weights, half its neighbours' mean); after each round of steps
 # the clips are measured again, and the last round that lowered the tearing is the one kept.
+import bmesh
 import bpy
 import numpy as np
 
@@ -219,4 +220,19 @@ def untangle(body, arm, log=print):
         done += len(idx)
         log('UNTANGLE %s: %d vertices shared by the hand and the legs: %d stay the hand\'s, %d the legs\' (radius hand %.3f, thigh %.3f m)'
             % ({'l': 'left', 'r': 'right'}[s], len(idx), len(a_idx), len(l_idx), r_arm, r_leg))
+    # where the model was made with the hand grown into the thigh, the two surfaces are one: faces run from the hand's
+    # skin to the thigh's, and however they are weighted they stretch as the hand leaves. Those faces go, and each side's
+    # opening is closed with a cap of its own.
+    armw = W[:, np.array([is_arm(n) for n in names])].sum(1); legw = W[:, leg].sum(1)
+    own = np.where(armw > legw, 1, 2) * ((armw > .5) | (legw > .5))
+    bm = bmesh.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table()
+    bridge = [f for f in bm.faces if {int(own[v.index]) for v in f.verts} >= {1, 2}]
+    if bridge:
+        near = {v.index for f in bridge for v in f.verts}
+        bmesh.ops.delete(bm, geom=bridge, context='FACES_ONLY')
+        rim = [e for e in bm.edges if e.is_boundary and e.verts[0].index in near and e.verts[1].index in near]
+        capped = bmesh.ops.holes_fill(bm, edges=rim, sides=0)['faces']
+        bm.to_mesh(me); me.update()
+        log('UNTANGLE cut %d faces joining the hands to the legs, %d cap faces close the openings' % (len(bridge), len(capped)))
+    bm.free()
     return done
