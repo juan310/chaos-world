@@ -4,6 +4,7 @@
 #
 #   import skinfix_blender; skinfix_blender.run(body, arm, actions, log=print)
 #   skinfix_blender.skirt(body, arm, log=print)     cloth hanging from the hips weighted as cloth (below)
+#   skinfix_blender.untangle(body, arm, log=print)  hands that touched the thighs when skinned let go of them (below)
 #
 # Measures as mesh3d does (an edge longer than 1.7 or shorter than 0.45 times its rest length tears its two vertices),
 # over a few frames of every clip. The vertices torn in any measured frame, and two rings round them, take their
@@ -154,3 +155,68 @@ def skirt(body, arm, log=print):
     _write(body, Wn, idx, deform)
     log('SKIRT %d cloth vertices weighted as cloth (thigh radius %.3f / %.3f m)' % (len(idx), r['l'], r['r']))
     return len(idx)
+
+
+def _seg_dist(co, pts):
+    """each point's distance to a polyline through `pts`"""
+    d = np.full(len(co), np.inf)
+    for a, b in zip(pts, pts[1:]):
+        ab = b - a; t = np.clip(((co - a) @ ab) / max(ab @ ab, 1e-9), 0, 1)
+        d = np.minimum(d, np.linalg.norm(co - (a + t[:, None] * ab), axis=1))
+    return d
+
+
+def untangle(body, arm, log=print):
+    """hands that hung against the thighs when the body was skinned: auto-skinning shares the skin where they touch, so
+    the thigh's skin carries finger and hand weights (and the hand's, thigh weights), and raising the arms drags the
+    thigh's skin up with them (a long-armed troll's ground pound: 13 % of its skin torn). Each vertex weighted to both
+    an arm (forearm, hand, fingers) and a leg (hips, thigh, shin, foot) goes to the one it is nearer, measured in each
+    part's own thickness (its distance to the bones' line over the part's own skin radius); the other's weights go.
+    -> the number of vertices untangled"""
+    B = arm.data.bones; AW = arm.matrix_world
+    me = body.data; G = len(body.vertex_groups); names = [g.name for g in body.vertex_groups]
+    Mw = np.array(body.matrix_world)
+    co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co); co = co.reshape(-1, 3) @ Mw[:3, :3].T + Mw[:3, 3]
+    P = lambda n, tail=False: np.array(AW @ (B[n].tail_local if tail else B[n].head_local))
+    W = _weights(body, G)
+
+    def side(n):
+        if n.endswith('.l') or n.endswith('_l') or n.startswith('Left'): return 'l'
+        if n.endswith('.r') or n.endswith('_r') or n.startswith('Right'): return 'r'
+        return None
+
+    def is_arm(n):
+        root = n.split('.')[0].split('_')[0].lower()
+        return root in ('hand', 'lowerarm', 'handslot', 'thumb', 'index', 'middle', 'ring', 'pinky') or 'Hand' in n or 'ForeArm' in n
+
+    def is_leg(n): return n.split('.')[0] in ('hips', 'upperleg', 'lowerleg', 'foot', 'toes')
+    leg = np.array([is_leg(n) for n in names])
+    need = ['hips', 'upperleg.l', 'upperleg.r', 'lowerleg.l', 'lowerleg.r', 'foot.l', 'foot.r', 'lowerarm.l', 'lowerarm.r', 'hand.l', 'hand.r']
+    if not all(n in B for n in need): log('UNTANGLE the rig lacks %s' % [n for n in need if n not in B]); return 0
+    dl = np.minimum(_seg_dist(co, [P('upperleg.l'), P('lowerleg.l'), P('foot.l')]), _seg_dist(co, [P('upperleg.r'), P('lowerleg.r'), P('foot.r')]))
+    legw = W[:, leg].sum(1)
+    core = (legw > .9) & np.isin(np.argmax(W, 1), [names.index(n) for n in ('upperleg.l', 'upperleg.r') if n in names])
+    r_leg = float(np.percentile(dl[core], 40)) if core.sum() > 20 else .12
+    done = 0
+    for s in 'lr':
+        armg = np.array([is_arm(n) and side(n) == s for n in names])
+        hand_len = np.linalg.norm(P('hand.' + s, True) - P('hand.' + s))
+        tip = P('hand.' + s) + (P('hand.' + s, True) - P('hand.' + s)) * max(1.0, .18 / max(hand_len, 1e-3))
+        da = _seg_dist(co, [P('lowerarm.' + s), P('hand.' + s), tip])
+        armw = W[:, armg].sum(1)
+        acore = armw > .9
+        r_arm = float(np.percentile(da[acore], 40)) if acore.sum() > 20 else .05
+        both = (armw > .02) & (legw > .02)
+        idx = np.nonzero(both)[0]
+        if not len(idx): continue
+        to_arm = da[idx] / r_arm < dl[idx] / r_leg
+        Wn = W.copy()
+        a_idx, l_idx = idx[to_arm], idx[~to_arm]
+        Wn[np.ix_(a_idx, np.nonzero(leg)[0])] = 0
+        Wn[np.ix_(l_idx, np.nonzero(armg)[0])] = 0
+        _write(body, Wn, idx, np.ones(G, np.float32))
+        W = _weights(body, G)
+        done += len(idx)
+        log('UNTANGLE %s: %d vertices shared by the hand and the legs: %d stay the hand\'s, %d the legs\' (radius hand %.3f, thigh %.3f m)'
+            % ({'l': 'left', 'r': 'right'}[s], len(idx), len(a_idx), len(l_idx), r_arm, r_leg))
+    return done
