@@ -59,6 +59,17 @@ Everything below is committed on `claude/new-session-xoe3g1`. On the PC, run `To
   walk 3.0, jog 5.5), but the hunter's attacks, dodges and bow moves still tear 6-25 % and look wrong on its short heavy
   legs (lunges stretch them). It needs its own moveset (heavy swings, slams, a club or bare fists), then the gate again.
 
+## The Barrow Troll, a drawn monster (2026-10-28)
+- The owner's troll sheet animated by cut-out animation (`Tools/sprites/troll_puppet.py`: the side view cut into parts on a
+  2D skeleton, moved by math; `game` exports `Assets/Resources/Sprites/Troll`: 78 frames and sprite.json with the joints).
+- In the game as `barrow_troll` (model `Sprite_Troll`): `SpriteActor` shows a camera-facing card (shader
+  `Folklore/SpriteCard`, cut-out, lit, casts a shadow, mirrored with its heading) over bones whose legacy clips the
+  AnimationDriver plays like a model's, so the brain, strike timing and hurtboxes work unchanged. Guards the Old Bridge
+  (`sp_troll_bridge`), in the Proving Grounds roster. Proving: 7 troll checks pass (226 checks, the same 10 older failures);
+  the fight is recorded to `Captures/Proving/TrollFight`. To do: send the hound away while recording; the hit flash is strong.
+- `sync.ps1` copies `Assets/Resources/Sprites`; `build.ps1` stops when the scripts do not compile (a Unity build would
+  otherwise run the old scripts); `build_quick.ps1` = sync, compile, Unity build, Proving.
+
 ## Next
 1. Fingers: solve against the skin, not a centre-line cylinder (fingers stop at the piece's surface); check the index and
    ring order on the right hand; then build all bodies with `--fingers`, run `hands`, and check the grips in the game
