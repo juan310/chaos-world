@@ -227,7 +227,8 @@ namespace FH.UI
                 "<b>Move</b> WASD / left stick   <b>Run</b> Shift / RT   <b>Attack</b> Left mouse / Y (press in rhythm: 3-hit combo)\n" +
                 "<b>Dodge</b> Space / A   <b>Spell</b> Q / LT   <b>Change spell</b> F / D-pad down   <b>Lock-on</b> Tab, middle mouse / R3\n" +
                 "<b>Interact</b> E / X   <b>Items</b> 1-4, R / LB   <b>Camera</b> hold right mouse / right stick   <b>Zoom</b> wheel\n" +
-                "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n\n" +
+                "<b>Pack</b> I   <b>Hunts</b> J   <b>Hunter</b> K   <b>Map</b> M / View   <b>Menu, back</b> Esc / Menu, B\n" +
+                "<b>Crouch</b> Z / L3 (light push: creep low, full push: sneak)   <b>Jump</b> V (on the move: a running leap)\n\n" +
                 "<color=#f5d68c>Proving Grounds and Training Range (hunt combat)</color>   the mouse turns the camera; weapons chosen at the ledger\n" +
                 "<b>All weapons</b>  Evade Space, A: roll; weapon out, stick to the side: jump dash, stick back: back-step (both keep facing);\n" +
                 "    sprinting away from a monster: dive (long, very safe, then a moment to get up)   Sprint Shift, RT (sheathes)   Sheathe X\n" +

@@ -183,6 +183,37 @@ What the films show:
 
 The Tripo hunter's own walk and jog clips (`--keep-clips`) still take the place of `Gait_Walk` / `Gait_Jog` on the male.
 
+### Round 5 (2026-10-28): jumps, bow, sword and shield (filmed on the hunter)
+11 clips × `adaptive`, `settle`, `merge`, `adaptive_arms`, `settle_arms`, measured and filmed side by side.
+
+| setting | smooth | pops | keys cm | free cm | floor cm | squash |
+|---|---|---|---|---|---|---|
+| adaptive | 92 | 4.6 | 0 | 3.2 | 0.9 | 1.1 |
+| settle | 76 | 4.0 | 0 | 11.7 | 1.3 | 1.9 |
+| merge | 22 | 0.2 | **11.3** | 17.2 | 2.3 | 1.1 |
+| adaptive_arms | 91 | 4.7 | 0 | 2.5 | 0.9 | 1.1 |
+| settle_arms | 64 | 4.3 | 0 | 9.5 | 1.3 | 1.9 |
+| *ours* | 95 | 4.7 | 0 | 0 | 0.9 | - |
+
+What the films show:
+- **`merge` is wrong for anything with a point.** Its smooth score comes from skipping our middle keys. On the sword
+  rush the hunter just stands with the arms down, the standing jump skips its crouch, the dive never dives. Never use
+  it for attacks, jumps or evasions.
+- **The bow must keep our arms.** Alone (`settle`, `merge`) MotionBricks flings the drawing arm up over the head and
+  breaks the draw. `adaptive` keeps the bow clips as ours (they are gentle), and `settle_arms` holds the draw.
+- **Sword and shield combos stay ours** (`adaptive`: the gaps are too short to give it room). `settle` moves the arms
+  off our strike timing. Where it does fill (the shield crash's leap), it lands later between our keys but on time at
+  the impact key.
+- **The dive (Jump_Full_Short) is better through it** (`settle`, 306 to 121): ours flies as a stiff plank, its body arcs,
+  legs kicking up as the hands reach for the ground.
+- **The standing jump** (`settle_arms`, 152 to 109): its calmer body under our arm swing.
+- The forward jump looked wrong in every column, ours included. That was our bug, not MotionBricks': a flight key
+  placing the feet from the hips (`feetHips`) passed that on to the landing keys. Fixed in `moves.py`, and the clip
+  is now baked on the spot like every other. After the fix the settings are close; `adaptive` adds a natural arm
+  throw at take-off.
+
+**Picks** (`mb_generate.PICK`): `settle` for Jump_Full_Short, `settle_arms` for Jump_Up, `adaptive` for everything else.
+
 ## Rules (what the lab has shown so far)
 1. Fit the length to the gap (`allowed_token_counts=(round((gap + 6) / 4),)`, 6-16). Never the model's default range.
 2. Give it room. Under ~13 frames between our keys, our own in-betweens are better: keep them.
@@ -193,6 +224,10 @@ The Tripo hunter's own walk and jog clips (`--keep-clips`) still take the place 
    retargeting. Its feet still slide.
 7. Locomotion: chain two generations of one cycle each from travelling cycles and keep the second; two target poses
    (four for a sprint). It keeps the poses it's given, so a gait that looks wrong is fixed in our poses first.
+8. A weapon in the hands (bow, lance) keeps our arms over its body. On its own it moves the arms freely and breaks the
+   grip or the draw.
+9. Look at the films, not only the numbers. `merge` scored the smoothest and was the worst. A clip that looks wrong in
+   every column is our bug.
 
 ## Next experiments
 - Moves that aren't attacks, where the middle key matters less (getting up, lying down, the jump): MotionBricks

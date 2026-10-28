@@ -167,8 +167,8 @@ namespace FH.UI
                 return pad ? "Y light   B heavy (hold: charge)   Y+B shield bash   A roll   RB guard   RT sprint   X sheathe   R3 lock-on   LB item   D-pad item   Menu ledger"
                            : "LMB light   RMB heavy (hold: charge)   both: shield bash   Space roll   Ctrl guard   Shift sprint   X sheathe   Tab lock-on   1-4 items   E ledger   Esc menu";
             }
-            return pad ? "Left stick move   RT run   Y attack   A dodge   LT spell   R3 lock-on   X interact   LB item   View map   Menu"
-                       : "WASD move   Shift run   LMB attack   Space dodge   Q spell   Tab lock-on   E interact   1-4 items   I pack   J hunts   K hunter   M map   Esc menu";
+            return pad ? "Left stick move   RT run   L3 crouch   Y attack   A dodge   LT spell   R3 lock-on   X interact   LB item   View map   Menu"
+                       : "WASD move   Shift run   Z crouch   V jump   LMB attack   Space dodge   Q spell   Tab lock-on   E interact   1-4 items   I pack   J hunts   K hunter   M map   Esc menu";
         }
 
         static string HuntLine(HuntFighter f)
