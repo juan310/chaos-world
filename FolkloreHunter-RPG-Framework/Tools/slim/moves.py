@@ -651,6 +651,35 @@ def dive(rig, name='Jump_Full_Short'):
     ], RELAX)
 
 
+def jump_up(rig, name='Jump_Up'):
+    """a standing jump: down into the knees, arms swung back; thrown up, arms forward; knees tucked at the top; landing
+    soft into the knees; standing again"""
+    crouch = {'hips': (0, .08, -.34), 'spine': (26, 0, 0), 'chest': (8, 0, 0), 'head': (-20, 0, 0), 'kneeL': (.3, -1, 0), 'kneeR': (-.3, -1, 0),
+              'handL': (.24, .26, .86), 'handR': (-.24, .26, .86), 'elbowL': (.4, 1, 0), 'elbowR': (-.4, 1, 0)}
+    takeoff = {'hips': (0, -.02, .06), 'spine': (4, 0, 0), 'chest': (0, 0, 0), 'head': (-6, 0, 0),
+               'footL': (.02, .02, .06, 34, 4), 'footR': (-.02, .02, .06, 34, -4),
+               'handL': (.24, -.24, 1.5), 'handR': (-.24, -.24, 1.5), 'elbowL': (.6, .3, -1), 'elbowR': (-.6, .3, -1)}
+    apex = {'feetHips': True, 'hips': (0, -.02, .42), 'spine': (10, 0, 0), 'chest': (4, 0, 0), 'head': (-10, 0, 0),
+            'footL': (.06, -.1, .62, 10, 4), 'footR': (-.06, -.06, .66, 10, -4), 'kneeL': (.2, -1, .4), 'kneeR': (-.2, -1, .4),
+            'handL': (.3, -.2, 1.62), 'handR': (-.3, -.2, 1.62)}
+    land = merge(crouch, {'hips': (0, .06, -.3), 'spine': (20, 0, 0), 'handL': (.3, -.22, 1.0), 'handR': (-.3, -.22, 1.0),
+                          'elbowL': (.6, .2, -1), 'elbowR': (-.6, .2, -1)})
+    return choreo.bake(rig, name, [(0, {}), (.3, crouch), (.44, takeoff), (.62, apex), (.82, merge(takeoff, {'feetHips': False})), (.94, land), (1.4, {})], RELAX)
+
+
+def jump_forward(rig, name='Jump_Forward'):
+    """a running leap: the push off the back foot, the front knee driven up, a long flight, landing on the front foot and
+    running on (it starts and ends in the jog's stride)"""
+    push = {'hips': (0, -.12, -.1), 'spine': (14, 0, 0), 'footL': (.03, -.3, 0, 0, 4), 'footR': (-.03, .36, .04, 40, -4),
+            'kneeL': (.1, -1, .2), 'handL': (.24, .18, 1.1), 'handR': (-.24, -.3, 1.36)}
+    fly = {'feetHips': True, 'hips': (0, -.5, .32), 'spine': (12, 0, 0), 'head': (-12, 0, 0),
+           'footL': (.05, -.42, .5, 20, 4), 'footR': (-.05, .32, .36, 60, -4), 'kneeL': (.1, -1, .6), 'kneeR': (-.1, -1, -.2),
+           'handL': (.32, -.3, 1.5), 'handR': (-.32, -.1, 1.45)}
+    land = {'hips': (0, -.9, -.18), 'spine': (18, 0, 0), 'footL': (.04, -.98, 0, 0, 4), 'footR': (-.04, -.5, .08, 30, -4),
+            'handL': (.28, -.9, 1.0), 'handR': (-.28, -.7, 1.1)}
+    return choreo.bake(rig, name, [(0, {}), (.18, push), (.5, fly), (.78, land), (1.1, {'hips': (0, -1.0, -.06), 'footL': (.02, -1.0, 0, 0, 4), 'footR': (-.02, -1.0, 0, 0, -4)})], RELAX)
+
+
 def hit(rig, name, side=0.0):
     """Struck: thrown back from the blow (side: + from the left), recovering into the guard."""
     return choreo.bake(rig, name, [
@@ -722,7 +751,7 @@ CLIPS = [
     sneak, crouch_walk, crouch_idle, sneak_idle,
     lambda r: strafe(r, 'L', 'Running_Strafe_Left'), lambda r: strafe(r, 'R', 'Running_Strafe_Right'),
     roll, backstep, lambda r: jump_dash(r, 'L'), lambda r: jump_dash(r, 'R'), lambda r: jump_dash(r, 'L', 'Dodge_Left'), lambda r: jump_dash(r, 'R', 'Dodge_Right'),
-    dive, lie_down, lie_standup, same(hit, 'Hit_A'), lambda r: hit(r, 'Hit_B', 1.0), death, use_item, interact, ride, sit_chair, spellcast,
+    dive, jump_up, jump_forward, lie_down, lie_standup, same(hit, 'Hit_A'), lambda r: hit(r, 'Hit_B', 1.0), death, use_item, interact, ride, sit_chair, spellcast,
     chop, slice_diagonal, slice_horizontal, stab, rush1, rush2, rush3, leap_slash, shield_crash, sns_rend, clash, block_hit, shield_bash,
     k_chop, k_slice, k_stab, k_spin, k_spinning, katana_iai, katana_rend,
     lance_high, lance_rend, lance_charge,
