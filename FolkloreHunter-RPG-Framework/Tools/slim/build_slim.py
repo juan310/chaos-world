@@ -20,6 +20,7 @@
 # --out writes the model somewhere else than the game's Models folder (trials).
 # --moves <module> plays only that module's CLIPS (a body with its own moves: troll_moves), no motion capture.
 # --only-clips <a,b,...> keeps only those clips (the Proving Grounds' test body: movement only).
+# --mb-first: MotionBricks' clips are not replaced by the motion capture of the same name (the capture fills the rest).
 # --face-fix turns a body skinned to a backwards skeleton round to face the skeleton's way (skinfix_blender.turn_around).
 # --untangle frees the thighs' skin from the hands that hung against them when the body was skinned (skinfix_blender.untangle).
 # --skirt weights cloth hanging from the hips as cloth (Tools/sightforge/eyeslib/skinfix_blender.py skirt).
@@ -286,14 +287,19 @@ if mb and soma and not villager and not custom:
     # the game's own moves with MotionBricks' natural motion between their key poses (Tools/motionbricks)
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'motionbricks'))
     import mb_bridge
-    mb_bridge.load(rig, mb_bridge.Soma(soma), mb)
+    MB_MADE = {a.name for a in (mb_bridge.load(rig, mb_bridge.Soma(soma), mb) or [])}
     rig.arm.animation_data.action = None
 m2m = opt('--m2m')
 if m2m and not custom:
     # the everyday moves from CC0 motion capture (Mesh2Motion), replacing the keyposed versions of the same name
     import retarget
     src = retarget.Source(m2m)
-    retarget.apply(rig, src, retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP, retarget.VILLAGER if villager else None)
+    table = retarget.MONSTER_MOCAP if '--monster' in argv else retarget.MOCAP
+    if '--mb-first' in argv and 'MB_MADE' in globals():
+        # MotionBricks' clips stay (the lab's picks: its sprint, jog, strafes...); capture only fills what it did not make
+        table = [t for t in table if t[0] not in MB_MADE]
+        print('SLIM_MB_FIRST capture skipped for', ' '.join(sorted(MB_MADE & {t[0] for t in retarget.MOCAP})), flush=True)
+    retarget.apply(rig, src, table, retarget.VILLAGER if villager else None)
     src.remove()
     made = [a for a in bpy.data.actions if not a.name.startswith(('KEEP__', 'AUTH__'))]     # the keyposed clips a capture replaced are gone already
     rig.arm.animation_data.action = None
