@@ -76,8 +76,19 @@ namespace FH.Game
             if (args.Contains("--tour-rpg")) gameObject.AddComponent<GameTour>();
             if (args.Contains("--verify-creatures") || args.Contains("--show-hunts")) gameObject.AddComponent<CreatureReview>();
             if (args.Contains("--input-log")) gameObject.AddComponent<InputLogger>();
+            if (args.Contains("--test-body")) StartCoroutine(StartInTestBody());
             gameObject.AddComponent<DevCapture>();   // F9: the moment saved for SightForge; hit, frame and spring recorders
             if (Arg(args, "--eyes-track") is string track) gameObject.AddComponent<MotionTrack>().Path = Path.GetFullPath(track);
+        }
+
+        /// <summary>--test-body: straight from the title into the Proving Grounds wearing the test body (the newest
+        /// movement), for the owner to try it without the menus.</summary>
+        System.Collections.IEnumerator StartInTestBody()
+        {
+            for (int i = 0; i < 5; i++) yield return null;
+            EnterProvingGrounds();
+            yield return new WaitForSecondsRealtime(1.2f);
+            if (ProvingRig && ProvingRig.TestBodyAvailable) ProvingRig.UseTestBody(true);
         }
 
         static string Arg(string[] args, string key)
